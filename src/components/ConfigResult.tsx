@@ -5,20 +5,21 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-mo
 import { useLanguage } from "@/lib/i18n";
 import type { PCConfig, Component, Alternative, Market } from "@/lib/types";
 
-/* ── Store URLs ── */
+/* ── Store URLs — use exact product name ── */
 
-function buildSearchUrl(store: string, terms: string[]): string {
-  const q = encodeURIComponent(terms.join(" "));
+function buildSearchUrl(store: string, name: string): string {
+  const q = encodeURIComponent(name);
+  const qPlus = name.replace(/\s+/g, "+");
   const urls: Record<string, string> = {
-    ldlc: `https://www.ldlc.com/recherche/${q}/`,
-    amazon: `https://www.amazon.fr/s?k=${q}`,
-    materielnet: `https://www.materiel.net/recherche/${q}/`,
+    ldlc: `https://www.ldlc.com/recherche/${encodeURIComponent(name)}/`,
+    amazon: `https://www.amazon.fr/s?k=${qPlus}`,
+    materielnet: `https://www.materiel.net/recherche/${encodeURIComponent(name)}/`,
     cdiscount: `https://www.cdiscount.com/search/10/${q}.html`,
     topachat: `https://www.topachat.com/pages/recherche.php?mot=${q}`,
-    digitec: `https://www.digitec.ch/search?q=${q}`,
-    galaxus: `https://www.galaxus.ch/search?q=${q}`,
-    brack: `https://www.brack.ch/search?q=${q}`,
-    interdiscount: `https://www.interdiscount.ch/search?q=${q}`,
+    digitec: `https://www.digitec.ch/search?q=${qPlus}`,
+    galaxus: `https://www.galaxus.ch/search?q=${qPlus}`,
+    brack: `https://www.brack.ch/search/${qPlus}`,
+    interdiscount: `https://www.interdiscount.ch/search?q=${qPlus}`,
   };
   return urls[store] || "#";
 }
@@ -30,6 +31,12 @@ const STORE_LABELS: Record<string, string> = {
   ldlc: "LDLC", amazon: "Amazon.fr", materielnet: "Matériel.net", cdiscount: "Cdiscount", topachat: "TopAchat",
   digitec: "Digitec", galaxus: "Galaxus", brack: "Brack.ch", interdiscount: "Interdiscount",
 };
+
+function getStoresForMarket(market: Market) {
+  if (market === "france") return FR_STORES;
+  if (market === "suisse") return CH_STORES;
+  return [...FR_STORES.slice(0, 2), ...CH_STORES.slice(0, 2)];
+}
 
 /* ── Fake Swiss multi-store prices ── */
 
@@ -96,7 +103,7 @@ function SwissPriceTable({ component, t }: { component: Component; t: (k: string
   return (
     <div className="mt-3 rounded-lg border border-border bg-bg overflow-hidden">
       {prices.map((p) => (
-        <a key={p.store} href={buildSearchUrl(p.store, component.search_terms)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between px-3 py-2 text-xs border-b border-border last:border-b-0 hover:bg-card transition-colors duration-150">
+        <a key={p.store} href={buildSearchUrl(p.store, component.name)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between px-3 py-2 text-xs border-b border-border last:border-b-0 hover:bg-card transition-colors duration-150">
           <span className="font-medium">{STORE_LABELS[p.store]}</span>
           <span className="flex items-center gap-2">
             <span className="tabular-nums">{p.price} CHF</span>
@@ -108,14 +115,17 @@ function SwissPriceTable({ component, t }: { component: Component; t: (k: string
   );
 }
 
-/* ── Alternatives Modal ── */
+/* ── Alternatives Modal — market-aware ── */
 
-function AlternativesModal({ component, allComponents, usage, budget, onSelect, onClose }: { component: Component; allComponents: Component[]; usage: string; budget: number; onSelect: (a: Alternative) => void; onClose: () => void }) {
+function AlternativesModal({ component, allComponents, usage, budget, market, onSelect, onClose }: { component: Component; allComponents: Component[]; usage: string; budget: number; market: Market; onSelect: (a: Alternative) => void; onClose: () => void }) {
   const { t } = useLanguage();
   const [alternatives, setAlternatives] = useState<Alternative[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  const showFR = market === "france" || market === "both";
+  const showCH = market === "suisse" || market === "both";
 
   useEffect(() => {
     let c = false;
@@ -133,6 +143,27 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
   const handleOutside = useCallback((e: MouseEvent) => { if (modalRef.current && !modalRef.current.contains(e.target as Node)) onClose(); }, [onClose]);
   useEffect(() => { document.addEventListener("mousedown", handleOutside); return () => document.removeEventListener("mousedown", handleOutside); }, [handleOutside]);
 
+  function formatPrice(alt: { price_fr: number; price_ch: number }) {
+    if (showFR && showCH) return `${alt.price_fr}\u20AC · ${alt.price_ch} CHF`;
+    if (showCH) return `${alt.price_ch} CHF`;
+    return `${alt.price_fr}\u20AC`;
+  }
+
+  function formatCurrentPrice() {
+    if (showFR && showCH) return `${component.price_fr}\u20AC · ${component.price_ch} CHF`;
+    if (showCH) return `${component.price_ch} CHF`;
+    return `${component.price_fr}\u20AC`;
+  }
+
+  function getDiff(alt: { price_fr: number; price_ch: number }) {
+    const diff = showCH && !showFR
+      ? alt.price_ch - component.price_ch
+      : alt.price_fr - component.price_fr;
+    const unit = showCH && !showFR ? " CHF" : "\u20AC";
+    if (diff === 0) return t("alt.samePrice");
+    return diff > 0 ? `+${diff}${unit}` : `${diff}${unit}`;
+  }
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
       <motion.div ref={modalRef} initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 25 }} className="bg-bg border border-border rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl">
@@ -147,15 +178,15 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
         </div>
         <div className="px-6 py-4 border-b border-border bg-card/50">
           <div className="flex items-center gap-3"><span className="text-[11px] px-2.5 py-0.5 rounded-full bg-accent text-white font-medium">{t("alt.current")}</span><span className="font-medium text-sm">{component.name}</span></div>
-          <p className="text-xs text-text-secondary mt-1 ml-[70px]">{component.price_fr}&euro; FR &middot; {component.price_ch} CHF</p>
+          <p className="text-xs text-text-secondary mt-1 ml-[70px]">{formatCurrentPrice()}</p>
         </div>
         {loading && <div className="p-12 text-center"><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-6 h-6 mx-auto mb-4 border-2 border-border border-t-accent rounded-full" /><p className="text-sm text-text-secondary">{t("alt.searching")}</p></div>}
         {error && <div className="p-6"><p className="text-sm text-text-secondary">{error}</p></div>}
         {!loading && !error && (
           <div className="p-4 flex flex-col gap-3">
             {alternatives.map((alt, i) => {
-              const diff = alt.price_fr - component.price_fr;
-              const diffStr = diff === 0 ? t("alt.samePrice") : diff > 0 ? `+${diff}\u20AC` : `${diff}\u20AC`;
+              const diffStr = getDiff(alt);
+              const diff = showCH && !showFR ? alt.price_ch - component.price_ch : alt.price_fr - component.price_fr;
               return (
                 <motion.div key={alt.name} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, type: "spring", stiffness: 300, damping: 25 }} className="rounded-xl border border-border hover:border-border-hover transition-colors duration-150 p-4 bg-card">
                   <div className="flex items-center gap-2 mb-2">
@@ -165,8 +196,7 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
                   <p className="font-medium text-sm mb-1">{alt.name}</p>
                   <p className="text-xs text-text-secondary mb-3">{alt.reason}</p>
                   <div className="flex items-center gap-4 mb-3 text-xs">
-                    <span>FR {alt.price_fr}&euro;</span>
-                    <span>CH {alt.price_ch} CHF</span>
+                    <span>{formatPrice(alt)}</span>
                     <span className="ml-auto">{alt.compatible ? <span className="text-text-secondary">{"\u2713"} {t("alt.compatible")}</span> : <span className="text-text font-medium">{"\u26A0"} {alt.compatibility_warning || t("alt.check")}</span>}</span>
                   </div>
                   <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={() => onSelect(alt)} className="w-full py-2.5 rounded-lg border border-border text-sm font-medium text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150">{t("alt.choose")}</motion.button>
@@ -188,6 +218,7 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert }:
   const isSwapped = original !== null && original.name !== component.name;
   const showFR = market === "france" || market === "both";
   const showCH = market === "suisse" || market === "both";
+  const stores = getStoresForMarket(market);
 
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1, type: "spring", stiffness: 200, damping: 20 }} className="rounded-xl border border-border bg-card p-5 transition-colors duration-150 hover:border-border-hover">
@@ -205,24 +236,26 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert }:
         </div>
       </div>
 
-      <div className="flex gap-3 mb-3">
+      {/* Prices */}
+      <div className="flex gap-3 mb-1">
         {showFR && <div className="flex-1 bg-bg rounded-lg p-2.5 text-center border border-border"><div className="text-[11px] text-text-secondary">{t("result.france")}</div><div className="font-semibold mt-0.5">{component.price_fr}&euro;</div></div>}
         {showCH && <div className="flex-1 bg-bg rounded-lg p-2.5 text-center border border-border"><div className="text-[11px] text-text-secondary">{t("result.suisse")}</div><div className="font-semibold mt-0.5">{component.price_ch} CHF</div></div>}
       </div>
+      <p className="text-[10px] text-text-secondary mb-3">{t("result.priceNote")}</p>
 
+      {/* Swiss price comparison */}
       {showCH && !showFR && <SwissPriceTable component={component} t={t} />}
 
-      {showFR && (
-        <div className="flex gap-2 mb-2 flex-wrap">
-          {FR_STORES.slice(0, 3).map((s) => <a key={s} href={buildSearchUrl(s, component.search_terms)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[60px] text-center text-xs py-2 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">{STORE_LABELS[s]}</a>)}
-        </div>
-      )}
-      {showCH && showFR && (
-        <div className="flex gap-2 mb-2 flex-wrap">
-          {CH_STORES.slice(0, 3).map((s) => <a key={s} href={buildSearchUrl(s, component.search_terms)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[60px] text-center text-xs py-2 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">{STORE_LABELS[s]}</a>)}
-        </div>
-      )}
+      {/* Store links */}
+      <div className="flex gap-2 mb-2 flex-wrap">
+        {stores.map((s) => (
+          <a key={s} href={buildSearchUrl(s, component.name)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[60px] text-center text-xs py-2 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">
+            {STORE_LABELS[s]} &rarr;
+          </a>
+        ))}
+      </div>
 
+      {/* Swap / Revert */}
       <div className="flex gap-2 mt-3">
         <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={onSwap} className="flex-1 text-center text-xs py-2 rounded-lg border border-border text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150 font-medium">{t("change")}</motion.button>
         {isSwapped && <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} whileTap={{ scale: 0.97 }} onClick={onRevert} className="text-xs py-2 px-3 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">{t("restore")}</motion.button>}
@@ -233,7 +266,7 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert }:
 
 /* ── Expandable Price Row ── */
 
-function PriceRow({ component, index, changed, market, t }: { component: Component; index: number; changed: boolean; market: Market; t: (k: string) => string }) {
+function PriceRow({ component, changed, market, t }: { component: Component; index: number; changed: boolean; market: Market; t: (k: string) => string }) {
   const [expanded, setExpanded] = useState(false);
   const showFR = market === "france" || market === "both";
   const showCH = market === "suisse" || market === "both";
@@ -257,7 +290,7 @@ function PriceRow({ component, index, changed, market, t }: { component: Compone
             <td colSpan={1 + (showFR ? 1 : 0) + (showCH ? 1 : 0)} className="pb-3 pt-1">
               <div className="flex flex-wrap gap-1.5">
                 {stores.map((s) => (
-                  <a key={s} href={buildSearchUrl(s, component.search_terms)} target="_blank" rel="noopener noreferrer" className="text-[11px] px-2.5 py-1 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">{STORE_LABELS[s]} &rarr;</a>
+                  <a key={s} href={buildSearchUrl(s, component.name)} target="_blank" rel="noopener noreferrer" className="text-[11px] px-2.5 py-1 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">{STORE_LABELS[s]} &rarr;</a>
                 ))}
               </div>
             </td>
@@ -301,7 +334,7 @@ export default function ConfigResult({ config, onReset }: Props) {
 
   function openGalaxus() {
     for (const c of components) {
-      window.open(buildSearchUrl("galaxus", c.search_terms), "_blank");
+      window.open(buildSearchUrl("galaxus", c.name), "_blank");
     }
   }
 
@@ -372,7 +405,7 @@ export default function ConfigResult({ config, onReset }: Props) {
 
       {/* Alternatives modal */}
       <AnimatePresence>
-        {swapIndex !== null && <AlternativesModal component={components[swapIndex]} allComponents={components} usage={config.config_name} budget={config.total_estimated} onSelect={(alt) => handleSelectAlternative(swapIndex, alt)} onClose={() => setSwapIndex(null)} />}
+        {swapIndex !== null && <AlternativesModal component={components[swapIndex]} allComponents={components} usage={config.config_name} budget={config.total_estimated} market={market} onSelect={(alt) => handleSelectAlternative(swapIndex, alt)} onClose={() => setSwapIndex(null)} />}
       </AnimatePresence>
     </div>
   );

@@ -30,7 +30,7 @@ const USAGE_PATHS: Record<Usage, string> = {
 const USAGES: Usage[] = ["gaming", "streaming", "montage", "bureautique", "polyvalent"];
 const RESOLUTIONS: Resolution[] = ["1080p", "1440p", "4K"];
 const TECH: TechLevel[] = ["debutant", "intermediaire", "expert"];
-const MARKETS: Market[] = ["france", "suisse", "both"];
+const MARKETS: Market[] = ["suisse", "france", "both"];
 const BUDGET_TICKS = [300, 800, 1500, 2500, 5000];
 
 const BUDGET_PRESETS: { key: string; emoji: string; value: number; badgeKey?: string }[] = [

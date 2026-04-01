@@ -69,7 +69,16 @@ function Typewriter({ text, onDone }: { text: string; onDone?: () => void }) {
 function Hero({ onStart }: { onStart: () => void }) {
   const { t } = useLanguage();
   const [titleDone, setTitleDone] = useState(false);
-  const handleTitleDone = useCallback(() => setTitleDone(true), []);
+  const hasPlayedRef = useRef(false);
+  const handleTitleDone = useCallback(() => {
+    setTitleDone(true);
+    hasPlayedRef.current = true;
+  }, []);
+
+  // When language changes after initial typewriter, keep titleDone true
+  useEffect(() => {
+    if (hasPlayedRef.current) setTitleDone(true);
+  }, [t]);
 
   return (
     <div className="relative flex-1 flex flex-col">
@@ -85,7 +94,7 @@ function Hero({ onStart }: { onStart: () => void }) {
           {t("hero.badge")}
         </motion.div>
         <h1 className="text-5xl sm:text-7xl lg:text-8xl font-bold text-center tracking-tight leading-[0.95] mb-6 min-h-[1.2em]">
-          <Typewriter text={t("hero.title")} onDone={handleTitleDone} />
+          {hasPlayedRef.current ? t("hero.title") : <Typewriter text={t("hero.title")} onDone={handleTitleDone} />}
         </h1>
         <AnimatePresence>
           {titleDone && (
