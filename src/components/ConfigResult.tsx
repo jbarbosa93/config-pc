@@ -46,144 +46,142 @@ function getManufacturerUrl(componentName: string, fallback?: string): string {
   return fallback || "#";
 }
 
-/* ── Product SVG icons ── */
+/* ── Colored animated SVG icons per component type ── */
 
 function ComponentSVG({ type, size = 80 }: { type: string; size?: number }) {
   const key = type.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const s = size;
 
   if (key.includes("cpu") || key.includes("processeur")) return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="20" y="20" width="40" height="40" rx="4" stroke="currentColor" strokeWidth="1.5"/>
-      <rect x="28" y="28" width="24" height="24" rx="2" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 2"/>
-      <rect x="34" y="34" width="12" height="12" rx="1" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1"/>
-      <line x1="30" y1="20" x2="30" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="40" y1="20" x2="40" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="50" y1="20" x2="50" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="30" y1="60" x2="30" y2="68" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="40" y1="60" x2="40" y2="68" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="50" y1="60" x2="50" y2="68" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="20" y1="30" x2="12" y2="30" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="20" y1="40" x2="12" y2="40" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="20" y1="50" x2="12" y2="50" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="60" y1="30" x2="68" y2="30" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="60" y1="40" x2="68" y2="40" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="60" y1="50" x2="68" y2="50" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <rect x="20" y="20" width="40" height="40" rx="5" fill="#EFF6FF" stroke="#3B82F6" strokeWidth="1.5"/>
+      <rect x="28" y="28" width="24" height="24" rx="3" fill="#DBEAFE" stroke="#3B82F6" strokeWidth="1"/>
+      <rect x="34" y="34" width="12" height="12" rx="2" fill="#3B82F6" opacity="0.3" stroke="#3B82F6" strokeWidth="0.8">
+        <animate attributeName="opacity" values="0.2;0.5;0.2" dur="2s" repeatCount="indefinite"/>
+      </rect>
+      {[30,40,50].map(x => <line key={`t${x}`} x1={x} y1="20" x2={x} y2="11" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round"/>)}
+      {[30,40,50].map(x => <line key={`b${x}`} x1={x} y1="60" x2={x} y2="69" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round"/>)}
+      {[30,40,50].map(y => <line key={`l${y}`} x1="20" y1={y} x2="11" y2={y} stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round"/>)}
+      {[30,40,50].map(y => <line key={`r${y}`} x1="60" y1={y} x2="69" y2={y} stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round"/>)}
     </svg>
   );
 
   if (key.includes("gpu") || key.includes("graphi") || key.includes("carte graph")) return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="8" y="22" width="64" height="36" rx="4" stroke="currentColor" strokeWidth="1.5"/>
-      <circle cx="28" cy="40" r="10" stroke="currentColor" strokeWidth="1.2"/>
-      <circle cx="28" cy="40" r="4" stroke="currentColor" strokeWidth="1" strokeDasharray="2 1.5"/>
-      <circle cx="54" cy="40" r="10" stroke="currentColor" strokeWidth="1.2"/>
-      <circle cx="54" cy="40" r="4" stroke="currentColor" strokeWidth="1" strokeDasharray="2 1.5"/>
-      <line x1="18" y1="58" x2="18" y2="66" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="28" y1="58" x2="28" y2="66" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="38" y1="58" x2="38" y2="66" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <rect x="8" y="18" width="20" height="4" rx="1" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="0.8"/>
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <rect x="8" y="22" width="64" height="36" rx="5" fill="#ECFDF5" stroke="#10B981" strokeWidth="1.5"/>
+      <rect x="8" y="17" width="22" height="5" rx="2" fill="#10B981" opacity="0.2" stroke="#10B981" strokeWidth="0.8"/>
+      <g className="animate-spin-slow" style={{transformOrigin:"28px 40px"}}>
+        <circle cx="28" cy="40" r="11" stroke="#10B981" strokeWidth="1"/>
+        <circle cx="28" cy="40" r="5" stroke="#10B981" strokeWidth="0.8"/>
+        <line x1="28" y1="29" x2="28" y2="34" stroke="#10B981" strokeWidth="0.8"/>
+        <line x1="28" y1="46" x2="28" y2="51" stroke="#10B981" strokeWidth="0.8"/>
+        <line x1="17" y1="40" x2="22" y2="40" stroke="#10B981" strokeWidth="0.8"/>
+        <line x1="34" y1="40" x2="39" y2="40" stroke="#10B981" strokeWidth="0.8"/>
+      </g>
+      <g className="animate-spin-slow" style={{transformOrigin:"54px 40px"}}>
+        <circle cx="54" cy="40" r="11" stroke="#10B981" strokeWidth="1"/>
+        <circle cx="54" cy="40" r="5" stroke="#10B981" strokeWidth="0.8"/>
+        <line x1="54" y1="29" x2="54" y2="34" stroke="#10B981" strokeWidth="0.8"/>
+        <line x1="54" y1="46" x2="54" y2="51" stroke="#10B981" strokeWidth="0.8"/>
+        <line x1="43" y1="40" x2="48" y2="40" stroke="#10B981" strokeWidth="0.8"/>
+        <line x1="60" y1="40" x2="65" y2="40" stroke="#10B981" strokeWidth="0.8"/>
+      </g>
+      {[18,28,38].map(x => <line key={x} x1={x} y1="58" x2={x} y2="66" stroke="#10B981" strokeWidth="1.2" strokeLinecap="round"/>)}
     </svg>
   );
 
   if (key.includes("ram") || key.includes("memoire") || key.includes("memory")) return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="10" y="24" width="60" height="32" rx="3" stroke="currentColor" strokeWidth="1.5"/>
-      <rect x="16" y="30" width="8" height="16" rx="1" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="0.8"/>
-      <rect x="28" y="30" width="8" height="16" rx="1" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="0.8"/>
-      <rect x="40" y="30" width="8" height="16" rx="1" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="0.8"/>
-      <rect x="52" y="30" width="8" height="16" rx="1" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="0.8"/>
-      <line x1="16" y1="56" x2="16" y2="62" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-      <line x1="24" y1="56" x2="24" y2="62" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-      <line x1="32" y1="56" x2="32" y2="62" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-      <line x1="40" y1="56" x2="40" y2="62" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-      <line x1="48" y1="56" x2="48" y2="62" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-      <line x1="56" y1="56" x2="56" y2="62" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-      <line x1="64" y1="56" x2="64" y2="62" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-      <rect x="10" y="20" width="10" height="4" rx="1" stroke="currentColor" strokeWidth="0.8"/>
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <rect x="10" y="24" width="60" height="32" rx="4" fill="#F5F3FF" stroke="#8B5CF6" strokeWidth="1.5"/>
+      <rect x="10" y="19" width="12" height="5" rx="2" fill="#8B5CF6" opacity="0.15" stroke="#8B5CF6" strokeWidth="0.8"/>
+      {[16,28,40,52].map((x,i) => (
+        <rect key={x} x={x} y="30" width="8" height="16" rx="1.5" fill="#8B5CF6" stroke="#8B5CF6" strokeWidth="0.6" opacity="0.15">
+          <animate attributeName="opacity" values="0.1;0.3;0.1" dur="1.5s" begin={`${i*0.3}s`} repeatCount="indefinite"/>
+        </rect>
+      ))}
+      {[16,24,32,40,48,56,64].map(x => <line key={x} x1={x} y1="56" x2={x} y2="63" stroke="#8B5CF6" strokeWidth="1" strokeLinecap="round"/>)}
     </svg>
   );
 
   if (key.includes("ssd") || key.includes("stockage") || key.includes("storage") || key.includes("nvme") || key.includes("m.2")) return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="14" y="30" width="52" height="20" rx="3" stroke="currentColor" strokeWidth="1.5"/>
-      <rect x="20" y="34" width="16" height="12" rx="1.5" fill="currentColor" opacity="0.12" stroke="currentColor" strokeWidth="0.8"/>
-      <rect x="42" y="36" width="8" height="8" rx="1" fill="currentColor" opacity="0.08" stroke="currentColor" strokeWidth="0.8"/>
-      <circle cx="56" cy="40" r="3" stroke="currentColor" strokeWidth="0.8"/>
-      <line x1="14" y1="50" x2="14" y2="56" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-      <line x1="20" y1="50" x2="20" y2="56" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-      <path d="M24 34 L30 34 L30 38" stroke="currentColor" strokeWidth="0.6" opacity="0.4"/>
-      <path d="M22 42 L32 42" stroke="currentColor" strokeWidth="0.6" opacity="0.4"/>
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <rect x="12" y="28" width="56" height="24" rx="4" fill="#FFFBEB" stroke="#F59E0B" strokeWidth="1.5"/>
+      <rect x="18" y="33" width="18" height="14" rx="2" fill="#F59E0B" opacity="0.15" stroke="#F59E0B" strokeWidth="0.8"/>
+      <rect x="42" y="35" width="10" height="10" rx="1.5" fill="#F59E0B" opacity="0.1" stroke="#F59E0B" strokeWidth="0.8"/>
+      <circle cx="60" cy="40" r="3.5" stroke="#F59E0B" strokeWidth="0.8"/>
+      <circle cx="60" cy="40" r="1" fill="#F59E0B">
+        <animate attributeName="opacity" values="0.3;1;0.3" dur="1s" repeatCount="indefinite"/>
+      </circle>
+      <path d="M22 34L28 34L28 39" stroke="#F59E0B" strokeWidth="0.6" opacity="0.5"/>
+      <path d="M20 43L32 43" stroke="#F59E0B" strokeWidth="0.6" opacity="0.5"/>
     </svg>
   );
 
   if (key.includes("carte mere") || key.includes("motherboard")) return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="14" y="10" width="52" height="60" rx="3" stroke="currentColor" strokeWidth="1.5"/>
-      <rect x="22" y="16" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.2"/>
-      <rect x="26" y="20" width="12" height="6" rx="1" fill="currentColor" opacity="0.12"/>
-      <rect x="22" y="38" width="10" height="8" rx="1" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="0.8"/>
-      <rect x="36" y="38" width="10" height="8" rx="1" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="0.8"/>
-      <rect x="22" y="52" width="24" height="10" rx="1.5" stroke="currentColor" strokeWidth="0.8" strokeDasharray="2 1.5"/>
-      <circle cx="54" cy="20" r="3" stroke="currentColor" strokeWidth="0.8"/>
-      <circle cx="54" cy="32" r="3" stroke="currentColor" strokeWidth="0.8"/>
-      <line x1="50" y1="42" x2="58" y2="42" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round"/>
-      <line x1="50" y1="46" x2="58" y2="46" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round"/>
-      <line x1="50" y1="50" x2="58" y2="50" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round"/>
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <rect x="14" y="10" width="52" height="60" rx="4" fill="#ECFDF5" stroke="#065F46" strokeWidth="1.5"/>
+      <rect x="22" y="16" width="20" height="14" rx="2.5" fill="#065F46" opacity="0.1" stroke="#065F46" strokeWidth="1"/>
+      <rect x="27" y="20" width="10" height="6" rx="1.5" fill="#065F46" opacity="0.2"/>
+      <rect x="22" y="38" width="10" height="8" rx="1.5" fill="#065F46" opacity="0.08" stroke="#065F46" strokeWidth="0.8"/>
+      <rect x="36" y="38" width="10" height="8" rx="1.5" fill="#065F46" opacity="0.08" stroke="#065F46" strokeWidth="0.8"/>
+      <rect x="22" y="52" width="24" height="10" rx="2" stroke="#065F46" strokeWidth="0.8" strokeDasharray="3 2"/>
+      <circle cx="54" cy="20" r="3" fill="#065F46" opacity="0.15" stroke="#065F46" strokeWidth="0.8"/>
+      <circle cx="54" cy="32" r="3" fill="#065F46" opacity="0.15" stroke="#065F46" strokeWidth="0.8"/>
+      {[42,46,50].map(y => <line key={y} x1="50" y1={y} x2="58" y2={y} stroke="#065F46" strokeWidth="0.8" strokeLinecap="round"/>)}
     </svg>
   );
 
   if (key.includes("alimentation") || key.includes("power")) return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="14" y="18" width="52" height="44" rx="4" stroke="currentColor" strokeWidth="1.5"/>
-      <circle cx="40" cy="40" r="14" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M40 30 L40 50" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-      <path d="M30 40 L50 40" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-      <circle cx="40" cy="40" r="4" stroke="currentColor" strokeWidth="0.8" fill="currentColor" opacity="0.1"/>
-      <rect x="14" y="62" width="8" height="4" rx="1" stroke="currentColor" strokeWidth="0.8"/>
-      <line x1="58" y1="24" x2="58" y2="28" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <circle cx="22" cy="24" r="1.5" fill="currentColor" opacity="0.3"/>
-      <rect x="56" y="34" width="4" height="12" rx="1" stroke="currentColor" strokeWidth="0.6" opacity="0.4"/>
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <rect x="14" y="18" width="52" height="44" rx="5" fill="#FEFCE8" stroke="#EAB308" strokeWidth="1.5"/>
+      <circle cx="40" cy="40" r="15" fill="#EAB308" opacity="0.08" stroke="#EAB308" strokeWidth="1"/>
+      <path d="M43 30L37 41H43L37 52" stroke="#EAB308" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <animate attributeName="opacity" values="0.6;1;0.6" dur="1.5s" repeatCount="indefinite"/>
+      </path>
+      <rect x="14" y="62" width="10" height="4" rx="1.5" fill="#EAB308" opacity="0.2" stroke="#EAB308" strokeWidth="0.8"/>
+      <rect x="28" y="62" width="10" height="4" rx="1.5" fill="#EAB308" opacity="0.2" stroke="#EAB308" strokeWidth="0.8"/>
+      <circle cx="58" cy="24" r="2" fill="#EAB308" opacity="0.4"/>
     </svg>
   );
 
   if (key.includes("boitier") || key.includes("boîtier") || key.includes("case") || key.includes("tour")) return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="20" y="8" width="40" height="64" rx="4" stroke="currentColor" strokeWidth="1.5"/>
-      <circle cx="40" cy="24" r="8" stroke="currentColor" strokeWidth="1"/>
-      <circle cx="40" cy="24" r="3" stroke="currentColor" strokeWidth="0.8" strokeDasharray="1.5 1"/>
-      <line x1="28" y1="38" x2="52" y2="38" stroke="currentColor" strokeWidth="0.8" opacity="0.4"/>
-      <rect x="28" y="44" width="24" height="4" rx="1" fill="currentColor" opacity="0.08" stroke="currentColor" strokeWidth="0.6"/>
-      <rect x="28" y="52" width="24" height="4" rx="1" fill="currentColor" opacity="0.08" stroke="currentColor" strokeWidth="0.6"/>
-      <circle cx="40" cy="66" r="2" stroke="currentColor" strokeWidth="1"/>
-      <circle cx="26" cy="14" r="1" fill="currentColor" opacity="0.3"/>
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <rect x="20" y="8" width="40" height="64" rx="5" fill="#F9FAFB" stroke="#6B7280" strokeWidth="1.5"/>
+      <rect x="26" y="14" width="28" height="24" rx="3" fill="#6B7280" opacity="0.05" stroke="#6B7280" strokeWidth="0.8"/>
+      <rect x="30" y="18" width="20" height="16" rx="2" fill="#6B7280" opacity="0.08">
+        <animate attributeName="opacity" values="0.05;0.15;0.05" dur="3s" repeatCount="indefinite"/>
+      </rect>
+      <line x1="26" y1="44" x2="54" y2="44" stroke="#6B7280" strokeWidth="0.8" opacity="0.3"/>
+      <rect x="28" y="48" width="24" height="3" rx="1" fill="#6B7280" opacity="0.1" stroke="#6B7280" strokeWidth="0.5"/>
+      <rect x="28" y="54" width="24" height="3" rx="1" fill="#6B7280" opacity="0.1" stroke="#6B7280" strokeWidth="0.5"/>
+      <circle cx="40" cy="66" r="2.5" stroke="#6B7280" strokeWidth="1"/>
+      <circle cx="27" cy="12" r="1.2" fill="#6B7280" opacity="0.4"/>
     </svg>
   );
 
   if (key.includes("refroidissement") || key.includes("cooler") || key.includes("ventil") || key.includes("cooling")) return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="40" cy="40" r="26" stroke="currentColor" strokeWidth="1.5"/>
-      <circle cx="40" cy="40" r="6" stroke="currentColor" strokeWidth="1.2" fill="currentColor" opacity="0.1"/>
-      <path d="M40 14 C40 14 44 26 40 34" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M40 66 C40 66 36 54 40 46" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M14 40 C14 40 26 36 34 40" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M66 40 C66 40 54 44 46 40" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M21.6 21.6 C21.6 21.6 31 27 35.2 35.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M58.4 58.4 C58.4 58.4 49 53 44.8 44.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M58.4 21.6 C58.4 21.6 53 31 44.8 35.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M21.6 58.4 C21.6 58.4 27 49 35.2 44.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <circle cx="40" cy="40" r="28" fill="#ECFEFF" stroke="#06B6D4" strokeWidth="1.5"/>
+      <g className="animate-spin-slow" style={{transformOrigin:"40px 40px"}}>
+        <circle cx="40" cy="40" r="7" fill="#06B6D4" opacity="0.15" stroke="#06B6D4" strokeWidth="1"/>
+        <path d="M40 12C40 12 45 26 40 33" stroke="#06B6D4" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M40 68C40 68 35 54 40 47" stroke="#06B6D4" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M12 40C12 40 26 35 33 40" stroke="#06B6D4" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M68 40C68 40 54 45 47 40" stroke="#06B6D4" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M20 20C20 20 30 27 34 34" stroke="#06B6D4" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M60 60C60 60 50 53 46 46" stroke="#06B6D4" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M60 20C60 20 53 30 46 34" stroke="#06B6D4" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M20 60C20 60 27 50 34 46" stroke="#06B6D4" strokeWidth="1.5" strokeLinecap="round"/>
+      </g>
     </svg>
   );
 
-  // Default: generic hardware icon
   return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="20" y="20" width="40" height="40" rx="4" stroke="currentColor" strokeWidth="1.5"/>
-      <rect x="30" y="30" width="20" height="20" rx="2" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="1"/>
-      <line x1="30" y1="20" x2="30" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="40" y1="20" x2="40" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="50" y1="20" x2="50" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="30" y1="60" x2="30" y2="68" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-      <line x1="50" y1="60" x2="50" y2="68" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <rect x="20" y="20" width="40" height="40" rx="5" fill="#F3F4F6" stroke="#9CA3AF" strokeWidth="1.5"/>
+      <rect x="30" y="30" width="20" height="20" rx="3" fill="#9CA3AF" opacity="0.1" stroke="#9CA3AF" strokeWidth="1"/>
+      {[30,40,50].map(x => <line key={`t${x}`} x1={x} y1="20" x2={x} y2="12" stroke="#9CA3AF" strokeWidth="1.2" strokeLinecap="round"/>)}
+      {[30,50].map(x => <line key={`b${x}`} x1={x} y1="60" x2={x} y2="68" stroke="#9CA3AF" strokeWidth="1.2" strokeLinecap="round"/>)}
     </svg>
   );
 }
