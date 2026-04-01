@@ -19,22 +19,14 @@ interface StoreConfig {
 }
 
 const STORES: StoreConfig[] = [
-  // ── Suisse (17 sites) ──
+  // ── Suisse — sites qui vendent des composants PC ──
   { id: "galaxus", label: "Galaxus", market: "ch", buildSearchUrl: (q) => `https://www.galaxus.ch/search?q=${enc(q)}`, affiliateNetwork: "tradedoubler" },
   { id: "digitec", label: "Digitec", market: "ch", buildSearchUrl: (q) => `https://www.digitec.ch/search?q=${enc(q)}`, affiliateNetwork: "tradedoubler" },
   { id: "brack", label: "Brack.ch", market: "ch", buildSearchUrl: (q) => `https://www.brack.ch/search?q=${enc(q)}`, affiliateNetwork: "tradedoubler" },
   { id: "interdiscount", label: "Interdiscount", market: "ch", buildSearchUrl: (q) => `https://www.interdiscount.ch/fr/search#q=${enc(q)}`, affiliateNetwork: "tradedoubler" },
+  { id: "steg", label: "Steg Electronics", market: "ch", buildSearchUrl: (q) => `https://www.steg-electronics.ch/de/search?q=${enc(q)}` },
   { id: "conrad", label: "Conrad", market: "ch", buildSearchUrl: (q) => `https://www.conrad.ch/fr/search?search=${enc(q)}` },
   { id: "mediamarkt", label: "MediaMarkt", market: "ch", buildSearchUrl: (q) => `https://www.mediamarkt.ch/fr/search.html?query=${enc(q)}` },
-  { id: "fnac", label: "Fnac Suisse", market: "ch", buildSearchUrl: (q) => `https://www.fnac.ch/SearchResult/ResultSet.aspx?Search=${enc(q)}` },
-  { id: "fust", label: "Fust", market: "ch", buildSearchUrl: (q) => `https://www.fust.ch/fr/search?q=${enc(q)}` },
-  { id: "manor", label: "Manor", market: "ch", buildSearchUrl: (q) => `https://www.manor.ch/fr/search?q=${enc(q)}` },
-  { id: "ackermann", label: "Ackermann", market: "ch", buildSearchUrl: (q) => `https://www.ackermann.ch/search?q=${enc(q)}` },
-  { id: "steg", label: "Steg Electronics", market: "ch", buildSearchUrl: (q) => `https://www.steg-electronics.ch/de/search?q=${enc(q)}` },
-  { id: "joule", label: "Joule Performance", market: "ch", buildSearchUrl: (q) => `https://www.jouleperformance.com/ch_fr/search?q=${enc(q)}` },
-  { id: "highdefinition", label: "Highdefinition", market: "ch", buildSearchUrl: (q) => `https://www.highdefinition.ch/search?q=${enc(q)}` },
-  { id: "freecall24", label: "Freecall24", market: "ch", buildSearchUrl: (q) => `https://www.freecall24.ch/search?q=${enc(q)}` },
-  { id: "jelmoli", label: "Jelmoli", market: "ch", buildSearchUrl: (q) => `https://www.jelmoli-shop.ch/search?q=${enc(q)}` },
   { id: "ldlc-ch", label: "LDLC Suisse", market: "ch", buildSearchUrl: (q) => `https://www.ldlc.com/fr-ch/recherche/${q.replace(/\s+/g, "+")}/`, affiliateNetwork: "awin" },
   { id: "amazon-de", label: "Amazon.de", market: "ch", buildSearchUrl: (q) => `https://www.amazon.de/s?k=${enc(q)}` },
   // ── France ──

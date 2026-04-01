@@ -9,9 +9,9 @@ import { buildSearchUrl, getStoreLabel, getSimulatedPrices, getDefaultStoreIds, 
 /* ── Manufacturer URL mapping ── */
 
 const MANUFACTURER_URLS: Record<string, string> = {
-  amd: "https://www.amd.com/fr/products",
-  intel: "https://www.intel.fr/content/www/fr/fr/products",
-  nvidia: "https://www.nvidia.com/fr-fr/geforce/",
+  amd: "https://www.amd.com/fr/products/processors/desktops/ryzen.html",
+  intel: "https://www.intel.fr/content/www/fr/fr/products/details/processors.html",
+  nvidia: "https://www.nvidia.com/fr-fr/geforce/graphics-cards/",
   corsair: "https://www.corsair.com/fr/fr/",
   msi: "https://fr.msi.com/",
   asus: "https://www.asus.com/fr/",
@@ -586,7 +586,7 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert, o
 
       {/* Compare all prices via Toppreise/idealo */}
       <a href={compareUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 w-full text-xs py-2.5 rounded-lg bg-[#0A0A0A] text-white hover:bg-[#333] transition-all duration-150 font-medium">
-        {"\uD83D\uDD0D"} {t("compare.prices")} &rarr;
+        {t("compare.prices")} &rarr;
       </a>
 
       <div className="flex gap-2 mt-3">
