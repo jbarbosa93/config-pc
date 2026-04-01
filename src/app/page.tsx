@@ -7,6 +7,7 @@ import ConfigResult from "@/components/ConfigResult";
 import Logo from "@/components/Logo";
 import LanguageSelector from "@/components/LanguageSelector";
 import { useLanguage } from "@/lib/i18n";
+import { useCart } from "@/lib/cart";
 import type { PCConfig } from "@/lib/types";
 
 /* ── Particles ── */
@@ -125,6 +126,7 @@ function Hero({ onStart }: { onStart: () => void }) {
 
 export default function Home() {
   const { t } = useLanguage();
+  const { count: cartCount } = useCart();
   const [result, setResult] = useState<PCConfig | null>(null);
   const [started, setStarted] = useState(false);
 
@@ -138,7 +140,18 @@ export default function Home() {
           <button type="button" onClick={reset} className="appearance-none bg-transparent border-none cursor-pointer p-0 flex items-center">
             <Logo size="small" />
           </button>
-          <LanguageSelector />
+          <div className="flex items-center gap-3">
+            {cartCount > 0 && (
+              <a href="/panier" className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-white transition-opacity hover:opacity-90" style={{ background: "#4f8ef7" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.96-1.56L23 6H6"/>
+                </svg>
+                Panier ({cartCount})
+              </a>
+            )}
+            <LanguageSelector />
+          </div>
         </div>
       </nav>
 

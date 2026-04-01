@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { useLanguage } from "@/lib/i18n";
 import type { PCConfig, Component, Alternative, Market } from "@/lib/types";
-import { buildSearchUrl, getStoreLabel, getSimulatedPrices, getDefaultStoreIds, buildToppreiseUrl, buildIdealoUrl } from "@/lib/affiliates";
+import { buildSearchUrl, getSimulatedPrices, buildToppreiseUrl } from "@/lib/affiliates";
+import { useCart } from "@/lib/cart";
 
 /* ── Manufacturer URL mapping ── */
 
@@ -228,14 +229,10 @@ function AnimatedPrice({ value, suffix }: { value: number; suffix: string }) {
 
 /* ── Merchant price table with "Voir plus" ── */
 
-function MerchantTable({ component, market, t }: { component: Component; market: Market; t: (k: string) => string }) {
+function MerchantTable({ component, t }: { component: Component; t: (k: string) => string }) {
   const [expanded, setExpanded] = useState(false);
-  const isCH = market === "suisse" || market === "both";
-  const basePrice = isCH ? component.price_ch : component.price_fr;
-  const currency = isCH ? "CHF" : "\u20AC";
-  const prices = getSimulatedPrices(basePrice, market);
-  const defaultIds = getDefaultStoreIds(market);
-  const visiblePrices = expanded ? prices : prices.filter((p) => defaultIds.includes(p.storeId)).slice(0, 4);
+  const prices = getSimulatedPrices(component.price_ch);
+  const visiblePrices = expanded ? prices : prices.slice(0, 4);
   const best = prices[0]?.price;
   const hasMore = prices.length > 4;
 
@@ -246,7 +243,7 @@ function MerchantTable({ component, market, t }: { component: Component; market:
           <span className="font-medium">{p.label}</span>
           <span className="flex items-center gap-2">
             {p.price === best && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">{t("result.bestPrice")}</span>}
-            <span className="tabular-nums">{p.price} {currency}</span>
+            <span className="tabular-nums">{p.price} CHF</span>
             <span className="text-[10px] text-text-secondary">{t("compare.see")} &rarr;</span>
           </span>
         </a>
@@ -377,7 +374,7 @@ function InfoModal({ component, market, onClose }: { component: Component; marke
   // Price comparison: DB prices or simulated
   const dbPrices: DBPrice[] = dbData?.component_prices || [];
   const hasPricesInDB = dbPrices.length > 0;
-  const simulatedPrices = getSimulatedPrices(displayPrice, market);
+  const simulatedPrices = getSimulatedPrices(displayPrice);
   const bestSimPrice = simulatedPrices[0]?.price;
 
   // Best merchant link for primary CTA
@@ -738,13 +735,42 @@ function assignTiers(items: DBComponent[], currentPrice: number): Alternative[] 
   }).filter(Boolean) as Alternative[];
 }
 
-function AlternativesModal({ component, allComponents, usage, budget, market, onSelect, onClose }: { component: Component; allComponents: Component[]; usage: string; budget: number; market: Market; onSelect: (a: Alternative) => void; onClose: () => void }) {
+/* ── Spec comparison helpers ── */
+
+function parseNumeric(v: string): number | null {
+  if (!v) return null;
+  const m = v.match(/[\d.]+/);
+  return m ? parseFloat(m[0]) : null;
+}
+
+// Returns "higher" if higher value is better, "lower" if lower is better, "equal" for non-numeric
+function specDirection(key: string): "higher" | "lower" | "equal" {
+  const k = key.toLowerCase();
+  if (k.includes("tdp") || k.includes("sonore") || k.includes("bruit") || k.includes("watt") || k.includes("consomm")) return "lower";
+  if (k.includes("fréquence") || k.includes("frequence") || k.includes("vitesse") || k.includes("ghz") || k.includes("mhz") || k.includes("cœur") || k.includes("coeur") || k.includes("core") || k.includes("vram") || k.includes("capacité") || k.includes("capacite") || k.includes("cache") || k.includes("ram max") || k.includes("puissance") || k.includes("tdp supporté") || k.includes("tdp supporte")) return "higher";
+  return "equal";
+}
+
+function SpecDelta({ specKey, currentVal, altVal }: { specKey: string; currentVal?: string; altVal?: string }) {
+  if (!currentVal || !altVal) return null;
+  const dir = specDirection(specKey);
+  if (dir === "equal") return <span className="text-[10px] font-bold text-gray-400">=</span>;
+  const cur = parseNumeric(currentVal);
+  const alt = parseNumeric(altVal);
+  if (cur === null || alt === null || cur === alt) return <span className="text-[10px] font-bold text-gray-400">=</span>;
+  const better = dir === "higher" ? alt > cur : alt < cur;
+  return better
+    ? <span className="text-[10px] font-bold text-green-600">↑</span>
+    : <span className="text-[10px] font-bold text-red-500">↓</span>;
+}
+
+function AlternativesModal({ component, allComponents, usage, budget, onSelect, onClose }: { component: Component; allComponents: Component[]; usage: string; budget: number; onSelect: (a: Alternative) => void; onClose: () => void }) {
   const { t } = useLanguage();
   const [alternatives, setAlternatives] = useState<(Alternative & { specs?: Record<string, string>; images?: DBImage[] })[]>([]);
+  const [currentSpecs, setCurrentSpecs] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
-  const showCH = market === "suisse" || market === "both";
 
   useEffect(() => {
     let cancelled = false;
@@ -754,6 +780,9 @@ function AlternativesModal({ component, allComponents, usage, budget, market, on
         const dbRes = await fetch(`/api/db-components?type=${encodeURIComponent(component.type)}`);
         if (dbRes.ok) {
           const dbItems: DBComponent[] = await dbRes.json();
+          // Get current component specs from DB if available
+          const dbCurrent = dbItems.find((c) => c.name === component.name);
+          if (dbCurrent?.specs) setCurrentSpecs(dbCurrent.specs);
           const filtered = dbItems.filter((c) => c.name !== component.name);
           if (filtered.length >= 2) {
             const tiers = assignTiers(filtered, component.price_ch);
@@ -773,69 +802,125 @@ function AlternativesModal({ component, allComponents, usage, budget, market, on
   const handleOutside = useCallback((e: MouseEvent) => { if (modalRef.current && !modalRef.current.contains(e.target as Node)) onClose(); }, [onClose]);
   useEffect(() => { document.addEventListener("mousedown", handleOutside); return () => document.removeEventListener("mousedown", handleOutside); }, [handleOutside]);
 
-  function getDiff(alt: { price_ch: number; price_fr: number }) {
-    const diff = showCH ? alt.price_ch - component.price_ch : alt.price_fr - component.price_fr;
-    const unit = showCH ? " CHF" : "\u20AC";
-    if (diff === 0) return t("alt.samePrice");
-    return diff > 0 ? `+${diff}${unit}` : `${diff}${unit}`;
-  }
+  // Best value = lowest price among alternatives (simplest heuristic)
+  const bestValueIndex = alternatives.length > 0
+    ? alternatives.reduce((bi, alt, i) => alt.price_ch < alternatives[bi].price_ch ? i : bi, 0)
+    : -1;
+
+  const currentKeySpecs = Object.keys(currentSpecs).length > 0
+    ? getKeySpecs(component.type, currentSpecs)
+    : [];
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
       <motion.div ref={modalRef} initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 25 }} className="bg-bg border border-border rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl">
-        <div className="sticky top-0 bg-bg border-b border-border p-6 rounded-t-2xl flex items-center justify-between z-10">
-          <div><p className="text-[11px] uppercase tracking-wider text-text-secondary">{t("alt.title")}</p><h3 className="font-bold text-xl">{component.type}</h3></div>
+
+        {/* Header */}
+        <div className="sticky top-0 bg-bg border-b border-border p-5 rounded-t-2xl flex items-center justify-between z-10">
+          <div><p className="text-[11px] uppercase tracking-wider text-text-secondary">{t("alt.title")}</p><h3 className="font-bold text-lg">{component.type}</h3></div>
           <motion.button whileHover={{ rotate: 90 }} transition={{ duration: 0.2 }} onClick={onClose} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-text-secondary hover:text-text hover:border-border-hover transition-colors duration-150">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </motion.button>
         </div>
-        <div className="px-6 py-4 border-b border-border bg-card/50">
-          <div className="flex items-center gap-3"><span className="text-[11px] px-2.5 py-0.5 rounded-full bg-accent text-white font-medium">{t("alt.current")}</span><span className="font-medium text-sm">{component.name}</span></div>
-          <p className="text-xs text-text-secondary mt-1 ml-[70px]">{component.price_ch} CHF</p>
+
+        {/* Current component card */}
+        <div className="px-5 py-4 border-b border-border" style={{ background: "linear-gradient(135deg, #EFF6FF 0%, #F0F7FF 100%)" }}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold text-white" style={{ background: "#4f8ef7" }}>{t("alt.current")}</span>
+            <span className="text-xs font-bold text-[#4f8ef7] tabular-nums">{component.price_ch} CHF</span>
+          </div>
+          <p className="font-semibold text-sm leading-tight mb-2">{component.name}</p>
+          {currentKeySpecs.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {currentKeySpecs.map((k) => currentSpecs[k] ? (
+                <span key={k} className="text-[10px] px-2 py-0.5 rounded-md bg-white/70 border border-blue-200 text-[#4f8ef7] font-medium">
+                  {k}: {currentSpecs[k]}
+                </span>
+              ) : null)}
+            </div>
+          )}
         </div>
+
         {loading && <div className="p-12 text-center"><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-6 h-6 mx-auto mb-4 border-2 border-border border-t-accent rounded-full" /><p className="text-sm text-text-secondary">{t("alt.searching")}</p></div>}
         {error && <div className="p-6"><p className="text-sm text-text-secondary">{error}</p></div>}
+
         {!loading && !error && (
           <div className="p-4 flex flex-col gap-3">
             {alternatives.map((alt, i) => {
-              const diffStr = getDiff(alt);
-              const diff = showCH ? alt.price_ch - component.price_ch : alt.price_fr - component.price_fr;
+              const priceDiff = alt.price_ch - component.price_ch;
+              const priceDiffStr = priceDiff === 0 ? "= prix" : priceDiff > 0 ? `+${priceDiff} CHF` : `${priceDiff} CHF`;
               const altWithExtras = alt as Alternative & { specs?: Record<string, string>; images?: DBImage[] };
-              const keySpecs = altWithExtras.specs ? getKeySpecs(component.type, altWithExtras.specs) : [];
+              const altSpecs = altWithExtras.specs || {};
+              const keySpecs = Object.keys(altSpecs).length > 0 ? getKeySpecs(component.type, altSpecs) : currentKeySpecs;
               const primaryImg = altWithExtras.images?.find((img) => img.is_primary) || altWithExtras.images?.[0];
+              const isBestValue = i === bestValueIndex;
               return (
                 <motion.div key={alt.name} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, type: "spring", stiffness: 300, damping: 25 }} className="rounded-xl border border-border hover:border-border-hover transition-colors duration-150 p-4 bg-card">
+
+                  {/* Alt header row */}
                   <div className="flex gap-3 mb-3">
-                    {/* Thumbnail */}
-                    <div className="w-16 h-16 rounded-lg bg-bg border border-border flex items-center justify-center shrink-0 overflow-hidden">
+                    <div className="w-14 h-14 rounded-lg bg-bg border border-border flex items-center justify-center shrink-0 overflow-hidden">
                       {primaryImg ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={primaryImg.url} alt={alt.name} className="w-full h-full object-contain p-1" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                       ) : (
-                        <ComponentSVG type={component.type} size={40} />
+                        <ComponentSVG type={component.type} size={36} />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-card border border-border text-text-secondary font-medium">{TIER_LABELS[alt.tier] || alt.tier}</span>
-                        <span className={`text-xs font-medium tabular-nums ${diff < 0 ? "text-green-600" : diff > 0 ? "text-text" : "text-text-secondary"}`}>{diffStr}</span>
+                      <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-card border border-border text-text-secondary font-medium">{TIER_LABELS[alt.tier] || alt.tier}</span>
+                        {isBestValue && <span className="text-[10px] px-2 py-0.5 rounded-full font-bold text-white" style={{ background: "#f59e0b" }}>⭐ Rapport Q/P</span>}
+                        {alt.compatible !== false
+                          ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-green-700 font-medium">Compatibilité ✓</span>
+                          : <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 font-medium">⚠️ Vérifier</span>
+                        }
                       </div>
-                      <p className="font-medium text-sm leading-tight">{alt.name}</p>
-                      <p className="text-xs text-text-secondary mt-0.5">{showCH ? `${alt.price_ch} CHF` : `${alt.price_fr}€`}</p>
+                      <p className="font-semibold text-sm leading-tight">{alt.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs font-bold tabular-nums" style={{ color: "#4f8ef7" }}>{alt.price_ch} CHF</span>
+                        <span className={`text-[11px] font-medium tabular-nums ${priceDiff < 0 ? "text-green-600" : priceDiff > 0 ? "text-red-500" : "text-text-secondary"}`}>{priceDiffStr}</span>
+                      </div>
                     </div>
                   </div>
-                  {/* Key specs */}
-                  {altWithExtras.specs && keySpecs.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-3">
-                      {keySpecs.map((k) => altWithExtras.specs?.[k] ? (
-                        <span key={k} className="text-[10px] px-2 py-0.5 rounded-md bg-bg border border-border text-text-secondary">
-                          <span className="text-text-secondary/60">{k}:</span> {altWithExtras.specs[k]}
-                        </span>
-                      ) : null)}
+
+                  {/* Spec comparison table */}
+                  {keySpecs.length > 0 && (
+                    <div className="rounded-lg overflow-hidden border border-border mb-3">
+                      <table className="w-full text-[11px]">
+                        <thead>
+                          <tr style={{ background: "#F8F8F8" }}>
+                            <th className="text-left px-3 py-1.5 font-medium text-text-secondary">Spec</th>
+                            <th className="text-center px-2 py-1.5 font-medium text-text-secondary">Actuel</th>
+                            <th className="text-center px-2 py-1.5 font-medium text-text-secondary">Alternative</th>
+                            <th className="text-center px-2 py-1.5 font-medium text-text-secondary w-8"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {keySpecs.map((k, si) => {
+                            const curV = currentSpecs[k];
+                            const altV = altSpecs[k];
+                            if (!curV && !altV) return null;
+                            return (
+                              <tr key={k} style={{ background: si % 2 === 0 ? "#FFFFFF" : "#FAFAFA", borderTop: "1px solid #F0F0F0" }}>
+                                <td className="px-3 py-1.5 text-text-secondary font-medium">{k}</td>
+                                <td className="px-2 py-1.5 text-center tabular-nums text-text-secondary">{curV || "—"}</td>
+                                <td className="px-2 py-1.5 text-center tabular-nums font-medium text-text">{altV || "—"}</td>
+                                <td className="px-2 py-1.5 text-center">
+                                  <SpecDelta specKey={k} currentVal={curV} altVal={altV} />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
-                  {alt.reason && <p className="text-xs text-text-secondary mb-3">{alt.reason}</p>}
-                  {!alt.compatible && <p className="text-xs text-amber-600 mb-2">{"\u26A0"} {alt.compatibility_warning || t("alt.check")}</p>}
+
+                  {alt.reason && <p className="text-xs text-text-secondary mb-3 leading-relaxed">{alt.reason}</p>}
+                  {!alt.compatible && alt.compatibility_warning && (
+                    <p className="text-xs text-amber-600 mb-2">⚠️ {alt.compatibility_warning}</p>
+                  )}
                   <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={() => onSelect(alt)} className="w-full py-2.5 rounded-lg border border-border text-sm font-medium text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150">{t("alt.choose")}</motion.button>
                 </motion.div>
               );
@@ -864,14 +949,12 @@ function getChangeLabel(type: string): string {
 
 /* ── Component Card ── */
 
-function ComponentCard({ component, original, index, market, onSwap, onRevert, onInfo }: { component: Component; original: Component | null; index: number; market: Market; onSwap: () => void; onRevert: () => void; onInfo: () => void }) {
+function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }: { component: Component; original: Component | null; index: number; market: Market; onSwap: () => void; onRevert: () => void; onInfo: () => void }) {
   const { t } = useLanguage();
+  const { addItem, items } = useCart();
   const isEssential = component.priority === "essentiel";
   const isSwapped = original !== null && original.name !== component.name;
-  const showFR = market === "france" || market === "both";
-  const showCH = market === "suisse" || market === "both";
-  const isCH = market === "suisse" || market === "both";
-  const compareUrl = isCH ? buildToppreiseUrl(component.name) : buildIdealoUrl(component.name);
+  const inCart = items.some((i) => i.name === component.name);
 
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1, type: "spring", stiffness: 200, damping: 20 }} className="rounded-xl border border-border bg-card p-5 transition-colors duration-150 hover:border-border-hover">
@@ -895,27 +978,30 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert, o
       </div>
 
       <div className="flex gap-3 mb-1">
-        {showFR && <div className="flex-1 bg-bg rounded-lg p-2.5 text-center border border-border"><div className="text-[11px] text-text-secondary">{t("result.france")}</div><div className="font-semibold mt-0.5">{component.price_fr}&euro;</div></div>}
-        {showCH && <div className="flex-1 bg-bg rounded-lg p-2.5 text-center border border-border"><div className="text-[11px] text-text-secondary">{t("result.suisse")}</div><div className="font-semibold mt-0.5">{component.price_ch} CHF</div></div>}
+        <div className="flex-1 bg-bg rounded-lg p-2.5 text-center border border-border">
+          <div className="text-[11px] text-text-secondary">Prix CHF</div>
+          <div className="font-semibold mt-0.5">{component.price_ch} CHF</div>
+        </div>
       </div>
 
       {/* Merchant price table */}
-      <MerchantTable component={component} market={market} t={t} />
+      <MerchantTable component={component} t={t} />
 
-      {/* Compare all prices via Toppreise/idealo */}
-      <a href={compareUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 w-full text-xs py-2.5 rounded-lg bg-[#0A0A0A] text-white hover:bg-[#333] transition-all duration-150 font-medium">
-        {isCH ? (
-          <>
-            <span className="px-1.5 py-0.5 rounded bg-[#FF6B00] text-white font-bold text-[10px] tracking-tight">TP</span>
-            Comparer sur TopPreise
-          </>
-        ) : (
-          <>{t("compare.prices")} &rarr;</>
-        )}
+      {/* Compare on TopPreise */}
+      <a href={buildToppreiseUrl(component.name)} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 w-full text-xs py-2.5 rounded-lg bg-[#0A0A0A] text-white hover:bg-[#333] transition-all duration-150 font-medium">
+        <span className="px-1.5 py-0.5 rounded bg-[#FF6B00] text-white font-bold text-[10px] tracking-tight">TP</span>
+        Comparer sur TopPreise
       </a>
 
       <div className="flex gap-2 mt-3">
-        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={onSwap} className="flex-1 text-center text-xs py-2 rounded-lg border border-border text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150 font-medium">{getChangeLabel(component.type)}</motion.button>
+        <motion.button
+          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+          onClick={() => !inCart && addItem(component)}
+          className={`flex-1 text-center text-xs py-2 rounded-lg font-medium transition-all duration-150 ${inCart ? "bg-green-100 text-green-700 border border-green-200" : "border border-border text-text-secondary hover:bg-accent hover:text-white hover:border-accent"}`}
+        >
+          {inCart ? "✓ Dans le panier" : "＋ Ajouter au panier"}
+        </motion.button>
+        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={onSwap} className="text-xs py-2 px-3 rounded-lg border border-border text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150 font-medium">{getChangeLabel(component.type)}</motion.button>
         {isSwapped && <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} whileTap={{ scale: 0.97 }} onClick={onRevert} className="text-xs py-2 px-3 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">{t("restore")}</motion.button>}
       </div>
     </motion.div>
@@ -924,12 +1010,7 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert, o
 
 /* ── Expandable Price Row ── */
 
-function PriceRow({ component, changed, market, t }: { component: Component; index: number; changed: boolean; market: Market; t: (k: string) => string }) {
-  const showFR = market === "france" || market === "both";
-  const showCH = market === "suisse" || market === "both";
-  const isCH = market === "suisse" || market === "both";
-  const compareUrl = isCH ? buildToppreiseUrl(component.name) : buildIdealoUrl(component.name);
-
+function PriceRow({ component, changed, t }: { component: Component; index: number; changed: boolean; market: Market; t: (k: string) => string }) {
   return (
     <tr className="border-b border-border/50 hover:bg-card/50 transition-colors duration-150">
       <td className="py-3">
@@ -937,12 +1018,11 @@ function PriceRow({ component, changed, market, t }: { component: Component; ind
         <span className="text-text-secondary ml-2 text-xs">{component.name}</span>
         {changed && <span className="ml-2 text-[10px] text-text-secondary">({t("result.changed")})</span>}
       </td>
-      {showFR && <td className="text-right py-3 tabular-nums">{component.price_fr}&euro;</td>}
-      {showCH && <td className="text-right py-3 tabular-nums">{component.price_ch} CHF</td>}
+      <td className="text-right py-3 tabular-nums">{component.price_ch} CHF</td>
       <td className="text-right py-3">
-        <a href={compareUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] px-2 py-1 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium flex items-center gap-1 justify-end whitespace-nowrap">
-          {isCH && <span className="px-1 py-0.5 rounded bg-[#FF6B00] text-white font-bold text-[9px]">TP</span>}
-          {isCH ? "Voir sur TopPreise" : t("compare.see")} &rarr;
+        <a href={buildToppreiseUrl(component.name)} target="_blank" rel="noopener noreferrer" className="text-[11px] px-2 py-1 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium flex items-center gap-1 justify-end whitespace-nowrap">
+          <span className="px-1 py-0.5 rounded bg-[#FF6B00] text-white font-bold text-[9px]">TP</span>
+          TopPreise &rarr;
         </a>
       </td>
     </tr>
@@ -959,14 +1039,15 @@ export default function ConfigResult({ config, onReset }: Props) {
   const [originals] = useState<Component[]>(config.components);
   const [swapIndex, setSwapIndex] = useState<number | null>(null);
   const [infoIndex, setInfoIndex] = useState<number | null>(null);
-  const [showQuote, setShowQuote] = useState(false);
 
   const market: Market = "suisse";
-  const totalFR = components.reduce((s, c) => s + c.price_fr, 0);
   const totalCH = components.reduce((s, c) => s + c.price_ch, 0);
   const hasChanges = components.some((c, i) => c.name !== originals[i].name);
-  const showFR = false;
-  const showCH = true;
+  const { addItem, items: cartItems, count: cartCount } = useCart();
+
+  function addAllToCart() {
+    components.forEach((c) => addItem(c));
+  }
 
   function handleSelectAlternative(index: number, alt: Alternative) {
     setComponents((prev) => { const next = [...prev]; next[index] = { ...prev[index], name: alt.name, reason: alt.reason, price_fr: alt.price_fr, price_ch: alt.price_ch, search_terms: alt.search_terms }; return next; });
@@ -976,7 +1057,7 @@ export default function ConfigResult({ config, onReset }: Props) {
   function handleRevert(index: number) { setComponents((prev) => { const next = [...prev]; next[index] = originals[index]; return next; }); }
 
   function handleSave() {
-    const exported: PCConfig = { ...config, components, total_estimated: totalFR };
+    const exported: PCConfig = { ...config, components, total_estimated: totalCH };
     const blob = new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `${config.config_name.replace(/\s+/g, "_")}.json`; a.click(); URL.revokeObjectURL(url);
@@ -986,13 +1067,17 @@ export default function ConfigResult({ config, onReset }: Props) {
     <div className="w-full max-w-4xl mx-auto">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mb-12">
-        <p className="text-text-secondary text-xs uppercase tracking-widest mb-4">{t("result.generated")}</p>
-        <h1 className="text-3xl sm:text-4xl font-bold mb-6">{config.config_name}</h1>
-        <div className="flex items-center gap-8">
-          {showFR && <div><div className="text-xs text-text-secondary mb-1">{t("result.france")}</div><div className="text-2xl font-bold"><AnimatedPrice value={totalFR} suffix="€" /></div></div>}
-          {showFR && showCH && <div className="w-px h-8 bg-border" />}
-          {showCH && <div><div className="text-xs text-text-secondary mb-1">{t("result.suisse")}</div><div className="text-2xl font-bold"><AnimatedPrice value={totalCH} suffix=" CHF" /></div></div>}
-          {hasChanges && <><div className="w-px h-8 bg-border" /><motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-text-secondary">{t("result.modified")}</motion.span></>}
+        <p className="text-text-secondary text-xs uppercase tracking-widest mb-3">{t("result.generated")}</p>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight" style={{ letterSpacing: "-0.02em" }}>{config.config_name}</h1>
+            <p className="text-text-secondary text-sm mt-1.5">{config.compatibility_notes?.split(".")[0] || "Configuration optimisée · Suisse"}</p>
+            {hasChanges && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-text-secondary mt-1 inline-block">{t("result.modified")}</motion.span>}
+          </div>
+          <div className="shrink-0 text-right">
+            <div className="text-xs text-text-secondary mb-1 uppercase tracking-wide">Total config</div>
+            <div className="text-3xl font-bold" style={{ color: "#4f8ef7" }}><AnimatedPrice value={totalCH} suffix=" CHF" /></div>
+          </div>
         </div>
       </motion.div>
 
@@ -1016,9 +1101,8 @@ export default function ConfigResult({ config, onReset }: Props) {
           <thead>
             <tr className="border-b border-border text-text-secondary">
               <th className="text-left py-2 font-medium">{t("result.component")}</th>
-              {showFR && <th className="text-right py-2 font-medium">FR</th>}
-              {showCH && <th className="text-right py-2 font-medium">CH</th>}
-              <th className="text-right py-2 font-medium w-16"></th>
+              <th className="text-right py-2 font-medium">Prix CHF</th>
+              <th className="text-right py-2 font-medium w-24"></th>
             </tr>
           </thead>
           <tbody>
@@ -1027,8 +1111,7 @@ export default function ConfigResult({ config, onReset }: Props) {
           <tfoot>
             <tr className="font-bold">
               <td className="pt-4">{t("result.total")}</td>
-              {showFR && <td className="text-right pt-4">{totalFR}&euro;</td>}
-              {showCH && <td className="text-right pt-4">{totalCH} CHF</td>}
+              <td className="text-right pt-4 font-bold" style={{ color: "#4f8ef7" }}>{totalCH} CHF</td>
               <td></td>
             </tr>
           </tfoot>
@@ -1039,10 +1122,32 @@ export default function ConfigResult({ config, onReset }: Props) {
 
       {/* Actions */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="flex flex-wrap gap-3 pb-8">
-        <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setShowQuote(true)} className="px-6 py-2.5 rounded-full bg-accent text-white text-sm font-medium flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" /></svg>
-          {t("quote.btn")}
+        {/* Add all to cart */}
+        <motion.button
+          whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+          onClick={addAllToCart}
+          className="px-6 py-2.5 rounded-full text-white text-sm font-medium flex items-center gap-2"
+          style={{ background: "#4f8ef7" }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+            <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.96-1.56L23 6H6"/>
+          </svg>
+          Tout ajouter au panier
         </motion.button>
+
+        {/* Go to cart if items */}
+        {cartCount > 0 && (
+          <motion.a
+            href="/panier"
+            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+            className="px-6 py-2.5 rounded-full text-sm font-medium text-white flex items-center gap-2 transition-all"
+            style={{ background: "#22C55E" }}
+          >
+            Voir le panier ({cartCount}) →
+          </motion.a>
+        )}
+
         <motion.button
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
@@ -1061,13 +1166,12 @@ export default function ConfigResult({ config, onReset }: Props) {
 
       {/* Modals */}
       <AnimatePresence>
-        {swapIndex !== null && <AlternativesModal component={components[swapIndex]} allComponents={components} usage={config.config_name} budget={config.total_estimated} market={market} onSelect={(alt) => handleSelectAlternative(swapIndex, alt)} onClose={() => setSwapIndex(null)} />}
+        {swapIndex !== null && <AlternativesModal component={components[swapIndex]} allComponents={components} usage={config.config_name} budget={config.total_estimated} onSelect={(alt) => handleSelectAlternative(swapIndex, alt)} onClose={() => setSwapIndex(null)} />}
       </AnimatePresence>
       <AnimatePresence>
         {infoIndex !== null && <InfoModal component={components[infoIndex]} market={market} onClose={() => setInfoIndex(null)} />}
       </AnimatePresence>
       <AnimatePresence>
-        {showQuote && <QuoteModal config={config} components={components} market={market} totalFR={totalFR} totalCH={totalCH} onClose={() => setShowQuote(false)} />}
       </AnimatePresence>
     </div>
   );

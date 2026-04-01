@@ -6,13 +6,20 @@ import type { DBComponent } from "@/lib/db-types";
 
 const client = new Anthropic();
 
-const SYSTEM_PROMPT = `Tu es un expert hardware PC avec 15 ans d'expérience. Tu connais parfaitement les composants 2024-2025 et leurs prix réels sur le marché.
+const SYSTEM_PROMPT = `Tu es un expert hardware PC avec 15 ans d'expérience. Tu connais parfaitement les composants 2024-2025 et leurs prix réels sur le marché suisse.
 
 RÈGLES DE PRIX STRICTES :
-- Utilise les prix RÉELS de vente constatés en Q1 2025 sur LDLC, Amazon.fr, Digitec et Galaxus.
-- Les prix suisses (CHF) doivent être 10 à 20% plus élevés que les prix français (EUR), ce qui reflète la réalité du marché suisse.
-- Ne donne JAMAIS de prix MSRP/constructeur. Donne le prix de vente moyen constaté en magasin.
+- Tous les prix sont UNIQUEMENT en CHF (francs suisses). Aucun EUR.
+- Utilise les prix RÉELS de vente constatés en Q1 2025 sur Digitec, Galaxus, Brack et Interdiscount.
+- Ne donne JAMAIS de prix MSRP/constructeur. Donne le prix de vente moyen constaté en Suisse.
 - Composants de référence 2025 : AMD Ryzen 7000/9000, Intel Core 14e/15e gen, NVIDIA RTX 4000/5000, AMD RX 7000/9000, DDR5, NVMe Gen4/Gen5.
+- Le site cible uniquement le marché SUISSE. price_fr = 0 toujours.
+
+RÈGLES POUR config_name (IMPORTANT) :
+- Génère un nom accrocheur, court (2-3 mots max), évocateur et en français
+- Style : "Le Chasseur", "L'Invincible", "La Fusée", "Le Titan", "L'Éclaireur", "Le Sage", "La Bête", "L'Artisan"
+- Le nom doit refléter le niveau de la config (budget = sage/discret, haut de gamme = titan/invincible)
+- NE PAS utiliser des noms génériques comme "Gaming 1080p" ou "Config Bureautique"
 
 Tu donnes des recommandations précises, justifiées, optimisées pour le rapport qualité/prix. Tu évites les incompatibilités (socket CPU/carte mère, DDR4 vs DDR5, taille boîtier, puissance alimentation).
 
@@ -20,7 +27,7 @@ Tu dois TOUJOURS répondre avec un JSON valide et rien d'autre. Pas de texte ava
 
 Le format de sortie est :
 {
-  "config_name": "string - nom court de la config",
+  "config_name": "string - nom accrocheur court (ex: 'Le Chasseur', 'La Fusée', 'L'Invincible')",
   "total_estimated": number,
   "components": [
     {
@@ -79,13 +86,13 @@ function buildUserPrompt(config: ConfigRequest): string {
 
   return `Configure un PC optimisé avec ces critères :
 - Usage principal : ${usageLabels[config.usage]}
-- Budget : ${config.budget}€
+- Budget : ${config.budget} CHF
 - Résolution visée : ${config.resolution}
 - Jeux / logiciels favoris : ${config.favoriteGames || "Non spécifié"}
 - Niveau technique : ${config.techLevel}
-- Marché : ${marketLabels[config.market]}
+- Marché : Suisse (CHF uniquement)
 
-IMPORTANT : Les prix doivent être réalistes et correspondre aux prix de vente réels en Q1 2025. Les prix suisses doivent être 10-20% plus élevés que les prix français. Reste dans le budget de ${config.budget}€. Inclus tous les composants essentiels (CPU, GPU, RAM, stockage, carte mère, alimentation, boîtier, refroidissement). Inclus les specs techniques, full_description, image_url et manufacturer_url pour chaque composant.`;
+IMPORTANT : Tous les prix doivent être en CHF (marché suisse, Digitec/Galaxus/Brack). Mets price_fr à 0. Reste dans le budget de ${config.budget} CHF. Inclus tous les composants essentiels (CPU, GPU, RAM, stockage, carte mère, alimentation, boîtier, refroidissement). Génère un nom de config accrocheur et évocateur. Inclus les specs techniques, full_description, image_url et manufacturer_url pour chaque composant.`;
 }
 
 /** Fetch available components from DB to give Claude real data */
