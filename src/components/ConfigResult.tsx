@@ -1043,6 +1043,18 @@ export default function ConfigResult({ config, onReset }: Props) {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" /></svg>
           {t("quote.btn")}
         </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={() => {
+            sessionStorage.setItem("pc3d_config", JSON.stringify({ components, configName: config.config_name }));
+            window.location.href = "/configurateur/visualiseur";
+          }}
+          className="px-6 py-2.5 rounded-full text-sm font-medium text-white transition-all duration-150"
+          style={{ background: "linear-gradient(135deg, #4f8ef7, #7b5cf5)" }}
+        >
+          🖥️ Voir en 3D
+        </motion.button>
         <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={handleSave} className="px-6 py-2.5 rounded-full border border-border text-sm font-medium text-text-secondary hover:text-text hover:border-border-hover transition-all duration-150">{t("result.save")}</motion.button>
         <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={onReset} className="px-6 py-2.5 rounded-full border border-border text-sm font-medium text-text-secondary hover:text-text hover:border-border-hover transition-all duration-150">{t("result.newConfig")}</motion.button>
       </motion.div>

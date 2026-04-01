@@ -11,7 +11,7 @@ export default function PolitiqueConfidentialite() {
         <section>
           <h2 className="text-xl font-semibold mb-3">1. Introduction</h2>
           <p className="text-text-secondary leading-relaxed">
-            ConfigPC Sàrl (&quot;nous&quot;, &quot;notre&quot;) s&apos;engage à protéger la vie privée de ses utilisateurs.
+            ConfigPC.ch (&quot;nous&quot;, &quot;notre&quot;) s&apos;engage à protéger la vie privée de ses utilisateurs.
             La présente politique de confidentialité décrit les données que nous collectons, comment nous les utilisons
             et les droits dont vous disposez. Elle est conforme au Règlement général sur la protection des données (RGPD)
             de l&apos;Union européenne et à la Loi fédérale suisse sur la protection des données (nLPD, entrée en vigueur
@@ -22,8 +22,8 @@ export default function PolitiqueConfidentialite() {
         <section>
           <h2 className="text-xl font-semibold mb-3">2. Responsable du traitement</h2>
           <p className="text-text-secondary leading-relaxed">
-            ConfigPC Sàrl<br />
-            Rue du Lac 12, 1003 Lausanne, Suisse<br />
+            ConfigPC.ch<br />
+            Vaud, Suisse<br />
             Contact : privacy@configpc.ch
           </p>
         </section>
