@@ -5,20 +5,20 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-mo
 import { useLanguage } from "@/lib/i18n";
 import type { PCConfig, Component, Alternative, Market } from "@/lib/types";
 
-/* ── Store URLs — use exact product name ── */
+/* ── Store URLs — exact product name, spaces as + ── */
 
 function buildSearchUrl(store: string, name: string): string {
-  const q = encodeURIComponent(name);
   const qPlus = name.replace(/\s+/g, "+");
+  const qDash = name.replace(/\s+/g, "-");
   const urls: Record<string, string> = {
-    ldlc: `https://www.ldlc.com/recherche/${encodeURIComponent(name)}/`,
+    ldlc: `https://www.ldlc.com/recherche/${qPlus}/`,
     amazon: `https://www.amazon.fr/s?k=${qPlus}`,
-    materielnet: `https://www.materiel.net/recherche/${encodeURIComponent(name)}/`,
-    cdiscount: `https://www.cdiscount.com/search/10/${q}.html`,
-    topachat: `https://www.topachat.com/pages/recherche.php?mot=${q}`,
+    materielnet: `https://www.materiel.net/recherche/${qPlus}/`,
+    cdiscount: `https://www.cdiscount.com/search/10/${encodeURIComponent(name)}.html`,
+    topachat: `https://www.topachat.com/pages/recherche.php?mot=${encodeURIComponent(name)}`,
     digitec: `https://www.digitec.ch/search?q=${qPlus}`,
     galaxus: `https://www.galaxus.ch/search?q=${qPlus}`,
-    brack: `https://www.brack.ch/search/${qPlus}`,
+    brack: `https://www.brack.ch/search/${qDash}`,
     interdiscount: `https://www.interdiscount.ch/search?q=${qPlus}`,
   };
   return urls[store] || "#";
@@ -38,7 +38,7 @@ function getStoresForMarket(market: Market) {
   return [...FR_STORES.slice(0, 2), ...CH_STORES.slice(0, 2)];
 }
 
-/* ── Fake Swiss multi-store prices ── */
+/* ── Swiss multi-store prices ── */
 
 function getSwissPrices(baseCHF: number): { store: string; price: number }[] {
   return CH_STORES.map((store, i) => {
@@ -55,27 +55,59 @@ const TYPE_ICONS: Record<string, string> = {
   RAM: "M4 4h16v16H4V4zM8 4v16M12 4v16M16 4v16M4 10h16",
   "Carte mère": "M4 2h16v20H4V2zM8 6h8v4H8V6zM8 14h3v3H8v-3zM13 14h3v3h-3v-3z",
   Stockage: "M4 6h16v12H4V6zM4 10h16M8 14h2",
+  SSD: "M4 6h16v12H4V6zM4 10h16M8 14h2",
   Alimentation: "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
   "Boîtier": "M6 2h12v20H6V2zM10 18h4M6 6h12",
   Boitier: "M6 2h12v20H6V2zM10 18h4M6 6h12",
   Refroidissement: "M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83",
 };
 
-function ComponentIcon({ type }: { type: string }) {
-  const d = TYPE_ICONS[type] || TYPE_ICONS["CPU"];
-  return <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
-}
+/* ── Product image with Unsplash fallback ── */
 
-function ParallaxIcon({ type }: { type: string }) {
+const TYPE_SEARCH: Record<string, string> = {
+  CPU: "cpu,processor", GPU: "graphics-card,gpu", RAM: "ram,memory",
+  Stockage: "ssd,storage", SSD: "ssd,storage", "Carte mère": "motherboard,circuit",
+  Alimentation: "power-supply,computer", "Boîtier": "pc-case,computer-tower",
+  Boitier: "pc-case,computer-tower", Refroidissement: "cpu-cooler,fan",
+};
+
+function ProductImage({ type }: { type: string }) {
+  const [failed, setFailed] = useState(false);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotateX = useTransform(y, [-50, 50], [8, -8]);
   const rotateY = useTransform(x, [-50, 50], [-8, 8]);
-  function handleMouse(e: React.MouseEvent<HTMLDivElement>) { const r = e.currentTarget.getBoundingClientRect(); x.set(e.clientX - r.left - r.width / 2); y.set(e.clientY - r.top - r.height / 2); }
+
+  function handleMouse(e: React.MouseEvent<HTMLDivElement>) {
+    const r = e.currentTarget.getBoundingClientRect();
+    x.set(e.clientX - r.left - r.width / 2);
+    y.set(e.clientY - r.top - r.height / 2);
+  }
   function handleLeave() { x.set(0); y.set(0); }
+
+  const search = TYPE_SEARCH[type] || "computer,hardware";
+  const d = TYPE_ICONS[type] || TYPE_ICONS["CPU"];
+
   return (
-    <motion.div onMouseMove={handleMouse} onMouseLeave={handleLeave} style={{ rotateX, rotateY, perspective: 600 }} className="w-[100px] h-[100px] rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary shrink-0">
-      <ComponentIcon type={type} />
+    <motion.div
+      onMouseMove={handleMouse}
+      onMouseLeave={handleLeave}
+      style={{ rotateX, rotateY, perspective: 600 }}
+      className="w-[100px] h-[100px] rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary shrink-0 overflow-hidden"
+    >
+      {!failed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`https://source.unsplash.com/120x120/?${search}`}
+          alt={type}
+          width={100}
+          height={100}
+          className="w-full h-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
+      )}
     </motion.div>
   );
 }
@@ -95,7 +127,7 @@ function AnimatedPrice({ value, suffix }: { value: number; suffix: string }) {
   return <span className="tabular-nums">{display}{suffix}</span>;
 }
 
-/* ── Swiss price table ── */
+/* ── Swiss price table — badge BEFORE price ── */
 
 function SwissPriceTable({ component, t }: { component: Component; t: (k: string) => string }) {
   const prices = getSwissPrices(component.price_ch);
@@ -106,8 +138,8 @@ function SwissPriceTable({ component, t }: { component: Component; t: (k: string
         <a key={p.store} href={buildSearchUrl(p.store, component.name)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between px-3 py-2 text-xs border-b border-border last:border-b-0 hover:bg-card transition-colors duration-150">
           <span className="font-medium">{STORE_LABELS[p.store]}</span>
           <span className="flex items-center gap-2">
-            <span className="tabular-nums">{p.price} CHF</span>
             {p.price === best && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">{t("result.bestPrice")}</span>}
+            <span className="tabular-nums">{p.price} CHF</span>
           </span>
         </a>
       ))}
@@ -115,7 +147,114 @@ function SwissPriceTable({ component, t }: { component: Component; t: (k: string
   );
 }
 
-/* ── Alternatives Modal — market-aware ── */
+/* ── Quote Modal ── */
+
+function QuoteModal({ config, components, market, totalFR, totalCH, onClose }: {
+  config: PCConfig; components: Component[]; market: Market; totalFR: number; totalCH: number; onClose: () => void;
+}) {
+  const { t } = useLanguage();
+  const modalRef = useRef<HTMLDivElement>(null);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState(false);
+
+  const [form, setForm] = useState({
+    firstName: "", lastName: "", email: "", phone: "",
+    address: "", npa: "", city: "", country: "Suisse",
+    message: "", delivery: false, assembly: false,
+  });
+
+  function update(field: string, value: string | boolean) {
+    setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  const handleOutside = useCallback((e: MouseEvent) => {
+    if (modalRef.current && !modalRef.current.contains(e.target as Node)) onClose();
+  }, [onClose]);
+  useEffect(() => { document.addEventListener("mousedown", handleOutside); return () => document.removeEventListener("mousedown", handleOutside); }, [handleOutside]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSending(true);
+    setError(false);
+    try {
+      const res = await fetch("/api/send-quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          configName: config.config_name,
+          components: components.map((c) => ({ type: c.type, name: c.name, price_fr: c.price_fr, price_ch: c.price_ch })),
+          totalFR, totalCH, market,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setSent(true);
+    } catch {
+      setError(true);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const inputClass = "w-full px-3 py-2.5 rounded-xl border border-border bg-bg text-text text-sm placeholder:text-text-secondary/50 focus:outline-none focus:border-accent transition-colors duration-150";
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+      <motion.div ref={modalRef} initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 25 }} className="bg-bg border border-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="sticky top-0 bg-bg border-b border-border p-6 rounded-t-2xl flex items-center justify-between z-10">
+          <div className="flex items-center gap-3">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" /></svg>
+            <h3 className="font-bold text-lg">{t("quote.title")}</h3>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-text-secondary hover:text-text hover:border-border-hover transition-colors duration-150">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+          </button>
+        </div>
+
+        {sent ? (
+          <div className="p-10 text-center">
+            <div className="text-4xl mb-4">{"\u2705"}</div>
+            <p className="font-semibold text-lg mb-2">{t("quote.success")}</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <input required placeholder={t("quote.firstName")} value={form.firstName} onChange={(e) => update("firstName", e.target.value)} className={inputClass} />
+              <input required placeholder={t("quote.lastName")} value={form.lastName} onChange={(e) => update("lastName", e.target.value)} className={inputClass} />
+            </div>
+            <input required type="email" placeholder={t("quote.email")} value={form.email} onChange={(e) => update("email", e.target.value)} className={inputClass} />
+            <input placeholder={t("quote.phone")} value={form.phone} onChange={(e) => update("phone", e.target.value)} className={inputClass} />
+            <input required placeholder={t("quote.address")} value={form.address} onChange={(e) => update("address", e.target.value)} className={inputClass} />
+            <div className="grid grid-cols-2 gap-3">
+              <input required placeholder={t("quote.npa")} value={form.npa} onChange={(e) => update("npa", e.target.value)} className={inputClass} />
+              <input required placeholder={t("quote.city")} value={form.city} onChange={(e) => update("city", e.target.value)} className={inputClass} />
+            </div>
+            <input required placeholder={t("quote.country")} value={form.country} onChange={(e) => update("country", e.target.value)} className={inputClass} />
+            <textarea placeholder={t("quote.message")} value={form.message} onChange={(e) => update("message", e.target.value)} rows={3} className={inputClass} />
+
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={form.delivery} onChange={(e) => update("delivery", e.target.checked)} className="w-4 h-4 rounded border-border accent-accent" />
+              <span className="text-sm">{t("quote.delivery")}</span>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={form.assembly} onChange={(e) => update("assembly", e.target.checked)} className="w-4 h-4 rounded border-border accent-accent" />
+              <span className="text-sm">{t("quote.assembly")}</span>
+            </label>
+
+            {error && <p className="text-sm text-red-500">{t("quote.error")}</p>}
+
+            <button type="submit" disabled={sending} className="w-full py-3 rounded-xl bg-accent text-white font-medium text-sm transition-opacity disabled:opacity-50">
+              {sending ? t("quote.sending") : t("quote.send")}
+            </button>
+          </form>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ── Alternatives Modal ── */
 
 function AlternativesModal({ component, allComponents, usage, budget, market, onSelect, onClose }: { component: Component; allComponents: Component[]; usage: string; budget: number; market: Market; onSelect: (a: Alternative) => void; onClose: () => void }) {
   const { t } = useLanguage();
@@ -123,7 +262,6 @@ function AlternativesModal({ component, allComponents, usage, budget, market, on
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
-
   const showFR = market === "france" || market === "both";
   const showCH = market === "suisse" || market === "both";
 
@@ -144,21 +282,17 @@ function AlternativesModal({ component, allComponents, usage, budget, market, on
   useEffect(() => { document.addEventListener("mousedown", handleOutside); return () => document.removeEventListener("mousedown", handleOutside); }, [handleOutside]);
 
   function formatPrice(alt: { price_fr: number; price_ch: number }) {
-    if (showFR && showCH) return `${alt.price_fr}\u20AC · ${alt.price_ch} CHF`;
+    if (showFR && showCH) return `${alt.price_fr}\u20AC \u00B7 ${alt.price_ch} CHF`;
     if (showCH) return `${alt.price_ch} CHF`;
     return `${alt.price_fr}\u20AC`;
   }
-
   function formatCurrentPrice() {
-    if (showFR && showCH) return `${component.price_fr}\u20AC · ${component.price_ch} CHF`;
+    if (showFR && showCH) return `${component.price_fr}\u20AC \u00B7 ${component.price_ch} CHF`;
     if (showCH) return `${component.price_ch} CHF`;
     return `${component.price_fr}\u20AC`;
   }
-
   function getDiff(alt: { price_fr: number; price_ch: number }) {
-    const diff = showCH && !showFR
-      ? alt.price_ch - component.price_ch
-      : alt.price_fr - component.price_fr;
+    const diff = showCH && !showFR ? alt.price_ch - component.price_ch : alt.price_fr - component.price_fr;
     const unit = showCH && !showFR ? " CHF" : "\u20AC";
     if (diff === 0) return t("alt.samePrice");
     return diff > 0 ? `+${diff}${unit}` : `${diff}${unit}`;
@@ -168,10 +302,7 @@ function AlternativesModal({ component, allComponents, usage, budget, market, on
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
       <motion.div ref={modalRef} initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 25 }} className="bg-bg border border-border rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl">
         <div className="sticky top-0 bg-bg border-b border-border p-6 rounded-t-2xl flex items-center justify-between z-10">
-          <div>
-            <p className="text-[11px] uppercase tracking-wider text-text-secondary">{t("alt.title")}</p>
-            <h3 className="font-bold text-xl">{component.type}</h3>
-          </div>
+          <div><p className="text-[11px] uppercase tracking-wider text-text-secondary">{t("alt.title")}</p><h3 className="font-bold text-xl">{component.type}</h3></div>
           <motion.button whileHover={{ rotate: 90 }} transition={{ duration: 0.2 }} onClick={onClose} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-text-secondary hover:text-text hover:border-border-hover transition-colors duration-150">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </motion.button>
@@ -223,7 +354,7 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert }:
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1, type: "spring", stiffness: 200, damping: 20 }} className="rounded-xl border border-border bg-card p-5 transition-colors duration-150 hover:border-border-hover">
       <div className="flex gap-4 mb-3">
-        <ParallaxIcon type={component.type} />
+        <ProductImage type={component.type} />
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div>
@@ -236,17 +367,14 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert }:
         </div>
       </div>
 
-      {/* Prices */}
       <div className="flex gap-3 mb-1">
         {showFR && <div className="flex-1 bg-bg rounded-lg p-2.5 text-center border border-border"><div className="text-[11px] text-text-secondary">{t("result.france")}</div><div className="font-semibold mt-0.5">{component.price_fr}&euro;</div></div>}
         {showCH && <div className="flex-1 bg-bg rounded-lg p-2.5 text-center border border-border"><div className="text-[11px] text-text-secondary">{t("result.suisse")}</div><div className="font-semibold mt-0.5">{component.price_ch} CHF</div></div>}
       </div>
       <p className="text-[10px] text-text-secondary mb-3">{t("result.priceNote")}</p>
 
-      {/* Swiss price comparison */}
       {showCH && !showFR && <SwissPriceTable component={component} t={t} />}
 
-      {/* Store links */}
       <div className="flex gap-2 mb-2 flex-wrap">
         {stores.map((s) => (
           <a key={s} href={buildSearchUrl(s, component.name)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[60px] text-center text-xs py-2 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">
@@ -255,7 +383,6 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert }:
         ))}
       </div>
 
-      {/* Swap / Revert */}
       <div className="flex gap-2 mt-3">
         <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={onSwap} className="flex-1 text-center text-xs py-2 rounded-lg border border-border text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150 font-medium">{t("change")}</motion.button>
         {isSwapped && <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} whileTap={{ scale: 0.97 }} onClick={onRevert} className="text-xs py-2 px-3 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">{t("restore")}</motion.button>}
@@ -310,6 +437,7 @@ export default function ConfigResult({ config, onReset }: Props) {
   const [components, setComponents] = useState<Component[]>(config.components);
   const [originals] = useState<Component[]>(config.components);
   const [swapIndex, setSwapIndex] = useState<number | null>(null);
+  const [showQuote, setShowQuote] = useState(false);
 
   const market: Market = config.market || "both";
   const totalFR = components.reduce((s, c) => s + c.price_fr, 0);
@@ -330,12 +458,6 @@ export default function ConfigResult({ config, onReset }: Props) {
     const blob = new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `${config.config_name.replace(/\s+/g, "_")}.json`; a.click(); URL.revokeObjectURL(url);
-  }
-
-  function openGalaxus() {
-    for (const c of components) {
-      window.open(buildSearchUrl("galaxus", c.name), "_blank");
-    }
   }
 
   return (
@@ -389,23 +511,24 @@ export default function ConfigResult({ config, onReset }: Props) {
         </table>
       </motion.div>
 
-      {/* Disclaimer */}
       <p className="text-xs text-text-secondary mb-10 px-1">{t("result.disclaimer")}</p>
 
       {/* Actions */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="flex flex-wrap gap-3 pb-8">
-        <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={handleSave} className="px-6 py-2.5 rounded-full bg-accent text-white text-sm font-medium">{t("result.save")}</motion.button>
-        {showCH && (
-          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={openGalaxus} className="px-6 py-2.5 rounded-full bg-accent text-white text-sm font-medium">
-            {t("result.galaxus")} &rarr;
-          </motion.button>
-        )}
+        <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setShowQuote(true)} className="px-6 py-2.5 rounded-full bg-accent text-white text-sm font-medium flex items-center gap-2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" /></svg>
+          {t("quote.btn")}
+        </motion.button>
+        <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={handleSave} className="px-6 py-2.5 rounded-full border border-border text-sm font-medium text-text-secondary hover:text-text hover:border-border-hover transition-all duration-150">{t("result.save")}</motion.button>
         <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={onReset} className="px-6 py-2.5 rounded-full border border-border text-sm font-medium text-text-secondary hover:text-text hover:border-border-hover transition-all duration-150">{t("result.newConfig")}</motion.button>
       </motion.div>
 
-      {/* Alternatives modal */}
+      {/* Modals */}
       <AnimatePresence>
         {swapIndex !== null && <AlternativesModal component={components[swapIndex]} allComponents={components} usage={config.config_name} budget={config.total_estimated} market={market} onSelect={(alt) => handleSelectAlternative(swapIndex, alt)} onClose={() => setSwapIndex(null)} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showQuote && <QuoteModal config={config} components={components} market={market} totalFR={totalFR} totalCH={totalCH} onClose={() => setShowQuote(false)} />}
       </AnimatePresence>
     </div>
   );
