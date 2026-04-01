@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import type { ConfigRequest } from "@/lib/types";
+import { getServiceSupabase } from "@/lib/supabase";
+import type { DBComponent } from "@/lib/db-types";
 
 const client = new Anthropic();
 
@@ -86,9 +88,52 @@ function buildUserPrompt(config: ConfigRequest): string {
 IMPORTANT : Les prix doivent être réalistes et correspondre aux prix de vente réels en Q1 2025. Les prix suisses doivent être 10-20% plus élevés que les prix français. Reste dans le budget de ${config.budget}€. Inclus tous les composants essentiels (CPU, GPU, RAM, stockage, carte mère, alimentation, boîtier, refroidissement). Inclus les specs techniques, full_description, image_url et manufacturer_url pour chaque composant.`;
 }
 
+/** Fetch available components from DB to give Claude real data */
+async function getDBComponents(budget: number): Promise<DBComponent[]> {
+  try {
+    const supabase = getServiceSupabase();
+    const { data } = await supabase
+      .from("components")
+      .select("*, component_images(url, is_primary)")
+      .eq("active", true)
+      .eq("available_ch", true)
+      .lte("price_ch", budget * 0.6) // individual component should be < 60% of total budget
+      .order("popularity_score", { ascending: false })
+      .limit(100);
+    return (data as DBComponent[]) || [];
+  } catch {
+    return [];
+  }
+}
+
+/** Format DB components as context for Claude */
+function formatDBContext(dbComponents: DBComponent[]): string {
+  if (dbComponents.length === 0) return "";
+
+  const grouped: Record<string, DBComponent[]> = {};
+  for (const c of dbComponents) {
+    if (!grouped[c.type]) grouped[c.type] = [];
+    grouped[c.type].push(c);
+  }
+
+  let ctx = "\n\nCOMPOSANTS DISPONIBLES DANS NOTRE BASE DE DONNÉES (utilise-les en priorité) :\n";
+  for (const [type, items] of Object.entries(grouped)) {
+    ctx += `\n${type}:\n`;
+    for (const item of items.slice(0, 5)) {
+      ctx += `- ${item.name} | ${item.price_ch} CHF / ${item.price_fr}€ | Socket: ${item.socket || "N/A"} | TDP: ${item.tdp || "N/A"}W\n`;
+    }
+  }
+  ctx += "\nSi un composant de notre DB correspond au besoin, utilise son nom exact et ses prix. Sinon, recommande un composant que tu connais.";
+  return ctx;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: ConfigRequest = await request.json();
+
+    // Fetch components from our DB to enrich Claude's context
+    const dbComponents = await getDBComponents(body.budget);
+    const dbContext = formatDBContext(dbComponents);
 
     const message = await client.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -96,7 +141,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "user",
-          content: buildUserPrompt(body),
+          content: buildUserPrompt(body) + dbContext,
         },
       ],
       system: SYSTEM_PROMPT,
@@ -114,6 +159,27 @@ export async function POST(request: NextRequest) {
     }
 
     const config = JSON.parse(jsonMatch[0]);
+
+    // Enrich components with DB images if available
+    if (dbComponents.length > 0 && config.components) {
+      for (const comp of config.components) {
+        const match = dbComponents.find(
+          (db) => db.name.toLowerCase() === comp.name.toLowerCase()
+        );
+        if (match) {
+          const images = (match as DBComponent & { component_images?: { url: string; is_primary: boolean }[] }).component_images;
+          const primary = images?.find((img) => img.is_primary);
+          if (primary) comp.image_url = primary.url;
+          if (match.manufacturer_url) comp.manufacturer_url = match.manufacturer_url;
+          if (match.description) comp.full_description = match.description;
+          // Use DB prices as source of truth
+          comp.price_ch = match.price_ch;
+          comp.price_fr = match.price_fr;
+          if (match.specs && Object.keys(match.specs).length > 0) comp.specs = match.specs;
+        }
+      }
+    }
+
     return NextResponse.json(config);
   } catch (error) {
     console.error("Configure API error:", error);

@@ -31,7 +31,7 @@ const USAGES: Usage[] = ["gaming", "streaming", "montage", "bureautique", "polyv
 const RESOLUTIONS: Resolution[] = ["1080p", "1440p", "4K"];
 const TECH: TechLevel[] = ["debutant", "intermediaire", "expert"];
 const MARKETS: Market[] = ["suisse", "france", "both"];
-const BUDGET_TICKS = [300, 800, 1500, 2500, 5000];
+const BUDGET_TICKS = [300, 800, 1500, 2500, 4000];
 
 const BUDGET_PRESETS: { key: string; emoji: string; value: number; badgeKey?: string }[] = [
   { key: "budget.gaming", emoji: "\u{1F3AE}", value: 800 },
@@ -106,7 +106,7 @@ export default function ConfiguratorForm({ onResult }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const [usage, setUsage] = useState<Usage | null>(null);
-  const [budget, setBudget] = useState(1000);
+  const [budget, setBudget] = useState(1200);
   const [resolution, setResolution] = useState<Resolution>("1080p");
   const [favoriteGames, setFavoriteGames] = useState("");
   const [techLevel, setTechLevel] = useState<TechLevel>("intermediaire");
@@ -245,12 +245,20 @@ export default function ConfiguratorForm({ onResult }: Props) {
                   <h2 className="text-2xl font-bold mb-1">{t("step1.title")}</h2>
                   <p className="text-text-secondary text-sm mb-10">{t("step1.desc")}</p>
                   <div className="text-center mb-8">
-                    <motion.span key={budget} initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-6xl font-bold tracking-tight inline-block">{budget}&euro;</motion.span>
+                    <motion.span key={budget} initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-6xl font-bold tracking-tight inline-block">{budget} CHF</motion.span>
                   </div>
                   <div className="px-1 mb-8">
-                    <input type="range" min={300} max={5000} step={50} value={budget} onChange={(e) => setBudget(Number(e.target.value))} />
+                    <input
+                      type="range"
+                      min={300}
+                      max={4000}
+                      step={50}
+                      value={budget}
+                      onChange={(e) => setBudget(Number(e.target.value))}
+                      style={{ background: `linear-gradient(to right, #0A0A0A ${((budget - 300) / (4000 - 300)) * 100}%, #E5E5E5 ${((budget - 300) / (4000 - 300)) * 100}%)` }}
+                    />
                     <div className="flex justify-between mt-4 text-xs text-text-secondary">
-                      {BUDGET_TICKS.map((v) => <span key={v} className={budget >= v ? "text-text font-medium" : ""}>{v}&euro;</span>)}
+                      {BUDGET_TICKS.map((v) => <span key={v} className={budget >= v ? "text-text font-medium" : ""}>{v} CHF</span>)}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -261,7 +269,7 @@ export default function ConfiguratorForm({ onResult }: Props) {
                           {p.badgeKey && <span className={`absolute -top-2 right-3 text-[10px] px-2 py-0.5 rounded-full font-medium ${active ? "bg-white text-accent" : "bg-accent text-white"}`}>{t(p.badgeKey)}</span>}
                           <span className="text-base mr-1.5">{p.emoji}</span>
                           <span className="text-xs font-medium">{t(p.key)}</span>
-                          <div className={`text-sm font-bold mt-1 ${active ? "text-white" : "text-text"}`}>{p.value}&euro;</div>
+                          <div className={`text-sm font-bold mt-1 ${active ? "text-white" : "text-text"}`}>{p.value} CHF</div>
                         </motion.button>
                       );
                     })}
