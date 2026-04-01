@@ -79,7 +79,7 @@ L'équipe ConfigPC.ch
     `.trim();
 
     await resend.emails.send({
-      from: "ConfigPC.ch <devis@configpc.ch>",
+      from: "ConfigPC.ch <onboarding@resend.dev>",
       to: body.email,
       subject: `Votre devis ConfigPC.ch — ${body.configName}`,
       text: emailBody,
