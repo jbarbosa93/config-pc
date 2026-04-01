@@ -265,18 +265,78 @@ function MerchantTable({ component, market, t }: { component: Component; market:
 
 /* ── Infos Produit Modal ── */
 
+interface DBImage { url: string; is_primary: boolean; alt_text: string; sort_order: number }
+interface DBComponent { name: string; description: string; specs: Record<string, string>; manufacturer_url: string; price_ch: number; component_images: DBImage[] }
+
+function ImageCarousel({ images, name, type }: { images: DBImage[]; name: string; type: string }) {
+  const [idx, setIdx] = useState(0);
+  const [failed, setFailed] = useState<Set<number>>(new Set());
+  const sorted = [...images].sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0) || a.sort_order - b.sort_order);
+  const valid = sorted.filter((_, i) => !failed.has(i));
+
+  if (valid.length === 0) {
+    return (
+      <div className="w-full h-[220px] rounded-xl bg-[#F8F8F8] border flex items-center justify-center mb-4" style={{ borderColor: "#E5E5E5" }}>
+        <ComponentSVG type={type} size={130} />
+      </div>
+    );
+  }
+
+  const cur = valid[Math.min(idx, valid.length - 1)];
+  return (
+    <div className="mb-4">
+      <div className="relative w-full h-[220px] rounded-xl bg-[#F8F8F8] border flex items-center justify-center overflow-hidden" style={{ borderColor: "#E5E5E5" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={cur.url} alt={cur.alt_text || name} className="max-h-full max-w-full object-contain p-4" onError={() => { setFailed((s) => new Set([...s, sorted.indexOf(cur)])); }} />
+        {valid.length > 1 && (
+          <>
+            <button type="button" onClick={() => setIdx((i) => (i - 1 + valid.length) % valid.length)} className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 border flex items-center justify-center text-[#666] hover:bg-white shadow-sm transition-all" style={{ borderColor: "#E5E5E5" }}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 2L4 6l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+            <button type="button" onClick={() => setIdx((i) => (i + 1) % valid.length)} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 border flex items-center justify-center text-[#666] hover:bg-white shadow-sm transition-all" style={{ borderColor: "#E5E5E5" }}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          </>
+        )}
+      </div>
+      {valid.length > 1 && (
+        <div className="flex gap-1.5 justify-center mt-2">
+          {valid.map((img, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <button key={i} type="button" onClick={() => setIdx(i)} className={`w-12 h-12 rounded-lg border object-contain overflow-hidden transition-all ${i === Math.min(idx, valid.length - 1) ? "border-[#0A0A0A]" : "border-[#E5E5E5] opacity-60 hover:opacity-100"}`}>
+              <img src={img.url} alt="" className="w-full h-full object-contain p-1" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function InfoModal({ component, onClose }: { component: Component; onClose: () => void }) {
   const { t } = useLanguage();
   const modalRef = useRef<HTMLDivElement>(null);
-  const [imgFailed, setImgFailed] = useState(false);
+  const [dbData, setDbData] = useState<DBComponent | null>(null);
   const manufacturerUrl = getManufacturerUrl(component.name, component.manufacturer_url);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/components/search?name=${encodeURIComponent(component.name)}`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d) setDbData(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [component.name]);
 
   const handleOutside = useCallback((e: MouseEvent) => {
     if (modalRef.current && !modalRef.current.contains(e.target as Node)) onClose();
   }, [onClose]);
   useEffect(() => { document.addEventListener("mousedown", handleOutside); return () => document.removeEventListener("mousedown", handleOutside); }, [handleOutside]);
 
-  const hasImage = component.image_url && !imgFailed;
+  const specs = dbData?.specs || component.specs || {};
+  const description = dbData?.description || component.full_description || component.reason;
+  const mfUrl = dbData?.manufacturer_url || manufacturerUrl;
+  const images: DBImage[] = dbData?.component_images || [];
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
@@ -301,46 +361,28 @@ function InfoModal({ component, onClose }: { component: Component; onClose: () =
         </div>
 
         <div className="p-6">
-          {/* Image */}
-          <div className="flex justify-center mb-6">
-            {hasImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={component.image_url}
-                alt={component.name}
-                width={200}
-                height={200}
-                className="w-[200px] h-[200px] object-contain rounded-xl"
-                onError={() => setImgFailed(true)}
-              />
-            ) : (
-              <div className="w-[200px] h-[200px] rounded-xl bg-[#F8F8F8] border flex items-center justify-center" style={{ borderColor: "#E5E5E5" }}>
-                <ComponentSVG type={component.type} size={120} />
-              </div>
-            )}
-          </div>
+          {/* Image carousel */}
+          <ImageCarousel images={images} name={component.name} type={component.type} />
 
           {/* Description */}
-          <p className="text-sm leading-relaxed text-[#333] mb-6">
-            {component.full_description || component.reason}
-          </p>
+          {description && <p className="text-sm leading-relaxed text-[#333] mb-6">{description}</p>}
 
           {/* Specs table */}
-          {component.specs && Object.keys(component.specs).length > 0 && (
+          {specs && Object.keys(specs).length > 0 && (
             <div className="rounded-xl border overflow-hidden mb-6" style={{ borderColor: "#E5E5E5" }}>
               <div className="px-4 py-2.5 bg-[#F8F8F8] text-xs font-medium uppercase tracking-wider text-[#666]">{t("specs.title")}</div>
-              {Object.entries(component.specs).map(([key, value]) => (
+              {Object.entries(specs).map(([key, value]) => (
                 <div key={key} className="flex justify-between px-4 py-2.5 text-sm border-t" style={{ borderColor: "#F0F0F0" }}>
                   <span className="text-[#666]">{key}</span>
-                  <span className="font-medium text-[#0A0A0A]">{value}</span>
+                  <span className="font-medium text-[#0A0A0A]">{String(value)}</span>
                 </div>
               ))}
             </div>
           )}
 
           {/* Manufacturer link */}
-          {manufacturerUrl !== "#" && (
-            <a href={manufacturerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border text-sm font-medium text-[#666] hover:text-[#0A0A0A] hover:border-[#CCC] transition-all" style={{ borderColor: "#E5E5E5" }}>
+          {mfUrl !== "#" && (
+            <a href={mfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border text-sm font-medium text-[#666] hover:text-[#0A0A0A] hover:border-[#CCC] transition-all" style={{ borderColor: "#E5E5E5" }}>
               {t("info.manufacturer")} &rarr;
             </a>
           )}
@@ -459,44 +501,91 @@ function QuoteModal({ config, components, market, totalFR, totalCH, onClose }: {
 
 /* ── Alternatives Modal ── */
 
+const TIER_LABELS: Record<string, string> = { budget: "Budget", equilibre: "Équilibré", performance: "Performance", overkill: "Overkill" };
+const TIER_ORDER = ["budget", "equilibre", "performance", "overkill"];
+
+function getKeySpecs(type: string, specs: Record<string, string>): string[] {
+  const t = type.toLowerCase();
+  if (t.includes("cpu") || t.includes("processeur")) return ["Cores/Threads", "Fréquence boost", "TDP", "Cache L3"];
+  if (t.includes("gpu") || t.includes("graphi")) return ["VRAM", "Architecture", "TDP"];
+  if (t.includes("ram") || t.includes("memoire") || t.includes("mémoire")) return ["Type", "Fréquence", "Latence CL", "Capacité"];
+  if (t.includes("stockage") || t.includes("ssd") || t.includes("nvme")) return ["Capacité", "Interface", "Lecture séq.", "Écriture séq."];
+  if (t.includes("carte") && (t.includes("mere") || t.includes("mère"))) return ["Socket", "Chipset", "Format", "RAM max"];
+  if (t.includes("alimentation")) return ["Puissance", "Certification 80+", "Modulaire"];
+  if (t.includes("boitier") || t.includes("boîtier")) return ["Format", "GPU max", "Ventirad max"];
+  if (t.includes("refroidissement") || t.includes("cooler")) return ["Type", "TDP supporté", "Niveau sonore"];
+  return Object.keys(specs).slice(0, 3);
+}
+
+function assignTiers(items: DBComponent[], currentPrice: number): Alternative[] {
+  const sorted = [...items]
+    .filter((c) => c.name !== undefined)
+    .sort((a, b) => a.price_ch - b.price_ch);
+
+  const below = sorted.filter((c) => c.price_ch <= currentPrice);
+  const above = sorted.filter((c) => c.price_ch > currentPrice);
+
+  const picks: (DBComponent | null)[] = [
+    below.length >= 2 ? below[0] : (below[0] || null),   // budget
+    below.length >= 2 ? below[Math.floor(below.length / 2)] : (below[0] || above[0] || null), // equilibre
+    above[0] || (below[below.length - 1] || null),         // performance
+    above.length >= 2 ? above[above.length - 1] : (above[0] || null), // overkill
+  ];
+
+  return TIER_ORDER.map((tier, i) => {
+    const c = picks[i];
+    if (!c) return null;
+    return {
+      name: c.name,
+      reason: c.description || "",
+      tier,
+      price_ch: c.price_ch,
+      price_fr: c.price_ch, // fallback
+      compatible: true,
+      specs: c.specs || {},
+      images: c.component_images || [],
+    } as Alternative & { specs: Record<string, string>; images: DBImage[] };
+  }).filter(Boolean) as Alternative[];
+}
+
 function AlternativesModal({ component, allComponents, usage, budget, market, onSelect, onClose }: { component: Component; allComponents: Component[]; usage: string; budget: number; market: Market; onSelect: (a: Alternative) => void; onClose: () => void }) {
   const { t } = useLanguage();
-  const [alternatives, setAlternatives] = useState<Alternative[]>([]);
+  const [alternatives, setAlternatives] = useState<(Alternative & { specs?: Record<string, string>; images?: DBImage[] })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
-  const showFR = market === "france" || market === "both";
   const showCH = market === "suisse" || market === "both";
 
   useEffect(() => {
-    let c = false;
+    let cancelled = false;
     (async () => {
       try {
+        // Try DB first
+        const dbRes = await fetch(`/api/db-components?type=${encodeURIComponent(component.type)}`);
+        if (dbRes.ok) {
+          const dbItems: DBComponent[] = await dbRes.json();
+          const filtered = dbItems.filter((c) => c.name !== component.name);
+          if (filtered.length >= 2) {
+            const tiers = assignTiers(filtered, component.price_ch);
+            if (!cancelled && tiers.length > 0) { setAlternatives(tiers); setLoading(false); return; }
+          }
+        }
+        // Fallback to Claude
         const res = await fetch("/api/alternatives", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ component_type: component.type, current_component: component, all_components: allComponents, usage, budget }) });
         if (!res.ok) throw new Error();
         const data = await res.json();
-        if (!c) setAlternatives(data.alternatives || []);
-      } catch { if (!c) setError(t("alt.error")); } finally { if (!c) setLoading(false); }
+        if (!cancelled) setAlternatives(data.alternatives || []);
+      } catch { if (!cancelled) setError(t("alt.error")); } finally { if (!cancelled) setLoading(false); }
     })();
-    return () => { c = true; };
+    return () => { cancelled = true; };
   }, [component, allComponents, usage, budget, t]);
 
   const handleOutside = useCallback((e: MouseEvent) => { if (modalRef.current && !modalRef.current.contains(e.target as Node)) onClose(); }, [onClose]);
   useEffect(() => { document.addEventListener("mousedown", handleOutside); return () => document.removeEventListener("mousedown", handleOutside); }, [handleOutside]);
 
-  function formatPrice(alt: { price_fr: number; price_ch: number }) {
-    if (showFR && showCH) return `${alt.price_fr}\u20AC \u00B7 ${alt.price_ch} CHF`;
-    if (showCH) return `${alt.price_ch} CHF`;
-    return `${alt.price_fr}\u20AC`;
-  }
-  function formatCurrentPrice() {
-    if (showFR && showCH) return `${component.price_fr}\u20AC \u00B7 ${component.price_ch} CHF`;
-    if (showCH) return `${component.price_ch} CHF`;
-    return `${component.price_fr}\u20AC`;
-  }
-  function getDiff(alt: { price_fr: number; price_ch: number }) {
-    const diff = showCH && !showFR ? alt.price_ch - component.price_ch : alt.price_fr - component.price_fr;
-    const unit = showCH && !showFR ? " CHF" : "\u20AC";
+  function getDiff(alt: { price_ch: number; price_fr: number }) {
+    const diff = showCH ? alt.price_ch - component.price_ch : alt.price_fr - component.price_fr;
+    const unit = showCH ? " CHF" : "\u20AC";
     if (diff === 0) return t("alt.samePrice");
     return diff > 0 ? `+${diff}${unit}` : `${diff}${unit}`;
   }
@@ -512,7 +601,7 @@ function AlternativesModal({ component, allComponents, usage, budget, market, on
         </div>
         <div className="px-6 py-4 border-b border-border bg-card/50">
           <div className="flex items-center gap-3"><span className="text-[11px] px-2.5 py-0.5 rounded-full bg-accent text-white font-medium">{t("alt.current")}</span><span className="font-medium text-sm">{component.name}</span></div>
-          <p className="text-xs text-text-secondary mt-1 ml-[70px]">{formatCurrentPrice()}</p>
+          <p className="text-xs text-text-secondary mt-1 ml-[70px]">{component.price_ch} CHF</p>
         </div>
         {loading && <div className="p-12 text-center"><motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }} className="w-6 h-6 mx-auto mb-4 border-2 border-border border-t-accent rounded-full" /><p className="text-sm text-text-secondary">{t("alt.searching")}</p></div>}
         {error && <div className="p-6"><p className="text-sm text-text-secondary">{error}</p></div>}
@@ -520,19 +609,43 @@ function AlternativesModal({ component, allComponents, usage, budget, market, on
           <div className="p-4 flex flex-col gap-3">
             {alternatives.map((alt, i) => {
               const diffStr = getDiff(alt);
-              const diff = showCH && !showFR ? alt.price_ch - component.price_ch : alt.price_fr - component.price_fr;
+              const diff = showCH ? alt.price_ch - component.price_ch : alt.price_fr - component.price_fr;
+              const altWithExtras = alt as Alternative & { specs?: Record<string, string>; images?: DBImage[] };
+              const keySpecs = altWithExtras.specs ? getKeySpecs(component.type, altWithExtras.specs) : [];
+              const primaryImg = altWithExtras.images?.find((img) => img.is_primary) || altWithExtras.images?.[0];
               return (
                 <motion.div key={alt.name} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, type: "spring", stiffness: 300, damping: 25 }} className="rounded-xl border border-border hover:border-border-hover transition-colors duration-150 p-4 bg-card">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-card border border-border text-text-secondary font-medium">{t(`tier.${alt.tier}`)}</span>
-                    <span className={`text-xs font-medium tabular-nums ${diff < 0 ? "text-text-secondary" : "text-text"}`}>{diffStr}</span>
+                  <div className="flex gap-3 mb-3">
+                    {/* Thumbnail */}
+                    <div className="w-16 h-16 rounded-lg bg-bg border border-border flex items-center justify-center shrink-0 overflow-hidden">
+                      {primaryImg ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={primaryImg.url} alt={alt.name} className="w-full h-full object-contain p-1" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      ) : (
+                        <ComponentSVG type={component.type} size={40} />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-card border border-border text-text-secondary font-medium">{TIER_LABELS[alt.tier] || alt.tier}</span>
+                        <span className={`text-xs font-medium tabular-nums ${diff < 0 ? "text-green-600" : diff > 0 ? "text-text" : "text-text-secondary"}`}>{diffStr}</span>
+                      </div>
+                      <p className="font-medium text-sm leading-tight">{alt.name}</p>
+                      <p className="text-xs text-text-secondary mt-0.5">{showCH ? `${alt.price_ch} CHF` : `${alt.price_fr}€`}</p>
+                    </div>
                   </div>
-                  <p className="font-medium text-sm mb-1">{alt.name}</p>
-                  <p className="text-xs text-text-secondary mb-3">{alt.reason}</p>
-                  <div className="flex items-center gap-4 mb-3 text-xs">
-                    <span>{formatPrice(alt)}</span>
-                    <span className="ml-auto">{alt.compatible ? <span className="text-text-secondary">{"\u2713"} {t("alt.compatible")}</span> : <span className="text-text font-medium">{"\u26A0"} {alt.compatibility_warning || t("alt.check")}</span>}</span>
-                  </div>
+                  {/* Key specs */}
+                  {altWithExtras.specs && keySpecs.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {keySpecs.map((k) => altWithExtras.specs?.[k] ? (
+                        <span key={k} className="text-[10px] px-2 py-0.5 rounded-md bg-bg border border-border text-text-secondary">
+                          <span className="text-text-secondary/60">{k}:</span> {altWithExtras.specs[k]}
+                        </span>
+                      ) : null)}
+                    </div>
+                  )}
+                  {alt.reason && <p className="text-xs text-text-secondary mb-3">{alt.reason}</p>}
+                  {!alt.compatible && <p className="text-xs text-amber-600 mb-2">{"\u26A0"} {alt.compatibility_warning || t("alt.check")}</p>}
                   <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={() => onSelect(alt)} className="w-full py-2.5 rounded-lg border border-border text-sm font-medium text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150">{t("alt.choose")}</motion.button>
                 </motion.div>
               );
@@ -542,6 +655,21 @@ function AlternativesModal({ component, allComponents, usage, budget, market, on
       </motion.div>
     </motion.div>
   );
+}
+
+/* ── Change button label per component type ── */
+
+function getChangeLabel(type: string): string {
+  const t = type.toLowerCase();
+  if (t.includes("cpu") || t.includes("processeur")) return "Changer le processeur";
+  if (t.includes("gpu") || t.includes("graphi")) return "Changer la carte graphique";
+  if (t.includes("ram") || t.includes("mémoire") || t.includes("memoire")) return "Changer la RAM";
+  if (t.includes("stockage") || t.includes("ssd") || t.includes("nvme")) return "Changer le stockage";
+  if (t.includes("carte") && t.includes("mère") || t.includes("mere")) return "Changer la carte mère";
+  if (t.includes("alimentation")) return "Changer l'alimentation";
+  if (t.includes("boîtier") || t.includes("boitier")) return "Changer le boîtier";
+  if (t.includes("refroidissement") || t.includes("cooler")) return "Changer le refroidissement";
+  return "Changer";
 }
 
 /* ── Component Card ── */
@@ -586,11 +714,18 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert, o
 
       {/* Compare all prices via Toppreise/idealo */}
       <a href={compareUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 w-full text-xs py-2.5 rounded-lg bg-[#0A0A0A] text-white hover:bg-[#333] transition-all duration-150 font-medium">
-        {t("compare.prices")} &rarr;
+        {isCH ? (
+          <>
+            <span className="px-1.5 py-0.5 rounded bg-[#FF6B00] text-white font-bold text-[10px] tracking-tight">TP</span>
+            Comparer sur TopPreise
+          </>
+        ) : (
+          <>{t("compare.prices")} &rarr;</>
+        )}
       </a>
 
       <div className="flex gap-2 mt-3">
-        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={onSwap} className="flex-1 text-center text-xs py-2 rounded-lg border border-border text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150 font-medium">{t("change")}</motion.button>
+        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={onSwap} className="flex-1 text-center text-xs py-2 rounded-lg border border-border text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150 font-medium">{getChangeLabel(component.type)}</motion.button>
         {isSwapped && <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} whileTap={{ scale: 0.97 }} onClick={onRevert} className="text-xs py-2 px-3 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">{t("restore")}</motion.button>}
       </div>
     </motion.div>
@@ -615,7 +750,10 @@ function PriceRow({ component, changed, market, t }: { component: Component; ind
       {showFR && <td className="text-right py-3 tabular-nums">{component.price_fr}&euro;</td>}
       {showCH && <td className="text-right py-3 tabular-nums">{component.price_ch} CHF</td>}
       <td className="text-right py-3">
-        <a href={compareUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] px-2 py-1 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">{t("compare.see")} &rarr;</a>
+        <a href={compareUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] px-2 py-1 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium flex items-center gap-1 justify-end whitespace-nowrap">
+          {isCH && <span className="px-1 py-0.5 rounded bg-[#FF6B00] text-white font-bold text-[9px]">TP</span>}
+          {isCH ? "Voir sur TopPreise" : t("compare.see")} &rarr;
+        </a>
       </td>
     </tr>
   );
@@ -633,12 +771,12 @@ export default function ConfigResult({ config, onReset }: Props) {
   const [infoIndex, setInfoIndex] = useState<number | null>(null);
   const [showQuote, setShowQuote] = useState(false);
 
-  const market: Market = config.market || "both";
+  const market: Market = "suisse";
   const totalFR = components.reduce((s, c) => s + c.price_fr, 0);
   const totalCH = components.reduce((s, c) => s + c.price_ch, 0);
   const hasChanges = components.some((c, i) => c.name !== originals[i].name);
-  const showFR = market === "france" || market === "both";
-  const showCH = market === "suisse" || market === "both";
+  const showFR = false;
+  const showCH = true;
 
   function handleSelectAlternative(index: number, alt: Alternative) {
     setComponents((prev) => { const next = [...prev]; next[index] = { ...prev[index], name: alt.name, reason: alt.reason, price_fr: alt.price_fr, price_ch: alt.price_ch, search_terms: alt.search_terms }; return next; });

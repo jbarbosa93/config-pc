@@ -30,8 +30,10 @@ const USAGE_PATHS: Record<Usage, string> = {
 const USAGES: Usage[] = ["gaming", "streaming", "montage", "bureautique", "polyvalent"];
 const RESOLUTIONS: Resolution[] = ["1080p", "1440p", "4K"];
 const TECH: TechLevel[] = ["debutant", "intermediaire", "expert"];
-const MARKETS: Market[] = ["suisse", "france", "both"];
-const BUDGET_TICKS = [300, 800, 1500, 2500, 4000];
+const MARKETS: Market[] = ["suisse"];
+const BUDGET_TICKS = [300, 1000, 1500, 2500, 4000];
+const BUDGET_MAX = 4000;
+const BUDGET_UNLIMITED = 999999;
 
 const BUDGET_PRESETS: { key: string; emoji: string; value: number; badgeKey?: string }[] = [
   { key: "budget.gaming", emoji: "\u{1F3AE}", value: 800 },
@@ -44,7 +46,7 @@ const LOADING_MESSAGES = [
   "loading.0", // "Analyse de ton budget..."
   "loading.1", // "Sélection des composants optimaux..."
   "loading.2", // "Vérification des compatibilités..."
-  "loading.3", // "Comparaison des prix Suisse & France..."
+  "loading.3", // "Recherche des meilleurs prix en Suisse..."
   "loading.4", // "Optimisation du rapport qualité/prix..."
   "loading.5", // "Config prête !"
 ];
@@ -110,13 +112,13 @@ export default function ConfiguratorForm({ onResult }: Props) {
   const [resolution, setResolution] = useState<Resolution>("1080p");
   const [favoriteGames, setFavoriteGames] = useState("");
   const [techLevel, setTechLevel] = useState<TechLevel>("intermediaire");
-  const [market, setMarket] = useState<Market>("france");
+  const [market] = useState<Market>("suisse");
 
   const phase1Ref = useRef<NodeJS.Timeout | null>(null);
   const phase2Ref = useRef<NodeJS.Timeout | null>(null);
   const msgRef = useRef<NodeJS.Timeout | null>(null);
-  const totalSteps = 4;
-  const canNext = (step === 0 && usage !== null) || (step === 1 && budget >= 300) || step === 2 || step === 3;
+  const totalSteps = 3;
+  const canNext = (step === 0 && usage !== null) || (step === 1 && budget >= 300) || step === 2;
 
   function nextStep() { setDirection(1); setStep((s) => s + 1); }
   function prevStep() { setDirection(-1); setStep((s) => s - 1); }
@@ -168,7 +170,7 @@ export default function ConfiguratorForm({ onResult }: Props) {
       const res = await fetch("/api/configure", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usage, budget, resolution, favoriteGames, techLevel, market } satisfies ConfigRequest),
+        body: JSON.stringify({ usage, budget: budget >= BUDGET_MAX ? BUDGET_UNLIMITED : budget, resolution, favoriteGames, techLevel, market } satisfies ConfigRequest),
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -245,7 +247,9 @@ export default function ConfiguratorForm({ onResult }: Props) {
                   <h2 className="text-2xl font-bold mb-1">{t("step1.title")}</h2>
                   <p className="text-text-secondary text-sm mb-10">{t("step1.desc")}</p>
                   <div className="text-center mb-8">
-                    <motion.span key={budget} initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-6xl font-bold tracking-tight inline-block">{budget} CHF</motion.span>
+                    <motion.span key={budget} initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-6xl font-bold tracking-tight inline-block">
+                      {budget >= BUDGET_MAX ? "Sans limite" : `${budget} CHF`}
+                    </motion.span>
                   </div>
                   <div className="px-1 mb-8">
                     <input
@@ -257,8 +261,16 @@ export default function ConfiguratorForm({ onResult }: Props) {
                       onChange={(e) => setBudget(Number(e.target.value))}
                       style={{ background: `linear-gradient(to right, #0A0A0A ${((budget - 300) / (4000 - 300)) * 100}%, #E5E5E5 ${((budget - 300) / (4000 - 300)) * 100}%)` }}
                     />
-                    <div className="flex justify-between mt-4 text-xs text-text-secondary">
-                      {BUDGET_TICKS.map((v) => <span key={v} className={budget >= v ? "text-text font-medium" : ""}>{v} CHF</span>)}
+                    <div className="relative mt-4 h-5 text-xs text-text-secondary">
+                      {BUDGET_TICKS.map((v) => (
+                        <span
+                          key={v}
+                          className={`absolute ${v === 300 ? "left-0" : v === 4000 ? "right-0" : "-translate-x-1/2"} ${budget >= v ? "text-text font-medium" : ""}`}
+                          style={v !== 300 && v !== 4000 ? { left: `${((v - 300) / (4000 - 300)) * 100}%` } : undefined}
+                        >
+                          {v === 4000 ? "∞" : v}
+                        </span>
+                      ))}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -294,25 +306,6 @@ export default function ConfiguratorForm({ onResult }: Props) {
                 </div>
               )}
 
-              {step === 3 && (
-                <div>
-                  <h2 className="text-2xl font-bold mb-1">{t("step3.title")}</h2>
-                  <p className="text-text-secondary text-sm mb-8">{t("step3.desc")}</p>
-                  <div className="flex flex-col gap-2">
-                    {MARKETS.map((m, i) => {
-                      const sel = market === m;
-                      return (
-                        <motion.button key={m} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} whileHover={{ y: -2, boxShadow: "0 8px 25px rgba(0,0,0,0.08)" }} whileTap={{ scale: 0.98 }} onClick={() => setMarket(m)} className={`p-5 rounded-xl border text-left font-medium transition-colors duration-150 ${sel ? "bg-accent text-white border-accent" : "border-border hover:border-border-hover bg-card"}`}>
-                          <div className="flex items-center justify-between">
-                            <span>{t(`market.${m}`)}</span>
-                            {sel && <AnimatedCheck />}
-                          </div>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -321,7 +314,7 @@ export default function ConfiguratorForm({ onResult }: Props) {
 
         <div className="flex justify-between mt-12">
           <motion.button whileHover={{ x: -3 }} onClick={prevStep} disabled={step === 0} className="text-sm text-text-secondary hover:text-text transition-colors duration-150 disabled:opacity-0">{t("btn.back")}</motion.button>
-          {step < 3 ? (
+          {step < 2 ? (
             <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={nextStep} disabled={!canNext} className="px-7 py-2.5 rounded-full bg-accent text-white text-sm font-medium transition-opacity disabled:opacity-20 disabled:cursor-not-allowed">{t("btn.next")}</motion.button>
           ) : (
             <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={handleSubmit} disabled={loading || !canNext} className="px-7 py-2.5 rounded-full bg-accent text-white text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed shimmer">{t("btn.generate")}</motion.button>
