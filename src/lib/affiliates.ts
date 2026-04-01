@@ -22,8 +22,8 @@ const STORES: StoreConfig[] = [
   // ── Suisse — sites qui vendent des composants PC ──
   { id: "galaxus", label: "Galaxus", market: "ch", buildSearchUrl: (q) => `https://www.galaxus.ch/search?q=${enc(q)}`, affiliateNetwork: "tradedoubler" },
   { id: "digitec", label: "Digitec", market: "ch", buildSearchUrl: (q) => `https://www.digitec.ch/search?q=${enc(q)}`, affiliateNetwork: "tradedoubler" },
-  { id: "brack", label: "Brack.ch", market: "ch", buildSearchUrl: (q) => `https://www.brack.ch/suche?q=${enc(q)}`, affiliateNetwork: "tradedoubler" },
-  { id: "interdiscount", label: "Interdiscount", market: "ch", buildSearchUrl: (q) => `https://www.interdiscount.ch/fr/search#q=${enc(q)}`, affiliateNetwork: "tradedoubler" },
+  { id: "brack", label: "Brack.ch", market: "ch", buildSearchUrl: (q) => `https://www.brack.ch/search?q=${enc(q)}`, affiliateNetwork: "tradedoubler" },
+  { id: "interdiscount", label: "Interdiscount", market: "ch", buildSearchUrl: (q) => `https://www.interdiscount.ch/fr/search?q=${enc(q)}`, affiliateNetwork: "tradedoubler" },
   { id: "conrad", label: "Conrad", market: "ch", buildSearchUrl: (q) => `https://www.conrad.ch/fr/search?search=${enc(q)}` },
   { id: "mediamarkt", label: "MediaMarkt", market: "ch", buildSearchUrl: (q) => `https://www.mediamarkt.ch/fr/search.html?query=${enc(q)}` },
   { id: "ldlc-ch", label: "LDLC Suisse", market: "ch", buildSearchUrl: (q) => `https://www.ldlc.com/fr-ch/recherche/${q.replace(/\s+/g, "+")}/`, affiliateNetwork: "awin" },

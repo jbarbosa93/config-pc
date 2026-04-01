@@ -11,7 +11,13 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("components")
-    .select("*, component_images(url, is_primary, alt_text, sort_order)")
+    .select(`
+      id, type, name, brand, specs, price_ch, price_fr,
+      socket, chipset, form_factor, tdp, description,
+      manufacturer_url, popularity_score, release_year,
+      component_images(url, is_primary, alt_text, order_index),
+      component_prices(id, site, price, currency, url, in_stock)
+    `)
     .eq("active", true)
     .ilike("name", `%${name}%`)
     .order("popularity_score", { ascending: false })

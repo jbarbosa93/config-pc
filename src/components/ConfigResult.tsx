@@ -265,27 +265,37 @@ function MerchantTable({ component, market, t }: { component: Component; market:
 
 /* ── Infos Produit Modal ── */
 
-interface DBImage { url: string; is_primary: boolean; alt_text: string; sort_order: number }
-interface DBComponent { name: string; description: string; specs: Record<string, string>; manufacturer_url: string; price_ch: number; component_images: DBImage[] }
+interface DBImage { url: string; is_primary: boolean; alt_text: string; order_index: number }
+interface DBPrice { id: string; site: string; price: number; currency: string; url: string; in_stock: boolean }
+interface DBComponent {
+  id: string; type: string; name: string; brand: string;
+  description: string; specs: Record<string, string>;
+  manufacturer_url: string; price_ch: number; price_fr: number;
+  socket: string | null; chipset: string | null; form_factor: string | null;
+  tdp: number | null; release_year: number | null; popularity_score: number;
+  component_images: DBImage[];
+  component_prices: DBPrice[];
+}
 
-function ImageCarousel({ images, name, type }: { images: DBImage[]; name: string; type: string }) {
+function ImageCarousel({ images, name, type, tall = false }: { images: DBImage[]; name: string; type: string; tall?: boolean }) {
   const [idx, setIdx] = useState(0);
   const [failed, setFailed] = useState<Set<number>>(new Set());
-  const sorted = [...images].sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0) || a.sort_order - b.sort_order);
+  const sorted = [...images].sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0) || a.order_index - b.order_index);
   const valid = sorted.filter((_, i) => !failed.has(i));
+  const h = tall ? "h-[300px]" : "h-[220px]";
 
   if (valid.length === 0) {
     return (
-      <div className="w-full h-[220px] rounded-xl bg-[#F8F8F8] border flex items-center justify-center mb-4" style={{ borderColor: "#E5E5E5" }}>
-        <ComponentSVG type={type} size={130} />
+      <div className={`w-full ${h} rounded-xl bg-[#F8F8F8] border flex items-center justify-center`} style={{ borderColor: "#E5E5E5" }}>
+        <ComponentSVG type={type} size={tall ? 160 : 110} />
       </div>
     );
   }
 
   const cur = valid[Math.min(idx, valid.length - 1)];
   return (
-    <div className="mb-4">
-      <div className="relative w-full h-[220px] rounded-xl bg-[#F8F8F8] border flex items-center justify-center overflow-hidden" style={{ borderColor: "#E5E5E5" }}>
+    <div>
+      <div className={`relative w-full ${h} rounded-xl bg-[#F8F8F8] border flex items-center justify-center overflow-hidden`} style={{ borderColor: "#E5E5E5" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={cur.url} alt={cur.alt_text || name} className="max-h-full max-w-full object-contain p-4" onError={() => { setFailed((s) => new Set([...s, sorted.indexOf(cur)])); }} />
         {valid.length > 1 && (
@@ -303,7 +313,7 @@ function ImageCarousel({ images, name, type }: { images: DBImage[]; name: string
         <div className="flex gap-1.5 justify-center mt-2">
           {valid.map((img, i) => (
             // eslint-disable-next-line @next/next/no-img-element
-            <button key={i} type="button" onClick={() => setIdx(i)} className={`w-12 h-12 rounded-lg border object-contain overflow-hidden transition-all ${i === Math.min(idx, valid.length - 1) ? "border-[#0A0A0A]" : "border-[#E5E5E5] opacity-60 hover:opacity-100"}`}>
+            <button key={i} type="button" onClick={() => setIdx(i)} className={`w-12 h-12 rounded-lg border overflow-hidden transition-all ${i === Math.min(idx, valid.length - 1) ? "border-[#4f8ef7]" : "border-[#E5E5E5] opacity-60 hover:opacity-100"}`}>
               <img src={img.url} alt="" className="w-full h-full object-contain p-1" />
             </button>
           ))}
@@ -313,80 +323,260 @@ function ImageCarousel({ images, name, type }: { images: DBImage[]; name: string
   );
 }
 
-function InfoModal({ component, onClose }: { component: Component; onClose: () => void }) {
-  const { t } = useLanguage();
+/* Store label mapping */
+const STORE_LABELS: Record<string, string> = {
+  galaxus: "Galaxus", digitec: "Digitec", brack: "Brack.ch",
+  interdiscount: "Interdiscount", conrad: "Conrad", mediamarkt: "MediaMarkt",
+  "ldlc-ch": "LDLC Suisse", "amazon-de": "Amazon.de",
+  ldlc: "LDLC", amazon: "Amazon.fr", materielnet: "Matériel.net",
+  cdiscount: "Cdiscount", topachat: "TopAchat",
+};
+
+function InfoModal({ component, market, onClose }: { component: Component; market: Market; onClose: () => void }) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [dbData, setDbData] = useState<DBComponent | null>(null);
+  const [loading, setLoading] = useState(true);
   const manufacturerUrl = getManufacturerUrl(component.name, component.manufacturer_url);
+  const isCH = market !== "france";
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     fetch(`/api/components/search?name=${encodeURIComponent(component.name)}`)
       .then((r) => r.json())
-      .then((d) => { if (!cancelled && d) setDbData(d); })
-      .catch(() => {});
+      .then((d) => { if (!cancelled) { setDbData(d); setLoading(false); } })
+      .catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [component.name]);
 
   const handleOutside = useCallback((e: MouseEvent) => {
     if (modalRef.current && !modalRef.current.contains(e.target as Node)) onClose();
   }, [onClose]);
-  useEffect(() => { document.addEventListener("mousedown", handleOutside); return () => document.removeEventListener("mousedown", handleOutside); }, [handleOutside]);
+  useEffect(() => {
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [handleOutside]);
+
+  // Escape key
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   const specs = dbData?.specs || component.specs || {};
   const description = dbData?.description || component.full_description || component.reason;
   const mfUrl = dbData?.manufacturer_url || manufacturerUrl;
   const images: DBImage[] = dbData?.component_images || [];
+  const brand = dbData?.brand || component.name.split(" ")[0];
+  const priceCH = dbData?.price_ch || component.price_ch;
+  const priceFR = dbData?.price_fr || component.price_fr;
+  const displayPrice = isCH ? priceCH : priceFR;
+  const currency = isCH ? "CHF" : "€";
+
+  // Price comparison: DB prices or simulated
+  const dbPrices: DBPrice[] = dbData?.component_prices || [];
+  const hasPricesInDB = dbPrices.length > 0;
+  const simulatedPrices = getSimulatedPrices(displayPrice, market);
+  const bestSimPrice = simulatedPrices[0]?.price;
+
+  // Best merchant link for primary CTA
+  const bestMerchantUrl = hasPricesInDB
+    ? (dbPrices.sort((a, b) => a.price - b.price)[0]?.url || "#")
+    : buildSearchUrl(simulatedPrices[0]?.storeId || "galaxus", component.name);
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
+      style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+    >
       <motion.div
         ref={modalRef}
-        initial={{ opacity: 0, y: 40 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
-        transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="bg-white border rounded-2xl w-full max-w-[600px] max-h-[90vh] overflow-y-auto shadow-2xl"
-        style={{ borderColor: "#E5E5E5" }}
+        transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="bg-white rounded-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col"
+        style={{ border: "1px solid #E5E5E5" }}
       >
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b p-5 rounded-t-2xl flex items-center justify-between z-10" style={{ borderColor: "#E5E5E5" }}>
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#0A0A0A] text-white font-medium">{component.type}</span>
-            <h3 className="font-bold text-lg leading-tight">{component.name}</h3>
+        {/* ── Sticky header ── */}
+        <div className="sticky top-0 bg-white z-10 px-6 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid #E5E5E5" }}>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="shrink-0 text-[11px] px-2.5 py-1 rounded-full font-semibold text-white" style={{ background: "#4f8ef7" }}>{component.type}</span>
+            <span className="text-sm font-medium text-[#444] truncate">{brand}</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[#CCC]"><path d="M4.5 2.5l3 3.5-3 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <span className="text-sm text-[#666] truncate">{component.name}</span>
           </div>
-          <button type="button" onClick={onClose} className="w-8 h-8 rounded-lg border flex items-center justify-center text-[#666] hover:text-[#0A0A0A] transition-colors" style={{ borderColor: "#E5E5E5" }}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+          <button type="button" onClick={onClose} className="shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center text-[#666] hover:text-[#0A0A0A] transition-colors ml-4" style={{ borderColor: "#E5E5E5" }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
         </div>
 
-        <div className="p-6">
-          {/* Image carousel */}
-          <ImageCarousel images={images} name={component.name} type={component.type} />
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center py-24">
+            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.9, ease: "linear" }} className="w-7 h-7 rounded-full border-2 border-[#E5E5E5]" style={{ borderTopColor: "#4f8ef7" }} />
+          </div>
+        ) : (
+          <div className="p-6 flex flex-col gap-8">
 
-          {/* Description */}
-          {description && <p className="text-sm leading-relaxed text-[#333] mb-6">{description}</p>}
+            {/* ── TOP: Image + Info ── */}
+            <div className="flex flex-col md:flex-row gap-6">
+              {/* Left: Image */}
+              <div className="md:w-[42%] shrink-0">
+                <ImageCarousel images={images} name={component.name} type={component.type} tall />
+              </div>
 
-          {/* Specs table */}
-          {specs && Object.keys(specs).length > 0 && (
-            <div className="rounded-xl border overflow-hidden mb-6" style={{ borderColor: "#E5E5E5" }}>
-              <div className="px-4 py-2.5 bg-[#F8F8F8] text-xs font-medium uppercase tracking-wider text-[#666]">{t("specs.title")}</div>
-              {Object.entries(specs).map(([key, value]) => (
-                <div key={key} className="flex justify-between px-4 py-2.5 text-sm border-t" style={{ borderColor: "#F0F0F0" }}>
-                  <span className="text-[#666]">{key}</span>
-                  <span className="font-medium text-[#0A0A0A]">{String(value)}</span>
+              {/* Right: Product info */}
+              <div className="flex-1 flex flex-col justify-between gap-5">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs font-semibold text-[#4f8ef7] uppercase tracking-wide">{brand}</span>
+                    {dbData?.release_year && <span className="text-xs text-[#999] bg-[#F5F5F5] px-2 py-0.5 rounded-full">{dbData.release_year}</span>}
+                  </div>
+                  <h1 className="text-2xl font-bold text-[#0A0A0A] leading-tight mb-3">{component.name}</h1>
+
+                  {/* Key attributes */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {dbData?.socket && <span className="text-xs px-2.5 py-1 rounded-lg bg-[#F0F7FF] text-[#3B70C4] font-medium">Socket {dbData.socket}</span>}
+                    {dbData?.form_factor && <span className="text-xs px-2.5 py-1 rounded-lg bg-[#F5F5F5] text-[#555] font-medium">{dbData.form_factor}</span>}
+                    {dbData?.tdp && <span className="text-xs px-2.5 py-1 rounded-lg bg-[#FFF5F0] text-[#C4621B] font-medium">TDP {dbData.tdp}W</span>}
+                    {dbData?.chipset && <span className="text-xs px-2.5 py-1 rounded-lg bg-[#F0FFF4] text-[#2F855A] font-medium">{dbData.chipset}</span>}
+                  </div>
+
+                  {description && (
+                    <p className="text-sm leading-relaxed text-[#555] line-clamp-4">{description}</p>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
 
-          {/* Manufacturer link */}
-          {mfUrl !== "#" && (
-            <a href={mfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border text-sm font-medium text-[#666] hover:text-[#0A0A0A] hover:border-[#CCC] transition-all" style={{ borderColor: "#E5E5E5" }}>
-              {t("info.manufacturer")} &rarr;
-            </a>
-          )}
-        </div>
+                {/* Price + CTA */}
+                <div className="rounded-2xl p-5" style={{ background: "#F8FAFF", border: "1px solid #E0ECFF" }}>
+                  <p className="text-xs text-[#888] mb-1 uppercase tracking-wide font-medium">Meilleur prix</p>
+                  <div className="flex items-baseline gap-2 mb-4">
+                    <span className="text-4xl font-bold" style={{ color: "#4f8ef7" }}>{displayPrice}</span>
+                    <span className="text-xl font-semibold text-[#4f8ef7]">{currency}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <a
+                      href={bestMerchantUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98]"
+                      style={{ background: "#4f8ef7" }}
+                    >
+                      Voir l&apos;offre →
+                    </a>
+                    {mfUrl !== "#" && (
+                      <a
+                        href={mfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-[#555] hover:text-[#0A0A0A] transition-all"
+                        style={{ border: "1px solid #E5E5E5" }}
+                      >
+                        Site fabricant →
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Price comparison table ── */}
+            <div>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[#888] mb-3">Comparer les prix</h2>
+              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #E5E5E5" }}>
+                {hasPricesInDB ? (
+                  [...dbPrices].sort((a, b) => a.price - b.price).map((p, i) => {
+                    const isLowest = i === 0;
+                    const label = STORE_LABELS[p.site] || p.site;
+                    const href = p.url || buildSearchUrl(p.site, component.name);
+                    return (
+                      <div key={p.id} className={`flex items-center justify-between px-4 py-3 text-sm ${i > 0 ? "border-t" : ""}`} style={{ borderColor: "#F0F0F0", background: isLowest ? "#F0FFF4" : "white" }}>
+                        <div className="flex items-center gap-3">
+                          <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: isLowest ? "#22C55E" : "#CBD5E1" }}>{label[0]}</span>
+                          <span className="font-medium">{label}</span>
+                          {!p.in_stock && <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded-full">Indisponible</span>}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {isLowest && <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">Meilleur prix</span>}
+                          <span className={`tabular-nums font-semibold ${isLowest ? "text-green-700 text-base" : "text-[#0A0A0A]"}`}>{p.price} {p.currency}</span>
+                          <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 rounded-lg font-medium text-white transition-opacity hover:opacity-80" style={{ background: "#4f8ef7" }}>Acheter</a>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  simulatedPrices.map((p, i) => {
+                    const isLowest = p.price === bestSimPrice;
+                    const label = STORE_LABELS[p.storeId] || p.label;
+                    return (
+                      <div key={p.storeId} className={`flex items-center justify-between px-4 py-3 text-sm ${i > 0 ? "border-t" : ""}`} style={{ borderColor: "#F0F0F0", background: isLowest ? "#F0FFF4" : "white" }}>
+                        <div className="flex items-center gap-3">
+                          <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: isLowest ? "#22C55E" : "#CBD5E1" }}>{label[0]}</span>
+                          <span className="font-medium">{label}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {isLowest && <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">Meilleur prix</span>}
+                          <span className={`tabular-nums font-semibold ${isLowest ? "text-green-700 text-base" : "text-[#0A0A0A]"}`}>{p.price} {currency}</span>
+                          <a href={buildSearchUrl(p.storeId, component.name)} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 rounded-lg font-medium text-white transition-opacity hover:opacity-80" style={{ background: "#4f8ef7" }}>Acheter</a>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              {!hasPricesInDB && (
+                <p className="text-[11px] text-[#AAA] italic mt-2 px-1">Prix indicatifs — cliquez pour voir le prix réel sur chaque site.</p>
+              )}
+            </div>
+
+            {/* ── Specs table ── */}
+            {specs && Object.keys(specs).length > 0 && (
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wider text-[#888] mb-3">Fiche technique</h2>
+                <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #E5E5E5" }}>
+                  {Object.entries(specs).map(([key, value], i) => (
+                    <div key={key} className={`flex items-start justify-between px-4 py-3 text-sm ${i > 0 ? "border-t" : ""}`} style={{ borderColor: "#F0F0F0", background: i % 2 === 0 ? "white" : "#FAFAFA" }}>
+                      <span className="text-[#666] w-2/5 shrink-0">{key}</span>
+                      <span className="font-medium text-[#0A0A0A] text-right flex-1">{String(value)}</span>
+                    </div>
+                  ))}
+                  {/* Extra DB fields as specs */}
+                  {dbData?.socket && !specs["Socket"] && (
+                    <div className="flex items-start justify-between px-4 py-3 text-sm border-t" style={{ borderColor: "#F0F0F0", background: Object.keys(specs).length % 2 === 0 ? "white" : "#FAFAFA" }}>
+                      <span className="text-[#666] w-2/5 shrink-0">Socket</span>
+                      <span className="font-medium text-[#0A0A0A] text-right flex-1">{dbData.socket}</span>
+                    </div>
+                  )}
+                  {dbData?.form_factor && !specs["Format"] && (
+                    <div className="flex items-start justify-between px-4 py-3 text-sm border-t" style={{ borderColor: "#F0F0F0" }}>
+                      <span className="text-[#666] w-2/5 shrink-0">Format</span>
+                      <span className="font-medium text-[#0A0A0A] text-right flex-1">{dbData.form_factor}</span>
+                    </div>
+                  )}
+                  {dbData?.tdp && !specs["TDP"] && (
+                    <div className="flex items-start justify-between px-4 py-3 text-sm border-t" style={{ borderColor: "#F0F0F0" }}>
+                      <span className="text-[#666] w-2/5 shrink-0">TDP</span>
+                      <span className="font-medium text-[#0A0A0A] text-right flex-1">{dbData.tdp} W</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── Full description ── */}
+            {description && Object.keys(specs).length > 0 && (
+              <div>
+                <h2 className="text-sm font-bold uppercase tracking-wider text-[#888] mb-3">Description</h2>
+                <p className="text-sm leading-relaxed text-[#444] bg-[#FAFAFA] rounded-xl p-4" style={{ border: "1px solid #F0F0F0" }}>{description}</p>
+              </div>
+            )}
+
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
@@ -862,7 +1052,7 @@ export default function ConfigResult({ config, onReset }: Props) {
         {swapIndex !== null && <AlternativesModal component={components[swapIndex]} allComponents={components} usage={config.config_name} budget={config.total_estimated} market={market} onSelect={(alt) => handleSelectAlternative(swapIndex, alt)} onClose={() => setSwapIndex(null)} />}
       </AnimatePresence>
       <AnimatePresence>
-        {infoIndex !== null && <InfoModal component={components[infoIndex]} onClose={() => setInfoIndex(null)} />}
+        {infoIndex !== null && <InfoModal component={components[infoIndex]} market={market} onClose={() => setInfoIndex(null)} />}
       </AnimatePresence>
       <AnimatePresence>
         {showQuote && <QuoteModal config={config} components={components} market={market} totalFR={totalFR} totalCH={totalCH} onClose={() => setShowQuote(false)} />}
