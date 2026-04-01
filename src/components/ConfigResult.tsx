@@ -188,11 +188,12 @@ function ComponentSVG({ type, size = 80 }: { type: string; size?: number }) {
   );
 }
 
-function ProductImage({ type }: { type: string }) {
+function ProductImage({ type, imageUrl, name }: { type: string; imageUrl?: string; name?: string }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotateX = useTransform(y, [-50, 50], [8, -8]);
   const rotateY = useTransform(x, [-50, 50], [-8, 8]);
+  const [imgError, setImgError] = useState(false);
 
   function handleMouse(e: React.MouseEvent<HTMLDivElement>) {
     const r = e.currentTarget.getBoundingClientRect();
@@ -206,9 +207,14 @@ function ProductImage({ type }: { type: string }) {
       onMouseMove={handleMouse}
       onMouseLeave={handleLeave}
       style={{ rotateX, rotateY, perspective: 600 }}
-      className="w-[80px] h-[80px] rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary shrink-0"
+      className="w-[80px] h-[80px] rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary shrink-0 overflow-hidden"
     >
-      <ComponentSVG type={type} />
+      {imageUrl && !imgError ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={imageUrl} alt={name || type} className="w-full h-full object-contain p-1.5" onError={() => setImgError(true)} />
+      ) : (
+        <ComponentSVG type={type} />
+      )}
     </motion.div>
   );
 }
@@ -979,7 +985,7 @@ function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }:
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1, type: "spring", stiffness: 200, damping: 20 }} className="rounded-xl border border-border bg-card p-5 transition-colors duration-150 hover:border-border-hover">
       <div className="flex gap-4 mb-3">
-        <ProductImage type={component.type} />
+        <ProductImage type={component.type} imageUrl={component.image_url} name={component.name} />
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div>
@@ -1043,41 +1049,102 @@ function PriceRow({ component, changed, t }: { component: Component; index: numb
 
 /* ── Peripherals & Setup Section ── */
 
-const PERIPHERAL_PRODUCTS = [
-  { type: "Moniteur", icon: "🖥️", color: "#3B82F6", bg: "#EFF6FF", items: [
-    { brand: "ASUS", name: "ASUS ROG Swift 27\" 1440p 165Hz", search: "ASUS ROG Swift moniteur gaming 27" },
-    { brand: "Samsung", name: "Samsung Odyssey G5 27\" 1440p 165Hz", search: "Samsung Odyssey G5 27 gaming" },
-    { brand: "LG", name: "LG UltraGear 27\" IPS 1ms", search: "LG UltraGear 27 gaming moniteur" },
-  ]},
-  { type: "Clavier", icon: "⌨️", color: "#8B5CF6", bg: "#F5F3FF", items: [
-    { brand: "Razer", name: "Razer BlackWidow V4", search: "Razer BlackWidow V4 clavier" },
-    { brand: "Corsair", name: "Corsair K70 RGB Pro", search: "Corsair K70 RGB Pro clavier" },
-    { brand: "SteelSeries", name: "SteelSeries Apex Pro", search: "SteelSeries Apex Pro clavier" },
-  ]},
-  { type: "Souris", icon: "🖱️", color: "#10B981", bg: "#ECFDF5", items: [
-    { brand: "Razer", name: "Razer DeathAdder V3", search: "Razer DeathAdder V3" },
-    { brand: "Logitech", name: "Logitech G Pro X Superlight 2", search: "Logitech G Pro X Superlight 2" },
-    { brand: "SteelSeries", name: "SteelSeries Aerox 5", search: "SteelSeries Aerox 5" },
-  ]},
-  { type: "Casque", icon: "🎧", color: "#EF4444", bg: "#FEF2F2", items: [
-    { brand: "SteelSeries", name: "SteelSeries Arctis Nova 7", search: "SteelSeries Arctis Nova 7" },
-    { brand: "Corsair", name: "Corsair HS80 RGB Wireless", search: "Corsair HS80 RGB Wireless" },
-    { brand: "HyperX", name: "HyperX Cloud III Wireless", search: "HyperX Cloud III Wireless" },
-  ]},
-  { type: "Chaise", icon: "🪑", color: "#F59E0B", bg: "#FFFBEB", items: [
-    { brand: "Secretlab", name: "Secretlab Titan Evo 2024", search: "Secretlab Titan Evo chaise gaming" },
-    { brand: "noblechairs", name: "noblechairs HERO", search: "noblechairs HERO chaise" },
-    { brand: "Corsair", name: "Corsair TC200", search: "Corsair TC200 chaise gaming" },
-  ]},
-  { type: "Tapis", icon: "🎯", color: "#6B7280", bg: "#F9FAFB", items: [
-    { brand: "SteelSeries", name: "SteelSeries QcK Heavy XXL", search: "SteelSeries QcK Heavy XXL" },
-    { brand: "Razer", name: "Razer Gigantus V2 XXL", search: "Razer Gigantus V2 XXL" },
-    { brand: "Corsair", name: "Corsair MM700 RGB", search: "Corsair MM700 RGB tapis" },
-  ]},
+const PERIPHERAL_CATEGORIES = [
+  { type: "Moniteur", icon: "🖥️", color: "#3B82F6", bg: "#EFF6FF" },
+  { type: "Clavier", icon: "⌨️", color: "#8B5CF6", bg: "#F5F3FF" },
+  { type: "Souris", icon: "🖱️", color: "#10B981", bg: "#ECFDF5" },
+  { type: "Casque", icon: "🎧", color: "#EF4444", bg: "#FEF2F2" },
+  { type: "Chaise gaming", icon: "🪑", color: "#F59E0B", bg: "#FFFBEB" },
+  { type: "Tapis de souris", icon: "🎯", color: "#6B7280", bg: "#F9FAFB" },
 ];
 
-function PeripheralsSection() {
+function PeripheralCard({ item, color, bg, onInfo }: { item: DBComponent & { component_images?: DBImage[] }; color: string; bg: string; onInfo: () => void }) {
+  const { addItem, items } = useCart();
+  const inCart = items.some((i) => i.name === item.name);
+  const primaryImg = item.component_images?.find((img: DBImage) => img.is_primary) || item.component_images?.[0];
+  const specs = item.specs || {};
+  const topSpecs = Object.entries(specs).slice(0, 2);
+
+  const asComponent: Component = {
+    type: item.type, name: item.name, reason: item.description || "",
+    price_fr: item.price_fr, price_ch: item.price_ch, search_terms: [item.name],
+    priority: "optionnel", image_url: primaryImg?.url, manufacturer_url: item.manufacturer_url,
+    specs: item.specs,
+  };
+
+  return (
+    <div className="rounded-xl border p-3 transition-all duration-150 hover:border-[#CCC] hover:shadow-sm group flex flex-col" style={{ borderColor: "#E5E5E5", background: bg }}>
+      {/* Image */}
+      <div className="w-full h-24 rounded-lg bg-white/60 border border-white/80 flex items-center justify-center mb-2.5 overflow-hidden">
+        {primaryImg ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={primaryImg.url} alt={item.name} className="max-h-full max-w-full object-contain p-2" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+        ) : (
+          <span className="text-3xl opacity-30">📦</span>
+        )}
+      </div>
+
+      {/* Info */}
+      <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color }}>{item.brand}</p>
+      <p className="text-xs font-semibold text-[#333] mt-0.5 leading-snug line-clamp-2">{item.name}</p>
+
+      {/* Key specs */}
+      {topSpecs.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1.5">
+          {topSpecs.map(([k, v]) => (
+            <span key={k} className="text-[9px] px-1.5 py-0.5 rounded bg-white/70 border border-white text-[#666]">{k}: {String(v)}</span>
+          ))}
+        </div>
+      )}
+
+      {/* Price */}
+      <div className="flex items-baseline gap-1 mt-2">
+        <span className="text-lg font-bold" style={{ color: "#4f8ef7" }}>{item.price_ch}</span>
+        <span className="text-xs font-medium text-[#4f8ef7]">CHF</span>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-1.5 mt-2 mt-auto">
+        <button type="button" onClick={onInfo} className="flex-1 text-[10px] py-1.5 rounded-lg border border-[#E5E5E5] text-[#666] hover:border-[#4f8ef7] hover:text-[#4f8ef7] transition-all font-medium">
+          Infos produit
+        </button>
+        <button
+          type="button"
+          onClick={() => !inCart && addItem(asComponent)}
+          className={`flex-1 text-[10px] py-1.5 rounded-lg font-medium transition-all ${inCart ? "bg-green-100 text-green-700 border border-green-200" : "text-white border border-transparent"}`}
+          style={inCart ? {} : { background: "#4f8ef7" }}
+        >
+          {inCart ? "Dans le panier" : "+ Panier"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PeripheralsSection({ onPeripheralInfo }: { onPeripheralInfo: (comp: Component) => void }) {
   const [expanded, setExpanded] = useState(false);
+  const [peripherals, setPeripherals] = useState<Record<string, (DBComponent & { component_images?: DBImage[] })[]>>({});
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!expanded || loaded) return;
+    setLoading(true);
+    Promise.all(
+      PERIPHERAL_CATEGORIES.map((cat) =>
+        fetch(`/api/db-components?type=${encodeURIComponent(cat.type)}`)
+          .then((r) => r.json())
+          .then((data: DBComponent[]) => ({ type: cat.type, items: data }))
+          .catch(() => ({ type: cat.type, items: [] }))
+      )
+    ).then((results) => {
+      const map: Record<string, DBComponent[]> = {};
+      for (const r of results) map[r.type] = r.items;
+      setPeripherals(map);
+      setLoaded(true);
+      setLoading(false);
+    });
+  }, [expanded, loaded]);
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="mb-10">
@@ -1111,34 +1178,46 @@ function PeripheralsSection() {
             transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="overflow-hidden"
           >
-            <div className="flex flex-col gap-4 pt-4">
-              {PERIPHERAL_PRODUCTS.map((cat, ci) => (
-                <motion.div key={cat.type} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: ci * 0.08 }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">{cat.icon}</span>
-                    <span className="text-sm font-bold" style={{ color: cat.color }}>{cat.type}</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {cat.items.map((item) => (
-                      <a
-                        key={item.name}
-                        href={buildSearchUrl("galaxus", item.search)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-lg p-3 border transition-all duration-150 hover:border-[#CCC] hover:shadow-sm group"
-                        style={{ borderColor: "#E5E5E5", background: cat.bg }}
-                      >
-                        <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: cat.color }}>{item.brand}</p>
-                        <p className="text-xs font-medium text-[#333] mt-0.5 leading-snug">{item.name}</p>
-                        <p className="text-[10px] text-[#888] mt-2 group-hover:text-[#4f8ef7] transition-colors">
-                          Voir sur Galaxus →
-                        </p>
-                      </a>
-                    ))}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.9, ease: "linear" }} className="w-6 h-6 rounded-full border-2 border-[#E5E5E5]" style={{ borderTopColor: "#4f8ef7" }} />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-5 pt-4">
+                {PERIPHERAL_CATEGORIES.map((cat, ci) => {
+                  const items = (peripherals[cat.type] || []).slice(0, 4);
+                  if (items.length === 0) return null;
+                  return (
+                    <motion.div key={cat.type} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: ci * 0.08 }}>
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <span className="text-lg">{cat.icon}</span>
+                        <span className="text-sm font-bold" style={{ color: cat.color }}>{cat.type}</span>
+                        <span className="text-[10px] text-[#AAA] ml-1">{items.length} produits</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        {items.map((item) => {
+                          const primaryImg = (item as DBComponent & { component_images?: DBImage[] }).component_images?.find((img: DBImage) => img.is_primary) || (item as DBComponent & { component_images?: DBImage[] }).component_images?.[0];
+                          return (
+                            <PeripheralCard
+                              key={item.name}
+                              item={item as DBComponent & { component_images?: DBImage[] }}
+                              color={cat.color}
+                              bg={cat.bg}
+                              onInfo={() => onPeripheralInfo({
+                                type: item.type, name: item.name, reason: item.description || "",
+                                price_fr: item.price_fr, price_ch: item.price_ch, search_terms: [item.name],
+                                priority: "optionnel", image_url: primaryImg?.url, manufacturer_url: item.manufacturer_url,
+                                specs: item.specs,
+                              })}
+                            />
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -1156,6 +1235,7 @@ export default function ConfigResult({ config, onReset }: Props) {
   const [originals] = useState<Component[]>(config.components);
   const [swapIndex, setSwapIndex] = useState<number | null>(null);
   const [infoIndex, setInfoIndex] = useState<number | null>(null);
+  const [peripheralInfo, setPeripheralInfo] = useState<Component | null>(null);
 
   const totalCH = components.reduce((s, c) => s + c.price_ch, 0);
   const hasChanges = components.some((c, i) => c.name !== originals[i].name);
@@ -1319,7 +1399,7 @@ export default function ConfigResult({ config, onReset }: Props) {
       </div>
 
       {/* Peripherals & Setup */}
-      <PeripheralsSection />
+      <PeripheralsSection onPeripheralInfo={(comp) => setPeripheralInfo(comp)} />
 
       {/* Notes */}
       {(config.compatibility_notes || config.upgrade_path) && (
@@ -1391,6 +1471,9 @@ export default function ConfigResult({ config, onReset }: Props) {
       </AnimatePresence>
       <AnimatePresence>
         {infoIndex !== null && <InfoModal component={components[infoIndex]} allComponents={components} onClose={() => setInfoIndex(null)} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {peripheralInfo !== null && <InfoModal component={peripheralInfo} onClose={() => setPeripheralInfo(null)} />}
       </AnimatePresence>
     </div>
   );
