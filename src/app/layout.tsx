@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { LanguageProvider } from "@/lib/i18n";
+import Providers from "@/components/Providers";
 import Footer from "@/components/Footer";
 import "./globals.css";
 
@@ -29,10 +29,10 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-bg text-text font-sans">
-        <LanguageProvider>
+        <Providers>
           {children}
           <Footer />
-        </LanguageProvider>
+        </Providers>
       </body>
     </html>
   );
