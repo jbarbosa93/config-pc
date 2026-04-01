@@ -4,49 +4,55 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { useLanguage } from "@/lib/i18n";
 import type { PCConfig, Component, Alternative, Market } from "@/lib/types";
-import { buildSearchUrl, searchProduct, getStoreLabel } from "@/lib/affiliates";
+import { buildSearchUrl, getStoreLabel, getSimulatedPrices, getDefaultStoreIds, buildToppreiseUrl, buildIdealoUrl } from "@/lib/affiliates";
 
-function getStoresForMarket(market: Market) {
-  return searchProduct("", market).map((p) => p.store);
-}
+/* ── Manufacturer URL mapping ── */
 
-function storeLabel(id: string): string {
-  return getStoreLabel(id as never);
-}
-
-/* ── Swiss multi-store prices ── */
-
-const CH_STORE_IDS = getStoresForMarket("suisse");
-
-function getSwissPrices(baseCHF: number): { store: string; price: number }[] {
-  return CH_STORE_IDS.map((store, i) => {
-    const variance = ((baseCHF * (i + 7)) % 25) - 8;
-    return { store, price: Math.round(baseCHF + variance) };
-  }).sort((a, b) => a.price - b.price);
-}
-
-/* ── Component type icons ── */
-
-const TYPE_ICONS: Record<string, string> = {
-  CPU: "M9 3v2M15 3v2M9 19v2M15 19v2M3 9h2M3 15h2M19 9h2M19 15h2M7 7h10v10H7V7zM10 10h4v4h-4v-4z",
-  GPU: "M4 6h16v10H4V6zM8 16v2M16 16v2M2 6h2M20 6h2M7 10h2M11 10h2M15 10h2",
-  RAM: "M4 4h16v16H4V4zM8 4v16M12 4v16M16 4v16M4 10h16",
-  "Carte mère": "M4 2h16v20H4V2zM8 6h8v4H8V6zM8 14h3v3H8v-3zM13 14h3v3h-3v-3z",
-  Stockage: "M4 6h16v12H4V6zM4 10h16M8 14h2",
-  SSD: "M4 6h16v12H4V6zM4 10h16M8 14h2",
-  Alimentation: "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
-  "Boîtier": "M6 2h12v20H6V2zM10 18h4M6 6h12",
-  Boitier: "M6 2h12v20H6V2zM10 18h4M6 6h12",
-  Refroidissement: "M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83",
+const MANUFACTURER_URLS: Record<string, string> = {
+  amd: "https://www.amd.com/fr/products",
+  intel: "https://www.intel.fr/content/www/fr/fr/products",
+  nvidia: "https://www.nvidia.com/fr-fr/geforce/",
+  corsair: "https://www.corsair.com/fr/fr/",
+  msi: "https://fr.msi.com/",
+  asus: "https://www.asus.com/fr/",
+  gigabyte: "https://www.gigabyte.com/fr/",
+  "be quiet": "https://www.bequiet.com/fr/",
+  "be quiet!": "https://www.bequiet.com/fr/",
+  noctua: "https://noctua.at/fr/",
+  samsung: "https://www.samsung.com/fr/",
+  "western digital": "https://www.westerndigital.com/fr-fr/",
+  wd: "https://www.westerndigital.com/fr-fr/",
+  seagate: "https://www.seagate.com/fr/fr/",
+  "g.skill": "https://www.gskill.com/",
+  gskill: "https://www.gskill.com/",
+  kingston: "https://www.kingston.com/fr/",
+  "fractal design": "https://www.fractal-design.com/fr/",
+  fractal: "https://www.fractal-design.com/fr/",
+  seasonic: "https://seasonic.com/",
+  "cooler master": "https://www.coolermaster.com/fr-fr/",
+  deepcool: "https://www.deepcool.com/fr/",
+  arctic: "https://www.arctic.de/fr/",
+  "lian li": "https://www.lian-li.com/fr/",
+  evga: "https://www.evga.com/",
+  crucial: "https://www.crucial.fr/",
+  nzxt: "https://nzxt.com/",
 };
+
+function getManufacturerUrl(componentName: string, fallback?: string): string {
+  const lower = componentName.toLowerCase();
+  for (const [brand, url] of Object.entries(MANUFACTURER_URLS)) {
+    if (lower.includes(brand)) return url;
+  }
+  return fallback || "#";
+}
 
 /* ── Product SVG icons ── */
 
-function ComponentSVG({ type }: { type: string }) {
+function ComponentSVG({ type, size = 80 }: { type: string; size?: number }) {
   const key = type.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
   if (key.includes("cpu") || key.includes("processeur")) return (
-    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="20" y="20" width="40" height="40" rx="4" stroke="currentColor" strokeWidth="1.5"/>
       <rect x="28" y="28" width="24" height="24" rx="2" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 2"/>
       <rect x="34" y="34" width="12" height="12" rx="1" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1"/>
@@ -66,7 +72,7 @@ function ComponentSVG({ type }: { type: string }) {
   );
 
   if (key.includes("gpu") || key.includes("graphi") || key.includes("carte graph")) return (
-    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="8" y="22" width="64" height="36" rx="4" stroke="currentColor" strokeWidth="1.5"/>
       <circle cx="28" cy="40" r="10" stroke="currentColor" strokeWidth="1.2"/>
       <circle cx="28" cy="40" r="4" stroke="currentColor" strokeWidth="1" strokeDasharray="2 1.5"/>
@@ -80,7 +86,7 @@ function ComponentSVG({ type }: { type: string }) {
   );
 
   if (key.includes("ram") || key.includes("memoire") || key.includes("memory")) return (
-    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="10" y="24" width="60" height="32" rx="3" stroke="currentColor" strokeWidth="1.5"/>
       <rect x="16" y="30" width="8" height="16" rx="1" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="0.8"/>
       <rect x="28" y="30" width="8" height="16" rx="1" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="0.8"/>
@@ -98,7 +104,7 @@ function ComponentSVG({ type }: { type: string }) {
   );
 
   if (key.includes("ssd") || key.includes("stockage") || key.includes("storage") || key.includes("nvme") || key.includes("m.2")) return (
-    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="14" y="30" width="52" height="20" rx="3" stroke="currentColor" strokeWidth="1.5"/>
       <rect x="20" y="34" width="16" height="12" rx="1.5" fill="currentColor" opacity="0.12" stroke="currentColor" strokeWidth="0.8"/>
       <rect x="42" y="36" width="8" height="8" rx="1" fill="currentColor" opacity="0.08" stroke="currentColor" strokeWidth="0.8"/>
@@ -111,7 +117,7 @@ function ComponentSVG({ type }: { type: string }) {
   );
 
   if (key.includes("carte mere") || key.includes("motherboard")) return (
-    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="14" y="10" width="52" height="60" rx="3" stroke="currentColor" strokeWidth="1.5"/>
       <rect x="22" y="16" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.2"/>
       <rect x="26" y="20" width="12" height="6" rx="1" fill="currentColor" opacity="0.12"/>
@@ -127,7 +133,7 @@ function ComponentSVG({ type }: { type: string }) {
   );
 
   if (key.includes("alimentation") || key.includes("power")) return (
-    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="14" y="18" width="52" height="44" rx="4" stroke="currentColor" strokeWidth="1.5"/>
       <circle cx="40" cy="40" r="14" stroke="currentColor" strokeWidth="1.2"/>
       <path d="M40 30 L40 50" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
@@ -141,7 +147,7 @@ function ComponentSVG({ type }: { type: string }) {
   );
 
   if (key.includes("boitier") || key.includes("boîtier") || key.includes("case") || key.includes("tour")) return (
-    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="20" y="8" width="40" height="64" rx="4" stroke="currentColor" strokeWidth="1.5"/>
       <circle cx="40" cy="24" r="8" stroke="currentColor" strokeWidth="1"/>
       <circle cx="40" cy="24" r="3" stroke="currentColor" strokeWidth="0.8" strokeDasharray="1.5 1"/>
@@ -154,7 +160,7 @@ function ComponentSVG({ type }: { type: string }) {
   );
 
   if (key.includes("refroidissement") || key.includes("cooler") || key.includes("ventil") || key.includes("cooling")) return (
-    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="40" cy="40" r="26" stroke="currentColor" strokeWidth="1.5"/>
       <circle cx="40" cy="40" r="6" stroke="currentColor" strokeWidth="1.2" fill="currentColor" opacity="0.1"/>
       <path d="M40 14 C40 14 44 26 40 34" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
@@ -170,7 +176,7 @@ function ComponentSVG({ type }: { type: string }) {
 
   // Default: generic hardware icon
   return (
-    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="20" y="20" width="40" height="40" rx="4" stroke="currentColor" strokeWidth="1.5"/>
       <rect x="30" y="30" width="20" height="20" rx="2" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="1"/>
       <line x1="30" y1="20" x2="30" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
@@ -222,99 +228,127 @@ function AnimatedPrice({ value, suffix }: { value: number; suffix: string }) {
   return <span className="tabular-nums">{display}{suffix}</span>;
 }
 
-/* ── Toppreise / idealo URL builders ── */
+/* ── Merchant price table with "Voir plus" ── */
 
-function buildCompareUrl(name: string, market: Market): string {
-  const encoded = encodeURIComponent(name).replace(/%20/g, "+");
-  if (market === "france") return `https://www.idealo.fr/prix/${encoded}`;
-  return `https://www.toppreise.ch/browse?q=${encoded}`;
-}
+function MerchantTable({ component, market, t }: { component: Component; market: Market; t: (k: string) => string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isCH = market === "suisse" || market === "both";
+  const basePrice = isCH ? component.price_ch : component.price_fr;
+  const currency = isCH ? "CHF" : "\u20AC";
+  const prices = getSimulatedPrices(basePrice, market);
+  const defaultIds = getDefaultStoreIds(market);
+  const visiblePrices = expanded ? prices : prices.filter((p) => defaultIds.includes(p.storeId)).slice(0, 4);
+  const best = prices[0]?.price;
+  const hasMore = prices.length > 4;
 
-/* ── Stock status badge ── */
-
-function StockBadge({ status, t }: { status?: string; t: (k: string) => string }) {
-  if (!status) return null;
-  const config: Record<string, { color: string; text: string }> = {
-    in_stock: { color: "text-green-600", text: t("stock.in_stock") },
-    variable: { color: "text-orange-500", text: t("stock.variable") },
-    check: { color: "text-red-500", text: t("stock.check") },
-  };
-  const c = config[status];
-  if (!c) return null;
-  const icon = status === "in_stock" ? "\u2713" : status === "variable" ? "~" : "\u26A0";
-  return <span className={`text-[11px] font-medium ${c.color}`}>{icon} {c.text}</span>;
-}
-
-/* ── Specs popover ── */
-
-function SpecsPopover({ specs, t }: { specs?: Record<string, string>; t: (k: string) => string }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    if (open) {
-      document.addEventListener("mousedown", handleClick);
-      return () => document.removeEventListener("mousedown", handleClick);
-    }
-  }, [open]);
-
-  if (!specs || Object.keys(specs).length === 0) return null;
-
-  return (
-    <div ref={ref} className="relative inline-block">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="text-[11px] px-2 py-0.5 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium"
-      >
-        {t("specs.title")} &rarr;
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.15 }}
-            className="absolute left-0 top-full mt-1.5 bg-white border rounded-xl shadow-lg z-50 min-w-[200px] p-3"
-            style={{ borderColor: "#E5E5E5" }}
-          >
-            {Object.entries(specs).map(([key, value]) => (
-              <div key={key} className="flex justify-between gap-4 py-1 text-xs">
-                <span className="text-[#666666] whitespace-nowrap">{key}</span>
-                <span className="font-medium text-[#0A0A0A] text-right">{value}</span>
-              </div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-/* ── Swiss price table with Toppreise links ── */
-
-function SwissPriceTable({ component, t }: { component: Component; t: (k: string) => string }) {
-  const prices = getSwissPrices(component.price_ch);
-  const best = prices[0].price;
-  const toppreiseUrl = buildCompareUrl(component.name, "suisse");
   return (
     <div className="mt-3 rounded-lg border border-border bg-bg overflow-hidden">
-      {prices.map((p) => (
-        <a key={p.store} href={toppreiseUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between px-3 py-2 text-xs border-b border-border last:border-b-0 hover:bg-card transition-colors duration-150">
-          <span className="font-medium">{storeLabel(p.store)}</span>
+      {visiblePrices.map((p) => (
+        <a key={p.storeId} href={buildSearchUrl(p.storeId, component.name)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between px-3 py-2 text-xs border-b border-border last:border-b-0 hover:bg-card transition-colors duration-150">
+          <span className="font-medium">{p.label}</span>
           <span className="flex items-center gap-2">
             {p.price === best && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">{t("result.bestPrice")}</span>}
-            <span className="tabular-nums">{p.price} CHF</span>
+            <span className="tabular-nums">{p.price} {currency}</span>
             <span className="text-[10px] text-text-secondary">{t("compare.see")} &rarr;</span>
           </span>
         </a>
       ))}
-      <p className="px-3 py-1.5 text-[10px] text-text-secondary bg-card/50">{t("compare.note.ch")}</p>
+      {hasMore && (
+        <button type="button" onClick={() => setExpanded((e) => !e)} className="w-full px-3 py-2 text-xs text-text-secondary hover:text-text hover:bg-card/50 transition-colors duration-150 font-medium text-center">
+          {expanded ? "Voir moins \u2191" : `Voir plus \u2193 (${prices.length - 4} sites)`}
+        </button>
+      )}
+      <p className="px-3 py-1.5 text-[10px] text-text-secondary italic bg-card/30">
+        {t("compare.note.dev")}
+      </p>
     </div>
+  );
+}
+
+/* ── Infos Produit Modal ── */
+
+function InfoModal({ component, onClose }: { component: Component; onClose: () => void }) {
+  const { t } = useLanguage();
+  const modalRef = useRef<HTMLDivElement>(null);
+  const [imgFailed, setImgFailed] = useState(false);
+  const manufacturerUrl = getManufacturerUrl(component.name, component.manufacturer_url);
+
+  const handleOutside = useCallback((e: MouseEvent) => {
+    if (modalRef.current && !modalRef.current.contains(e.target as Node)) onClose();
+  }, [onClose]);
+  useEffect(() => { document.addEventListener("mousedown", handleOutside); return () => document.removeEventListener("mousedown", handleOutside); }, [handleOutside]);
+
+  const hasImage = component.image_url && !imgFailed;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+      <motion.div
+        ref={modalRef}
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="bg-white border rounded-2xl w-full max-w-[600px] max-h-[90vh] overflow-y-auto shadow-2xl"
+        style={{ borderColor: "#E5E5E5" }}
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b p-5 rounded-t-2xl flex items-center justify-between z-10" style={{ borderColor: "#E5E5E5" }}>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#0A0A0A] text-white font-medium">{component.type}</span>
+            <h3 className="font-bold text-lg leading-tight">{component.name}</h3>
+          </div>
+          <button type="button" onClick={onClose} className="w-8 h-8 rounded-lg border flex items-center justify-center text-[#666] hover:text-[#0A0A0A] transition-colors" style={{ borderColor: "#E5E5E5" }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+          </button>
+        </div>
+
+        <div className="p-6">
+          {/* Image */}
+          <div className="flex justify-center mb-6">
+            {hasImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={component.image_url}
+                alt={component.name}
+                width={200}
+                height={200}
+                className="w-[200px] h-[200px] object-contain rounded-xl"
+                onError={() => setImgFailed(true)}
+              />
+            ) : (
+              <div className="w-[200px] h-[200px] rounded-xl bg-[#F8F8F8] border flex items-center justify-center" style={{ borderColor: "#E5E5E5" }}>
+                <ComponentSVG type={component.type} size={120} />
+              </div>
+            )}
+          </div>
+
+          {/* Description */}
+          <p className="text-sm leading-relaxed text-[#333] mb-6">
+            {component.full_description || component.reason}
+          </p>
+
+          {/* Specs table */}
+          {component.specs && Object.keys(component.specs).length > 0 && (
+            <div className="rounded-xl border overflow-hidden mb-6" style={{ borderColor: "#E5E5E5" }}>
+              <div className="px-4 py-2.5 bg-[#F8F8F8] text-xs font-medium uppercase tracking-wider text-[#666]">{t("specs.title")}</div>
+              {Object.entries(component.specs).map(([key, value]) => (
+                <div key={key} className="flex justify-between px-4 py-2.5 text-sm border-t" style={{ borderColor: "#F0F0F0" }}>
+                  <span className="text-[#666]">{key}</span>
+                  <span className="font-medium text-[#0A0A0A]">{value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Manufacturer link */}
+          {manufacturerUrl !== "#" && (
+            <a href={manufacturerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border text-sm font-medium text-[#666] hover:text-[#0A0A0A] hover:border-[#CCC] transition-all" style={{ borderColor: "#E5E5E5" }}>
+              {t("info.manufacturer")} &rarr;
+            </a>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -514,13 +548,14 @@ function AlternativesModal({ component, allComponents, usage, budget, market, on
 
 /* ── Component Card ── */
 
-function ComponentCard({ component, original, index, market, onSwap, onRevert }: { component: Component; original: Component | null; index: number; market: Market; onSwap: () => void; onRevert: () => void }) {
+function ComponentCard({ component, original, index, market, onSwap, onRevert, onInfo }: { component: Component; original: Component | null; index: number; market: Market; onSwap: () => void; onRevert: () => void; onInfo: () => void }) {
   const { t } = useLanguage();
   const isEssential = component.priority === "essentiel";
   const isSwapped = original !== null && original.name !== component.name;
   const showFR = market === "france" || market === "both";
   const showCH = market === "suisse" || market === "both";
-  const compareUrl = buildCompareUrl(component.name, market);
+  const isCH = market === "suisse" || market === "both";
+  const compareUrl = isCH ? buildToppreiseUrl(component.name) : buildIdealoUrl(component.name);
 
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1, type: "spring", stiffness: 200, damping: 20 }} className="rounded-xl border border-border bg-card p-5 transition-colors duration-150 hover:border-border-hover">
@@ -529,17 +564,16 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert }:
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] uppercase tracking-wider text-text-secondary font-medium">{component.type}</span>
-                <StockBadge status={component.stock_status} t={t} />
-              </div>
+              <span className="text-[11px] uppercase tracking-wider text-text-secondary font-medium">{component.type}</span>
               <h3 className="font-semibold mt-0.5 leading-tight">{component.name}</h3>
             </div>
             <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: index * 0.1 + 0.3, type: "spring", stiffness: 400 }} className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium shrink-0 ml-2 ${isEssential ? "bg-accent text-white" : "bg-card text-text-secondary border border-border"}`}>{t(`priority.${component.priority}`)}</motion.span>
           </div>
           <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">{component.reason}</p>
           <div className="mt-2">
-            <SpecsPopover specs={component.specs} t={t} />
+            <button type="button" onClick={onInfo} className="text-[11px] px-2 py-0.5 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">
+              {t("info.product")} &rarr;
+            </button>
           </div>
         </div>
       </div>
@@ -549,15 +583,15 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert }:
         {showCH && <div className="flex-1 bg-bg rounded-lg p-2.5 text-center border border-border"><div className="text-[11px] text-text-secondary">{t("result.suisse")}</div><div className="font-semibold mt-0.5">{component.price_ch} CHF</div></div>}
       </div>
 
-      {showCH && !showFR && <SwissPriceTable component={component} t={t} />}
+      {/* Merchant price table */}
+      <MerchantTable component={component} market={market} t={t} />
 
-      {/* Compare prices button — links to Toppreise or idealo */}
-      <a href={compareUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 w-full text-xs py-2.5 rounded-lg border border-border text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150 font-medium">
-        {t("compare.prices")} &rarr;
+      {/* Compare all prices via Toppreise/idealo */}
+      <a href={compareUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 w-full text-xs py-2.5 rounded-lg bg-[#0A0A0A] text-white hover:bg-[#333] transition-all duration-150 font-medium">
+        {"\uD83D\uDD0D"} {t("compare.prices")} &rarr;
       </a>
-      <p className="text-[10px] text-text-secondary mt-1.5 mb-2">{t(showCH && !showFR ? "compare.note.ch" : showFR && !showCH ? "compare.note.fr" : "compare.note.ch")}</p>
 
-      <div className="flex gap-2 mt-2">
+      <div className="flex gap-2 mt-3">
         <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={onSwap} className="flex-1 text-center text-xs py-2 rounded-lg border border-border text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150 font-medium">{t("change")}</motion.button>
         {isSwapped && <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} whileTap={{ scale: 0.97 }} onClick={onRevert} className="text-xs py-2 px-3 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">{t("restore")}</motion.button>}
       </div>
@@ -570,7 +604,8 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert }:
 function PriceRow({ component, changed, market, t }: { component: Component; index: number; changed: boolean; market: Market; t: (k: string) => string }) {
   const showFR = market === "france" || market === "both";
   const showCH = market === "suisse" || market === "both";
-  const compareUrl = buildCompareUrl(component.name, market);
+  const isCH = market === "suisse" || market === "both";
+  const compareUrl = isCH ? buildToppreiseUrl(component.name) : buildIdealoUrl(component.name);
 
   return (
     <tr className="border-b border-border/50 hover:bg-card/50 transition-colors duration-150">
@@ -578,7 +613,6 @@ function PriceRow({ component, changed, market, t }: { component: Component; ind
         <span className="font-medium">{component.type}</span>
         <span className="text-text-secondary ml-2 text-xs">{component.name}</span>
         {changed && <span className="ml-2 text-[10px] text-text-secondary">({t("result.changed")})</span>}
-        <StockBadge status={component.stock_status} t={t} />
       </td>
       {showFR && <td className="text-right py-3 tabular-nums">{component.price_fr}&euro;</td>}
       {showCH && <td className="text-right py-3 tabular-nums">{component.price_ch} CHF</td>}
@@ -598,6 +632,7 @@ export default function ConfigResult({ config, onReset }: Props) {
   const [components, setComponents] = useState<Component[]>(config.components);
   const [originals] = useState<Component[]>(config.components);
   const [swapIndex, setSwapIndex] = useState<number | null>(null);
+  const [infoIndex, setInfoIndex] = useState<number | null>(null);
   const [showQuote, setShowQuote] = useState(false);
 
   const market: Market = config.market || "both";
@@ -637,7 +672,7 @@ export default function ConfigResult({ config, onReset }: Props) {
 
       {/* Components */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-10">
-        {components.map((c, i) => <ComponentCard key={`${c.type}-${i}`} component={c} original={originals[i]} index={i} market={market} onSwap={() => setSwapIndex(i)} onRevert={() => handleRevert(i)} />)}
+        {components.map((c, i) => <ComponentCard key={`${c.type}-${i}`} component={c} original={originals[i]} index={i} market={market} onSwap={() => setSwapIndex(i)} onRevert={() => handleRevert(i)} onInfo={() => setInfoIndex(i)} />)}
       </div>
 
       {/* Notes */}
@@ -689,6 +724,9 @@ export default function ConfigResult({ config, onReset }: Props) {
       {/* Modals */}
       <AnimatePresence>
         {swapIndex !== null && <AlternativesModal component={components[swapIndex]} allComponents={components} usage={config.config_name} budget={config.total_estimated} market={market} onSelect={(alt) => handleSelectAlternative(swapIndex, alt)} onClose={() => setSwapIndex(null)} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {infoIndex !== null && <InfoModal component={components[infoIndex]} onClose={() => setInfoIndex(null)} />}
       </AnimatePresence>
       <AnimatePresence>
         {showQuote && <QuoteModal config={config} components={components} market={market} totalFR={totalFR} totalCH={totalCH} onClose={() => setShowQuote(false)} />}

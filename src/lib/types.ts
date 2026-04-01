@@ -28,6 +28,9 @@ export interface Component {
   priority: "essentiel" | "recommande" | "optionnel";
   stock_status?: StockStatus;
   specs?: ComponentSpecs;
+  image_url?: string;
+  manufacturer_url?: string;
+  full_description?: string;
 }
 
 export interface PCConfig {

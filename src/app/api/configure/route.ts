@@ -25,14 +25,16 @@ Le format de sortie est :
       "type": "CPU | GPU | RAM | Stockage | Carte mère | Alimentation | Boîtier | Refroidissement",
       "name": "string - nom exact du produit tel qu'on le trouve en magasin",
       "reason": "string - justification courte (1 phrase)",
+      "full_description": "string - description complète 2-3 phrases expliquant pourquoi ce composant est idéal pour cet usage",
       "price_fr": number,
       "price_ch": number,
-      "search_terms": ["string - termes de recherche pour trouver le produit"],
+      "search_terms": ["string"],
       "priority": "essentiel | recommande | optionnel",
-      "stock_status": "in_stock | variable | check",
       "specs": {
         "clé": "valeur"
-      }
+      },
+      "image_url": "string - URL directe vers l'image officielle du fabricant pour ce produit exact (ex: image sur amd.com, nvidia.com, corsair.com etc.)",
+      "manufacturer_url": "string - URL de la page officielle du fabricant pour ce produit"
     }
   ],
   "compatibility_notes": "string",
@@ -40,20 +42,24 @@ Le format de sortie est :
   "alternatives": []
 }
 
-RÈGLES POUR stock_status :
-- "in_stock" : composant populaire, généralement disponible partout
-- "variable" : composant très demandé, stock fluctuant
-- "check" : composant rare, récent ou en fin de vie, vérifier avant achat
-
-RÈGLES POUR specs (adapté au type) :
-- CPU: Cores, Fréquence, TDP, Socket, Cache
-- GPU: VRAM, Architecture, TDP, Ports
-- RAM: Fréquence, Latence, Capacité
-- Stockage: Capacité, Interface, Lecture, Écriture
+RÈGLES POUR specs (adapté au type de composant) :
+- CPU: Cores/Threads, Fréquence boost, TDP, Socket, Cache L3
+- GPU: VRAM, Architecture, TDP, Sorties vidéo
+- RAM: Type, Fréquence, Latence CL, Capacité
+- Stockage: Capacité, Interface, Lecture séq., Écriture séq.
 - Carte mère: Socket, Chipset, Format, RAM max
-- Alimentation: Puissance, Certification, Modularité
-- Boîtier: Format, Ventilateurs inclus, Compatibilité GPU
-- Refroidissement: Type, TDP max, Niveau sonore`;
+- Alimentation: Puissance, Certification 80+, Modulaire
+- Boîtier: Format, Emplacements ventilateurs, Fenêtre latérale
+- Refroidissement: Type, TDP supporté, Niveau sonore
+
+RÈGLES POUR image_url :
+- Donne l'URL directe d'une image officielle du fabricant si tu la connais
+- Sinon mets une chaîne vide ""
+
+RÈGLES POUR manufacturer_url :
+- Donne l'URL de la page produit sur le site officiel du fabricant
+- Ex: "https://www.amd.com/fr/products/processors/desktops/ryzen/7000-series/amd-ryzen-5-7600.html"
+- Si tu ne connais pas l'URL exacte, donne la page catégorie du fabricant`;
 
 function buildUserPrompt(config: ConfigRequest): string {
   const usageLabels: Record<string, string> = {
@@ -77,7 +83,7 @@ function buildUserPrompt(config: ConfigRequest): string {
 - Niveau technique : ${config.techLevel}
 - Marché : ${marketLabels[config.market]}
 
-IMPORTANT : Les prix doivent être réalistes et correspondre aux prix de vente réels en Q1 2025. Les prix suisses doivent être 10-20% plus élevés que les prix français. Reste dans le budget de ${config.budget}€. Inclus tous les composants essentiels (CPU, GPU, RAM, stockage, carte mère, alimentation, boîtier, refroidissement). Inclus les specs techniques détaillées et le stock_status pour chaque composant.`;
+IMPORTANT : Les prix doivent être réalistes et correspondre aux prix de vente réels en Q1 2025. Les prix suisses doivent être 10-20% plus élevés que les prix français. Reste dans le budget de ${config.budget}€. Inclus tous les composants essentiels (CPU, GPU, RAM, stockage, carte mère, alimentation, boîtier, refroidissement). Inclus les specs techniques, full_description, image_url et manufacturer_url pour chaque composant.`;
 }
 
 export async function POST(request: NextRequest) {
@@ -86,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     const message = await client.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 3000,
+      max_tokens: 4000,
       messages: [
         {
           role: "user",

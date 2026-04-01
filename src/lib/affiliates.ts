@@ -1,142 +1,101 @@
 import type { Market } from "./types";
 
+/* ── Encode helper ── */
+
+function enc(name: string): string {
+  return encodeURIComponent(name).replace(/%20/g, "+");
+}
+
 /* ── Store configuration ── */
 
-export type StoreId =
-  | "ldlc" | "amazon" | "materielnet" | "cdiscount" | "topachat"
-  | "galaxus" | "digitec" | "brack" | "interdiscount";
+export type StoreId = string;
 
 interface StoreConfig {
-  id: StoreId;
+  id: string;
   label: string;
   market: "fr" | "ch";
   buildSearchUrl: (query: string) => string;
-  // Future: Tradedoubler/Awin affiliate params
   affiliateNetwork?: "tradedoubler" | "awin";
-  affiliateId?: string;
 }
 
 const STORES: StoreConfig[] = [
+  // ── Suisse (17 sites) ──
+  { id: "galaxus", label: "Galaxus", market: "ch", buildSearchUrl: (q) => `https://www.galaxus.ch/search?q=${enc(q)}`, affiliateNetwork: "tradedoubler" },
+  { id: "digitec", label: "Digitec", market: "ch", buildSearchUrl: (q) => `https://www.digitec.ch/search?q=${enc(q)}`, affiliateNetwork: "tradedoubler" },
+  { id: "brack", label: "Brack.ch", market: "ch", buildSearchUrl: (q) => `https://www.brack.ch/search?q=${enc(q)}`, affiliateNetwork: "tradedoubler" },
+  { id: "interdiscount", label: "Interdiscount", market: "ch", buildSearchUrl: (q) => `https://www.interdiscount.ch/fr/search#q=${enc(q)}`, affiliateNetwork: "tradedoubler" },
+  { id: "conrad", label: "Conrad", market: "ch", buildSearchUrl: (q) => `https://www.conrad.ch/fr/search?search=${enc(q)}` },
+  { id: "mediamarkt", label: "MediaMarkt", market: "ch", buildSearchUrl: (q) => `https://www.mediamarkt.ch/fr/search.html?query=${enc(q)}` },
+  { id: "fnac", label: "Fnac Suisse", market: "ch", buildSearchUrl: (q) => `https://www.fnac.ch/SearchResult/ResultSet.aspx?Search=${enc(q)}` },
+  { id: "fust", label: "Fust", market: "ch", buildSearchUrl: (q) => `https://www.fust.ch/fr/search?q=${enc(q)}` },
+  { id: "manor", label: "Manor", market: "ch", buildSearchUrl: (q) => `https://www.manor.ch/fr/search?q=${enc(q)}` },
+  { id: "ackermann", label: "Ackermann", market: "ch", buildSearchUrl: (q) => `https://www.ackermann.ch/search?q=${enc(q)}` },
+  { id: "steg", label: "Steg Electronics", market: "ch", buildSearchUrl: (q) => `https://www.steg-electronics.ch/de/search?q=${enc(q)}` },
+  { id: "joule", label: "Joule Performance", market: "ch", buildSearchUrl: (q) => `https://www.jouleperformance.com/ch_fr/search?q=${enc(q)}` },
+  { id: "highdefinition", label: "Highdefinition", market: "ch", buildSearchUrl: (q) => `https://www.highdefinition.ch/search?q=${enc(q)}` },
+  { id: "freecall24", label: "Freecall24", market: "ch", buildSearchUrl: (q) => `https://www.freecall24.ch/search?q=${enc(q)}` },
+  { id: "jelmoli", label: "Jelmoli", market: "ch", buildSearchUrl: (q) => `https://www.jelmoli-shop.ch/search?q=${enc(q)}` },
+  { id: "ldlc-ch", label: "LDLC Suisse", market: "ch", buildSearchUrl: (q) => `https://www.ldlc.com/fr-ch/recherche/${q.replace(/\s+/g, "+")}/`, affiliateNetwork: "awin" },
+  { id: "amazon-de", label: "Amazon.de", market: "ch", buildSearchUrl: (q) => `https://www.amazon.de/s?k=${enc(q)}` },
   // ── France ──
-  {
-    id: "ldlc",
-    label: "LDLC",
-    market: "fr",
-    buildSearchUrl: (q) => `https://www.ldlc.com/recherche/${q.replace(/\s+/g, "+")}/`,
-    affiliateNetwork: "awin",
-  },
-  {
-    id: "amazon",
-    label: "Amazon.fr",
-    market: "fr",
-    buildSearchUrl: (q) => `https://www.amazon.fr/s?k=${q.replace(/\s+/g, "+")}`,
-  },
-  {
-    id: "materielnet",
-    label: "Matériel.net",
-    market: "fr",
-    buildSearchUrl: (q) => `https://www.materiel.net/recherche/${q.replace(/\s+/g, "+")}/`,
-    affiliateNetwork: "awin",
-  },
-  {
-    id: "cdiscount",
-    label: "Cdiscount",
-    market: "fr",
-    buildSearchUrl: (q) => `https://www.cdiscount.com/search/10/${encodeURIComponent(q)}.html`,
-    affiliateNetwork: "awin",
-  },
-  {
-    id: "topachat",
-    label: "TopAchat",
-    market: "fr",
-    buildSearchUrl: (q) => `https://www.topachat.com/pages/recherche.php?mot=${encodeURIComponent(q)}`,
-  },
-  // ── Suisse ──
-  {
-    id: "galaxus",
-    label: "Galaxus",
-    market: "ch",
-    buildSearchUrl: (q) => `https://www.galaxus.ch/search?q=${q.replace(/\s+/g, "+")}`,
-    affiliateNetwork: "tradedoubler",
-  },
-  {
-    id: "digitec",
-    label: "Digitec",
-    market: "ch",
-    buildSearchUrl: (q) => `https://www.digitec.ch/search?q=${q.replace(/\s+/g, "+")}`,
-    affiliateNetwork: "tradedoubler",
-  },
-  {
-    id: "brack",
-    label: "Brack.ch",
-    market: "ch",
-    buildSearchUrl: (q) => `https://www.brack.ch/search?q=${q.replace(/\s+/g, "+")}`,
-    affiliateNetwork: "tradedoubler",
-  },
-  {
-    id: "interdiscount",
-    label: "Interdiscount",
-    market: "ch",
-    buildSearchUrl: (q) => `https://www.interdiscount.ch/fr/search#q=${q.replace(/\s+/g, "+")}`,
-    affiliateNetwork: "tradedoubler",
-  },
+  { id: "ldlc", label: "LDLC", market: "fr", buildSearchUrl: (q) => `https://www.ldlc.com/recherche/${q.replace(/\s+/g, "+")}/`, affiliateNetwork: "awin" },
+  { id: "amazon", label: "Amazon.fr", market: "fr", buildSearchUrl: (q) => `https://www.amazon.fr/s?k=${enc(q)}` },
+  { id: "materielnet", label: "Matériel.net", market: "fr", buildSearchUrl: (q) => `https://www.materiel.net/recherche/${q.replace(/\s+/g, "+")}/`, affiliateNetwork: "awin" },
+  { id: "cdiscount", label: "Cdiscount", market: "fr", buildSearchUrl: (q) => `https://www.cdiscount.com/search/10/${encodeURIComponent(q)}.html`, affiliateNetwork: "awin" },
+  { id: "topachat", label: "TopAchat", market: "fr", buildSearchUrl: (q) => `https://www.topachat.com/pages/recherche.php?mot=${encodeURIComponent(q)}` },
 ];
+
+/* ── Default visible stores per market (first 4) ── */
+
+const CH_DEFAULT_IDS = ["galaxus", "digitec", "brack", "interdiscount"];
+const FR_DEFAULT_IDS = ["ldlc", "amazon", "materielnet", "cdiscount"];
 
 /* ── Public API ── */
 
 export interface ProductLink {
-  store: StoreId;
+  store: string;
   label: string;
   url: string;
-  // Future: populated from feed
   exactMatch?: boolean;
   affiliateUrl?: string;
   productPrice?: number;
   inStock?: boolean;
 }
 
-/**
- * Search for a product across stores for the given market.
- * Currently returns search URLs. When Tradedoubler/Awin feeds
- * are integrated, this will return exact product links with
- * affiliate tracking and real prices.
- */
-export function searchProduct(name: string, market: Market): ProductLink[] {
-  const stores = STORES.filter((s) => {
-    if (market === "france") return s.market === "fr";
-    if (market === "suisse") return s.market === "ch";
-    return true; // "both"
-  });
-
-  // TODO: When affiliate feeds are available, search the feed first
-  // and only fall back to search URLs if no exact match is found.
-  //
-  // Example future flow:
-  // 1. Search Tradedoubler/Awin product feed by EAN or product name
-  // 2. If exact match found → return affiliate deep link + real price
-  // 3. If no match → return search URL as fallback
-
-  return stores.map((store) => ({
-    store: store.id,
-    label: store.label,
-    url: store.buildSearchUrl(name),
-    exactMatch: false,
-  }));
+export function getStoresForMarket(market: Market): StoreConfig[] {
+  if (market === "france") return STORES.filter((s) => s.market === "fr");
+  if (market === "suisse") return STORES.filter((s) => s.market === "ch");
+  return STORES;
 }
 
-/** Get store IDs for a market */
-export function getStoreIds(market: Market): StoreId[] {
-  return searchProduct("", market).map((p) => p.store);
+export function getDefaultStoreIds(market: Market): string[] {
+  if (market === "france") return FR_DEFAULT_IDS;
+  return CH_DEFAULT_IDS;
 }
 
-/** Get label for a store */
-export function getStoreLabel(storeId: StoreId): string {
+export function getStoreLabel(storeId: string): string {
   return STORES.find((s) => s.id === storeId)?.label ?? storeId;
 }
 
-/** Build a single search URL (backward-compatible helper) */
 export function buildSearchUrl(storeId: string, productName: string): string {
   const store = STORES.find((s) => s.id === storeId);
   if (!store) return "#";
   return store.buildSearchUrl(productName);
+}
+
+export function buildToppreiseUrl(name: string): string {
+  return `https://www.toppreise.ch/browse?q=${enc(name)}`;
+}
+
+export function buildIdealoUrl(name: string): string {
+  return `https://www.idealo.fr/prix/${enc(name)}`;
+}
+
+/** Generate simulated prices for display (sorted ascending) */
+export function getSimulatedPrices(baseCHF: number, market: Market): { storeId: string; label: string; price: number }[] {
+  const stores = getStoresForMarket(market);
+  return stores.map((store, i) => {
+    const variance = ((baseCHF * (i + 7)) % 25) - 8;
+    return { storeId: store.id, label: store.label, price: Math.round(baseCHF + variance) };
+  }).sort((a, b) => a.price - b.price);
 }
