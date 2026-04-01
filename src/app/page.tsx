@@ -83,11 +83,6 @@ function Hero({ onStart }: { onStart: () => void }) {
   return (
     <div className="relative flex-1 flex flex-col">
       <Particles />
-      {/* Top bar */}
-      <div className="relative z-10 flex items-center justify-between px-6 py-4">
-        <Logo size="small" />
-        <LanguageSelector />
-      </div>
       {/* Content */}
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8 px-4 py-1.5 rounded-full border border-border text-text-secondary text-sm">
@@ -137,6 +132,16 @@ export default function Home() {
 
   return (
     <main className="flex-1 flex flex-col min-h-screen">
+      {/* Navbar sticky */}
+      <nav className="sticky top-0 z-[999] bg-white/95 backdrop-blur-sm" style={{ borderBottom: "1px solid #E5E5E5" }}>
+        <div className="max-w-5xl mx-auto flex items-center justify-between px-6" style={{ paddingTop: "16px", paddingBottom: "16px" }}>
+          <button type="button" onClick={reset} className="appearance-none bg-transparent border-none cursor-pointer p-0 flex items-center">
+            <Logo size="small" />
+          </button>
+          <LanguageSelector />
+        </div>
+      </nav>
+
       <AnimatePresence mode="wait">
         {result ? (
           <motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 px-6 py-16">
@@ -144,13 +149,6 @@ export default function Home() {
           </motion.div>
         ) : started ? (
           <motion.div key="configurator" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.35 }} className="flex-1 flex flex-col items-center px-6 py-16">
-            <nav className="w-full max-w-xl flex items-center justify-between mb-16">
-              <motion.button whileHover={{ x: -3 }} onClick={() => setStarted(false)} className="text-text-secondary text-sm hover:text-text transition-colors duration-150">
-                &larr; {t("nav.back")}
-              </motion.button>
-              <Logo size="small" />
-              <LanguageSelector />
-            </nav>
             <ConfiguratorForm onResult={setResult} />
           </motion.div>
         ) : (

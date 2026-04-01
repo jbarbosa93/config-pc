@@ -12,6 +12,12 @@ export interface ConfigRequest {
   market: Market;
 }
 
+export type StockStatus = "in_stock" | "variable" | "check";
+
+export interface ComponentSpecs {
+  [key: string]: string;
+}
+
 export interface Component {
   type: string;
   name: string;
@@ -20,6 +26,8 @@ export interface Component {
   price_ch: number;
   search_terms: string[];
   priority: "essentiel" | "recommande" | "optionnel";
+  stock_status?: StockStatus;
+  specs?: ComponentSpecs;
 }
 
 export interface PCConfig {

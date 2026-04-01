@@ -4,44 +4,22 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { useLanguage } from "@/lib/i18n";
 import type { PCConfig, Component, Alternative, Market } from "@/lib/types";
-
-/* ── Store URLs — exact product name, spaces as + ── */
-
-function buildSearchUrl(store: string, name: string): string {
-  const qPlus = name.replace(/\s+/g, "+");
-  const qDash = name.replace(/\s+/g, "-");
-  const urls: Record<string, string> = {
-    ldlc: `https://www.ldlc.com/recherche/${qPlus}/`,
-    amazon: `https://www.amazon.fr/s?k=${qPlus}`,
-    materielnet: `https://www.materiel.net/recherche/${qPlus}/`,
-    cdiscount: `https://www.cdiscount.com/search/10/${encodeURIComponent(name)}.html`,
-    topachat: `https://www.topachat.com/pages/recherche.php?mot=${encodeURIComponent(name)}`,
-    digitec: `https://www.digitec.ch/search?q=${qPlus}`,
-    galaxus: `https://www.galaxus.ch/search?q=${qPlus}`,
-    brack: `https://www.brack.ch/search/${qDash}`,
-    interdiscount: `https://www.interdiscount.ch/search?q=${qPlus}`,
-  };
-  return urls[store] || "#";
-}
-
-const FR_STORES = ["ldlc", "amazon", "materielnet", "cdiscount", "topachat"];
-const CH_STORES = ["galaxus", "digitec", "brack", "interdiscount"];
-
-const STORE_LABELS: Record<string, string> = {
-  ldlc: "LDLC", amazon: "Amazon.fr", materielnet: "Matériel.net", cdiscount: "Cdiscount", topachat: "TopAchat",
-  digitec: "Digitec", galaxus: "Galaxus", brack: "Brack.ch", interdiscount: "Interdiscount",
-};
+import { buildSearchUrl, searchProduct, getStoreLabel } from "@/lib/affiliates";
 
 function getStoresForMarket(market: Market) {
-  if (market === "france") return FR_STORES;
-  if (market === "suisse") return CH_STORES;
-  return [...FR_STORES.slice(0, 2), ...CH_STORES.slice(0, 2)];
+  return searchProduct("", market).map((p) => p.store);
+}
+
+function storeLabel(id: string): string {
+  return getStoreLabel(id as never);
 }
 
 /* ── Swiss multi-store prices ── */
 
+const CH_STORE_IDS = getStoresForMarket("suisse");
+
 function getSwissPrices(baseCHF: number): { store: string; price: number }[] {
-  return CH_STORES.map((store, i) => {
+  return CH_STORE_IDS.map((store, i) => {
     const variance = ((baseCHF * (i + 7)) % 25) - 8;
     return { store, price: Math.round(baseCHF + variance) };
   }).sort((a, b) => a.price - b.price);
@@ -62,17 +40,149 @@ const TYPE_ICONS: Record<string, string> = {
   Refroidissement: "M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83",
 };
 
-/* ── Product image with Unsplash fallback ── */
+/* ── Product SVG icons ── */
 
-const TYPE_SEARCH: Record<string, string> = {
-  CPU: "cpu,processor", GPU: "graphics-card,gpu", RAM: "ram,memory",
-  Stockage: "ssd,storage", SSD: "ssd,storage", "Carte mère": "motherboard,circuit",
-  Alimentation: "power-supply,computer", "Boîtier": "pc-case,computer-tower",
-  Boitier: "pc-case,computer-tower", Refroidissement: "cpu-cooler,fan",
-};
+function ComponentSVG({ type }: { type: string }) {
+  const key = type.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  if (key.includes("cpu") || key.includes("processeur")) return (
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="20" y="20" width="40" height="40" rx="4" stroke="currentColor" strokeWidth="1.5"/>
+      <rect x="28" y="28" width="24" height="24" rx="2" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 2"/>
+      <rect x="34" y="34" width="12" height="12" rx="1" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="1"/>
+      <line x1="30" y1="20" x2="30" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="40" y1="20" x2="40" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="50" y1="20" x2="50" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="30" y1="60" x2="30" y2="68" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="40" y1="60" x2="40" y2="68" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="50" y1="60" x2="50" y2="68" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="20" y1="30" x2="12" y2="30" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="20" y1="40" x2="12" y2="40" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="20" y1="50" x2="12" y2="50" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="60" y1="30" x2="68" y2="30" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="60" y1="40" x2="68" y2="40" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="60" y1="50" x2="68" y2="50" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+
+  if (key.includes("gpu") || key.includes("graphi") || key.includes("carte graph")) return (
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="8" y="22" width="64" height="36" rx="4" stroke="currentColor" strokeWidth="1.5"/>
+      <circle cx="28" cy="40" r="10" stroke="currentColor" strokeWidth="1.2"/>
+      <circle cx="28" cy="40" r="4" stroke="currentColor" strokeWidth="1" strokeDasharray="2 1.5"/>
+      <circle cx="54" cy="40" r="10" stroke="currentColor" strokeWidth="1.2"/>
+      <circle cx="54" cy="40" r="4" stroke="currentColor" strokeWidth="1" strokeDasharray="2 1.5"/>
+      <line x1="18" y1="58" x2="18" y2="66" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="28" y1="58" x2="28" y2="66" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="38" y1="58" x2="38" y2="66" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <rect x="8" y="18" width="20" height="4" rx="1" fill="currentColor" opacity="0.15" stroke="currentColor" strokeWidth="0.8"/>
+    </svg>
+  );
+
+  if (key.includes("ram") || key.includes("memoire") || key.includes("memory")) return (
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="10" y="24" width="60" height="32" rx="3" stroke="currentColor" strokeWidth="1.5"/>
+      <rect x="16" y="30" width="8" height="16" rx="1" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="0.8"/>
+      <rect x="28" y="30" width="8" height="16" rx="1" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="0.8"/>
+      <rect x="40" y="30" width="8" height="16" rx="1" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="0.8"/>
+      <rect x="52" y="30" width="8" height="16" rx="1" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="0.8"/>
+      <line x1="16" y1="56" x2="16" y2="62" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      <line x1="24" y1="56" x2="24" y2="62" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      <line x1="32" y1="56" x2="32" y2="62" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      <line x1="40" y1="56" x2="40" y2="62" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      <line x1="48" y1="56" x2="48" y2="62" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      <line x1="56" y1="56" x2="56" y2="62" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      <line x1="64" y1="56" x2="64" y2="62" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      <rect x="10" y="20" width="10" height="4" rx="1" stroke="currentColor" strokeWidth="0.8"/>
+    </svg>
+  );
+
+  if (key.includes("ssd") || key.includes("stockage") || key.includes("storage") || key.includes("nvme") || key.includes("m.2")) return (
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="14" y="30" width="52" height="20" rx="3" stroke="currentColor" strokeWidth="1.5"/>
+      <rect x="20" y="34" width="16" height="12" rx="1.5" fill="currentColor" opacity="0.12" stroke="currentColor" strokeWidth="0.8"/>
+      <rect x="42" y="36" width="8" height="8" rx="1" fill="currentColor" opacity="0.08" stroke="currentColor" strokeWidth="0.8"/>
+      <circle cx="56" cy="40" r="3" stroke="currentColor" strokeWidth="0.8"/>
+      <line x1="14" y1="50" x2="14" y2="56" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      <line x1="20" y1="50" x2="20" y2="56" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M24 34 L30 34 L30 38" stroke="currentColor" strokeWidth="0.6" opacity="0.4"/>
+      <path d="M22 42 L32 42" stroke="currentColor" strokeWidth="0.6" opacity="0.4"/>
+    </svg>
+  );
+
+  if (key.includes("carte mere") || key.includes("motherboard")) return (
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="14" y="10" width="52" height="60" rx="3" stroke="currentColor" strokeWidth="1.5"/>
+      <rect x="22" y="16" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.2"/>
+      <rect x="26" y="20" width="12" height="6" rx="1" fill="currentColor" opacity="0.12"/>
+      <rect x="22" y="38" width="10" height="8" rx="1" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="0.8"/>
+      <rect x="36" y="38" width="10" height="8" rx="1" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="0.8"/>
+      <rect x="22" y="52" width="24" height="10" rx="1.5" stroke="currentColor" strokeWidth="0.8" strokeDasharray="2 1.5"/>
+      <circle cx="54" cy="20" r="3" stroke="currentColor" strokeWidth="0.8"/>
+      <circle cx="54" cy="32" r="3" stroke="currentColor" strokeWidth="0.8"/>
+      <line x1="50" y1="42" x2="58" y2="42" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round"/>
+      <line x1="50" y1="46" x2="58" y2="46" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round"/>
+      <line x1="50" y1="50" x2="58" y2="50" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round"/>
+    </svg>
+  );
+
+  if (key.includes("alimentation") || key.includes("power")) return (
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="14" y="18" width="52" height="44" rx="4" stroke="currentColor" strokeWidth="1.5"/>
+      <circle cx="40" cy="40" r="14" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M40 30 L40 50" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M30 40 L50 40" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+      <circle cx="40" cy="40" r="4" stroke="currentColor" strokeWidth="0.8" fill="currentColor" opacity="0.1"/>
+      <rect x="14" y="62" width="8" height="4" rx="1" stroke="currentColor" strokeWidth="0.8"/>
+      <line x1="58" y1="24" x2="58" y2="28" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <circle cx="22" cy="24" r="1.5" fill="currentColor" opacity="0.3"/>
+      <rect x="56" y="34" width="4" height="12" rx="1" stroke="currentColor" strokeWidth="0.6" opacity="0.4"/>
+    </svg>
+  );
+
+  if (key.includes("boitier") || key.includes("boîtier") || key.includes("case") || key.includes("tour")) return (
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="20" y="8" width="40" height="64" rx="4" stroke="currentColor" strokeWidth="1.5"/>
+      <circle cx="40" cy="24" r="8" stroke="currentColor" strokeWidth="1"/>
+      <circle cx="40" cy="24" r="3" stroke="currentColor" strokeWidth="0.8" strokeDasharray="1.5 1"/>
+      <line x1="28" y1="38" x2="52" y2="38" stroke="currentColor" strokeWidth="0.8" opacity="0.4"/>
+      <rect x="28" y="44" width="24" height="4" rx="1" fill="currentColor" opacity="0.08" stroke="currentColor" strokeWidth="0.6"/>
+      <rect x="28" y="52" width="24" height="4" rx="1" fill="currentColor" opacity="0.08" stroke="currentColor" strokeWidth="0.6"/>
+      <circle cx="40" cy="66" r="2" stroke="currentColor" strokeWidth="1"/>
+      <circle cx="26" cy="14" r="1" fill="currentColor" opacity="0.3"/>
+    </svg>
+  );
+
+  if (key.includes("refroidissement") || key.includes("cooler") || key.includes("ventil") || key.includes("cooling")) return (
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="40" cy="40" r="26" stroke="currentColor" strokeWidth="1.5"/>
+      <circle cx="40" cy="40" r="6" stroke="currentColor" strokeWidth="1.2" fill="currentColor" opacity="0.1"/>
+      <path d="M40 14 C40 14 44 26 40 34" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M40 66 C40 66 36 54 40 46" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M14 40 C14 40 26 36 34 40" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M66 40 C66 40 54 44 46 40" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M21.6 21.6 C21.6 21.6 31 27 35.2 35.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M58.4 58.4 C58.4 58.4 49 53 44.8 44.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M58.4 21.6 C58.4 21.6 53 31 44.8 35.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M21.6 58.4 C21.6 58.4 27 49 35.2 44.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+
+  // Default: generic hardware icon
+  return (
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="20" y="20" width="40" height="40" rx="4" stroke="currentColor" strokeWidth="1.5"/>
+      <rect x="30" y="30" width="20" height="20" rx="2" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="1"/>
+      <line x1="30" y1="20" x2="30" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="40" y1="20" x2="40" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="50" y1="20" x2="50" y2="12" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="30" y1="60" x2="30" y2="68" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <line x1="50" y1="60" x2="50" y2="68" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  );
+}
 
 function ProductImage({ type }: { type: string }) {
-  const [failed, setFailed] = useState(false);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotateX = useTransform(y, [-50, 50], [8, -8]);
@@ -85,29 +195,14 @@ function ProductImage({ type }: { type: string }) {
   }
   function handleLeave() { x.set(0); y.set(0); }
 
-  const search = TYPE_SEARCH[type] || "computer,hardware";
-  const d = TYPE_ICONS[type] || TYPE_ICONS["CPU"];
-
   return (
     <motion.div
       onMouseMove={handleMouse}
       onMouseLeave={handleLeave}
       style={{ rotateX, rotateY, perspective: 600 }}
-      className="w-[100px] h-[100px] rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary shrink-0 overflow-hidden"
+      className="w-[80px] h-[80px] rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary shrink-0"
     >
-      {!failed ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={`https://source.unsplash.com/120x120/?${search}`}
-          alt={type}
-          width={100}
-          height={100}
-          className="w-full h-full object-cover"
-          onError={() => setFailed(true)}
-        />
-      ) : (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
-      )}
+      <ComponentSVG type={type} />
     </motion.div>
   );
 }
@@ -127,22 +222,98 @@ function AnimatedPrice({ value, suffix }: { value: number; suffix: string }) {
   return <span className="tabular-nums">{display}{suffix}</span>;
 }
 
-/* ── Swiss price table — badge BEFORE price ── */
+/* ── Toppreise / idealo URL builders ── */
+
+function buildCompareUrl(name: string, market: Market): string {
+  const encoded = encodeURIComponent(name).replace(/%20/g, "+");
+  if (market === "france") return `https://www.idealo.fr/prix/${encoded}`;
+  return `https://www.toppreise.ch/browse?q=${encoded}`;
+}
+
+/* ── Stock status badge ── */
+
+function StockBadge({ status, t }: { status?: string; t: (k: string) => string }) {
+  if (!status) return null;
+  const config: Record<string, { color: string; text: string }> = {
+    in_stock: { color: "text-green-600", text: t("stock.in_stock") },
+    variable: { color: "text-orange-500", text: t("stock.variable") },
+    check: { color: "text-red-500", text: t("stock.check") },
+  };
+  const c = config[status];
+  if (!c) return null;
+  const icon = status === "in_stock" ? "\u2713" : status === "variable" ? "~" : "\u26A0";
+  return <span className={`text-[11px] font-medium ${c.color}`}>{icon} {c.text}</span>;
+}
+
+/* ── Specs popover ── */
+
+function SpecsPopover({ specs, t }: { specs?: Record<string, string>; t: (k: string) => string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClick);
+      return () => document.removeEventListener("mousedown", handleClick);
+    }
+  }, [open]);
+
+  if (!specs || Object.keys(specs).length === 0) return null;
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="text-[11px] px-2 py-0.5 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium"
+      >
+        {t("specs.title")} &rarr;
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.15 }}
+            className="absolute left-0 top-full mt-1.5 bg-white border rounded-xl shadow-lg z-50 min-w-[200px] p-3"
+            style={{ borderColor: "#E5E5E5" }}
+          >
+            {Object.entries(specs).map(([key, value]) => (
+              <div key={key} className="flex justify-between gap-4 py-1 text-xs">
+                <span className="text-[#666666] whitespace-nowrap">{key}</span>
+                <span className="font-medium text-[#0A0A0A] text-right">{value}</span>
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ── Swiss price table with Toppreise links ── */
 
 function SwissPriceTable({ component, t }: { component: Component; t: (k: string) => string }) {
   const prices = getSwissPrices(component.price_ch);
   const best = prices[0].price;
+  const toppreiseUrl = buildCompareUrl(component.name, "suisse");
   return (
     <div className="mt-3 rounded-lg border border-border bg-bg overflow-hidden">
       {prices.map((p) => (
-        <a key={p.store} href={buildSearchUrl(p.store, component.name)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between px-3 py-2 text-xs border-b border-border last:border-b-0 hover:bg-card transition-colors duration-150">
-          <span className="font-medium">{STORE_LABELS[p.store]}</span>
+        <a key={p.store} href={toppreiseUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between px-3 py-2 text-xs border-b border-border last:border-b-0 hover:bg-card transition-colors duration-150">
+          <span className="font-medium">{storeLabel(p.store)}</span>
           <span className="flex items-center gap-2">
             {p.price === best && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">{t("result.bestPrice")}</span>}
             <span className="tabular-nums">{p.price} CHF</span>
+            <span className="text-[10px] text-text-secondary">{t("compare.see")} &rarr;</span>
           </span>
         </a>
       ))}
+      <p className="px-3 py-1.5 text-[10px] text-text-secondary bg-card/50">{t("compare.note.ch")}</p>
     </div>
   );
 }
@@ -349,7 +520,7 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert }:
   const isSwapped = original !== null && original.name !== component.name;
   const showFR = market === "france" || market === "both";
   const showCH = market === "suisse" || market === "both";
-  const stores = getStoresForMarket(market);
+  const compareUrl = buildCompareUrl(component.name, market);
 
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1, type: "spring", stiffness: 200, damping: 20 }} className="rounded-xl border border-border bg-card p-5 transition-colors duration-150 hover:border-border-hover">
@@ -358,12 +529,18 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert }:
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[11px] uppercase tracking-wider text-text-secondary font-medium">{component.type}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] uppercase tracking-wider text-text-secondary font-medium">{component.type}</span>
+                <StockBadge status={component.stock_status} t={t} />
+              </div>
               <h3 className="font-semibold mt-0.5 leading-tight">{component.name}</h3>
             </div>
             <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: index * 0.1 + 0.3, type: "spring", stiffness: 400 }} className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium shrink-0 ml-2 ${isEssential ? "bg-accent text-white" : "bg-card text-text-secondary border border-border"}`}>{t(`priority.${component.priority}`)}</motion.span>
           </div>
           <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">{component.reason}</p>
+          <div className="mt-2">
+            <SpecsPopover specs={component.specs} t={t} />
+          </div>
         </div>
       </div>
 
@@ -371,19 +548,16 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert }:
         {showFR && <div className="flex-1 bg-bg rounded-lg p-2.5 text-center border border-border"><div className="text-[11px] text-text-secondary">{t("result.france")}</div><div className="font-semibold mt-0.5">{component.price_fr}&euro;</div></div>}
         {showCH && <div className="flex-1 bg-bg rounded-lg p-2.5 text-center border border-border"><div className="text-[11px] text-text-secondary">{t("result.suisse")}</div><div className="font-semibold mt-0.5">{component.price_ch} CHF</div></div>}
       </div>
-      <p className="text-[10px] text-text-secondary mb-3">{t("result.priceNote")}</p>
 
       {showCH && !showFR && <SwissPriceTable component={component} t={t} />}
 
-      <div className="flex gap-2 mb-2 flex-wrap">
-        {stores.map((s) => (
-          <a key={s} href={buildSearchUrl(s, component.name)} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[60px] text-center text-xs py-2 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">
-            {STORE_LABELS[s]} &rarr;
-          </a>
-        ))}
-      </div>
+      {/* Compare prices button — links to Toppreise or idealo */}
+      <a href={compareUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 w-full text-xs py-2.5 rounded-lg border border-border text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150 font-medium">
+        {t("compare.prices")} &rarr;
+      </a>
+      <p className="text-[10px] text-text-secondary mt-1.5 mb-2">{t(showCH && !showFR ? "compare.note.ch" : showFR && !showCH ? "compare.note.fr" : "compare.note.ch")}</p>
 
-      <div className="flex gap-2 mt-3">
+      <div className="flex gap-2 mt-2">
         <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={onSwap} className="flex-1 text-center text-xs py-2 rounded-lg border border-border text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150 font-medium">{t("change")}</motion.button>
         {isSwapped && <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} whileTap={{ scale: 0.97 }} onClick={onRevert} className="text-xs py-2 px-3 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">{t("restore")}</motion.button>}
       </div>
@@ -394,37 +568,24 @@ function ComponentCard({ component, original, index, market, onSwap, onRevert }:
 /* ── Expandable Price Row ── */
 
 function PriceRow({ component, changed, market, t }: { component: Component; index: number; changed: boolean; market: Market; t: (k: string) => string }) {
-  const [expanded, setExpanded] = useState(false);
   const showFR = market === "france" || market === "both";
   const showCH = market === "suisse" || market === "both";
-  const stores = [...(showFR ? FR_STORES : []), ...(showCH ? CH_STORES : [])];
+  const compareUrl = buildCompareUrl(component.name, market);
 
   return (
-    <>
-      <tr className="border-b border-border/50 cursor-pointer hover:bg-card/50 transition-colors duration-150" onClick={() => setExpanded(!expanded)}>
-        <td className="py-3">
-          <span className="font-medium">{component.type}</span>
-          <span className="text-text-secondary ml-2 text-xs">{component.name}</span>
-          {changed && <span className="ml-2 text-[10px] text-text-secondary">({t("result.changed")})</span>}
-          <svg className={`inline ml-1.5 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-        </td>
-        {showFR && <td className="text-right py-3 tabular-nums">{component.price_fr}&euro;</td>}
-        {showCH && <td className="text-right py-3 tabular-nums">{component.price_ch} CHF</td>}
-      </tr>
-      <AnimatePresence>
-        {expanded && (
-          <motion.tr initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
-            <td colSpan={1 + (showFR ? 1 : 0) + (showCH ? 1 : 0)} className="pb-3 pt-1">
-              <div className="flex flex-wrap gap-1.5">
-                {stores.map((s) => (
-                  <a key={s} href={buildSearchUrl(s, component.name)} target="_blank" rel="noopener noreferrer" className="text-[11px] px-2.5 py-1 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">{STORE_LABELS[s]} &rarr;</a>
-                ))}
-              </div>
-            </td>
-          </motion.tr>
-        )}
-      </AnimatePresence>
-    </>
+    <tr className="border-b border-border/50 hover:bg-card/50 transition-colors duration-150">
+      <td className="py-3">
+        <span className="font-medium">{component.type}</span>
+        <span className="text-text-secondary ml-2 text-xs">{component.name}</span>
+        {changed && <span className="ml-2 text-[10px] text-text-secondary">({t("result.changed")})</span>}
+        <StockBadge status={component.stock_status} t={t} />
+      </td>
+      {showFR && <td className="text-right py-3 tabular-nums">{component.price_fr}&euro;</td>}
+      {showCH && <td className="text-right py-3 tabular-nums">{component.price_ch} CHF</td>}
+      <td className="text-right py-3">
+        <a href={compareUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] px-2 py-1 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">{t("compare.see")} &rarr;</a>
+      </td>
+    </tr>
   );
 }
 
@@ -496,6 +657,7 @@ export default function ConfigResult({ config, onReset }: Props) {
               <th className="text-left py-2 font-medium">{t("result.component")}</th>
               {showFR && <th className="text-right py-2 font-medium">FR</th>}
               {showCH && <th className="text-right py-2 font-medium">CH</th>}
+              <th className="text-right py-2 font-medium w-16"></th>
             </tr>
           </thead>
           <tbody>
@@ -506,6 +668,7 @@ export default function ConfigResult({ config, onReset }: Props) {
               <td className="pt-4">{t("result.total")}</td>
               {showFR && <td className="text-right pt-4">{totalFR}&euro;</td>}
               {showCH && <td className="text-right pt-4">{totalCH} CHF</td>}
+              <td></td>
             </tr>
           </tfoot>
         </table>

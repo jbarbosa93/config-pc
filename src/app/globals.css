@@ -97,6 +97,16 @@ input[type="range"]::-moz-range-thumb {
   animation: fade-in 0.3s ease-out;
 }
 
+/* Spin animation for cooling fan SVG */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+  transform-origin: center;
+}
+
 /* Particles canvas */
 .particles-canvas {
   position: fixed;

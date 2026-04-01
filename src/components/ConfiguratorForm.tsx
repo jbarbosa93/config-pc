@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useLanguage } from "@/lib/i18n";
@@ -40,7 +40,14 @@ const BUDGET_PRESETS: { key: string; emoji: string; value: number; badgeKey?: st
   { key: "budget.enthusiast", emoji: "\u{1F451}", value: 3500 },
 ];
 
-const LOADING_EMOJIS = ["\u{1F50D}", "\u{1F9E0}", "\u26A1", "\u{1F527}", "\u2705"];
+const LOADING_MESSAGES = [
+  "loading.0", // "Analyse de ton budget..."
+  "loading.1", // "Sélection des composants optimaux..."
+  "loading.2", // "Vérification des compatibilités..."
+  "loading.3", // "Comparaison des prix Suisse & France..."
+  "loading.4", // "Optimisation du rapport qualité/prix..."
+  "loading.5", // "Config prête !"
+];
 
 const slideVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 80 : -80, opacity: 0, scale: 0.97 }),
@@ -48,27 +55,44 @@ const slideVariants = {
   exit: (dir: number) => ({ x: dir < 0 ? 80 : -80, opacity: 0, scale: 0.97 }),
 };
 
-function LoadingOverlay({ step, t }: { step: number; t: (k: string) => string }) {
-  const progress = Math.min(((step + 1) / 5) * 100, 95);
+/* ── Loading Overlay with 3-phase progress ── */
+
+function LoadingOverlay({ progress, messageIndex, t }: {
+  progress: number;
+  messageIndex: number;
+  t: (k: string) => string;
+}) {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-white/95 flex flex-col items-center justify-center px-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }} className="text-center mb-8">
-          <span className="text-5xl">{LOADING_EMOJIS[step]}</span>
+          <span className="text-5xl">{progress < 100 ? "\u26A1" : "\u2705"}</span>
         </motion.div>
         <AnimatePresence mode="wait">
-          <motion.p key={step} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="text-center font-medium text-lg mb-8">
-            {t(`loading.${step}`)}
+          <motion.p
+            key={messageIndex}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="text-center font-medium text-lg mb-8"
+          >
+            {t(LOADING_MESSAGES[messageIndex] ?? LOADING_MESSAGES[0])}
           </motion.p>
         </AnimatePresence>
-        <div className="h-1.5 bg-border rounded-full overflow-hidden mb-3">
-          <motion.div className="h-full bg-accent rounded-full" initial={{ width: "0%" }} animate={{ width: `${progress}%` }} transition={{ duration: 1.8, ease: "easeOut" }} />
+        <div className="h-1.5 bg-[#E5E5E5] rounded-full overflow-hidden mb-3">
+          <motion.div
+            className="h-full bg-[#0A0A0A] rounded-full"
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          />
         </div>
-        <p className="text-center text-xs text-text-secondary">{t("loading.step")} {step + 1} {t("loading.of")} 5</p>
+        <p className="text-center text-xs text-[#666666]">{Math.round(progress)}%</p>
       </div>
     </motion.div>
   );
 }
+
+/* ── Main Form ── */
 
 interface Props { onResult: (config: PCConfig) => void; }
 
@@ -77,7 +101,8 @@ export default function ConfiguratorForm({ onResult }: Props) {
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [messageIndex, setMessageIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const [usage, setUsage] = useState<Usage | null>(null);
@@ -87,26 +112,59 @@ export default function ConfiguratorForm({ onResult }: Props) {
   const [techLevel, setTechLevel] = useState<TechLevel>("intermediaire");
   const [market, setMarket] = useState<Market>("france");
 
-  const loadingRef = useRef<NodeJS.Timeout | null>(null);
+  const phase1Ref = useRef<NodeJS.Timeout | null>(null);
+  const phase2Ref = useRef<NodeJS.Timeout | null>(null);
+  const msgRef = useRef<NodeJS.Timeout | null>(null);
   const totalSteps = 4;
   const canNext = (step === 0 && usage !== null) || (step === 1 && budget >= 300) || step === 2 || step === 3;
 
   function nextStep() { setDirection(1); setStep((s) => s + 1); }
   function prevStep() { setDirection(-1); setStep((s) => s - 1); }
 
-  useEffect(() => {
-    if (loading) {
-      setLoadingStep(0);
-      loadingRef.current = setInterval(() => setLoadingStep((m) => m < 4 ? m + 1 : m), 2000);
-    } else if (loadingRef.current) clearInterval(loadingRef.current);
-    return () => { if (loadingRef.current) clearInterval(loadingRef.current); };
-  }, [loading]);
+  const clearTimers = useCallback(() => {
+    if (phase1Ref.current) clearInterval(phase1Ref.current);
+    if (phase2Ref.current) clearInterval(phase2Ref.current);
+    if (msgRef.current) clearInterval(msgRef.current);
+  }, []);
+
+  useEffect(() => () => clearTimers(), [clearTimers]);
 
   async function handleSubmit() {
     if (!usage) return;
     setLoading(true);
     setError(null);
+    setProgress(0);
+    setMessageIndex(0);
+
+    // Phase 1: 0% → 60% in 2 seconds
+    let p = 0;
+    phase1Ref.current = setInterval(() => {
+      p = Math.min(p + 3, 60);
+      setProgress(p);
+      if (p >= 60 && phase1Ref.current) clearInterval(phase1Ref.current);
+    }, 100);
+
+    // Message rotation every 2.5 seconds
+    let msg = 0;
+    msgRef.current = setInterval(() => {
+      msg = Math.min(msg + 1, 4);
+      setMessageIndex(msg);
+    }, 2500);
+
     try {
+      // Phase 2: 60% → 90% during API call (starts after phase 1)
+      const phase2Start = setTimeout(() => {
+        phase2Ref.current = setInterval(() => {
+          setProgress((prev) => {
+            if (prev >= 90) {
+              if (phase2Ref.current) clearInterval(phase2Ref.current);
+              return 90;
+            }
+            return prev + 0.5;
+          });
+        }, 200);
+      }, 2000);
+
       const res = await fetch("/api/configure", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -115,16 +173,29 @@ export default function ConfiguratorForm({ onResult }: Props) {
       if (!res.ok) throw new Error();
       const data = await res.json();
       data.market = market;
-      setLoadingStep(4);
-      await new Promise((r) => setTimeout(r, 800));
+
+      // Phase 3: Response received → jump to 100%
+      clearTimeout(phase2Start);
+      clearTimers();
+      setProgress(100);
+      setMessageIndex(5); // "Config prête !"
+
+      // Wait 600ms then show results
+      await new Promise((r) => setTimeout(r, 600));
       confetti({ particleCount: 80, spread: 70, origin: { y: 0.7 }, colors: ["#0A0A0A", "#666666", "#E5E5E5"] });
       setTimeout(() => { setLoading(false); onResult(data); }, 400);
-    } catch { setLoading(false); setError(t("error.generate")); }
+    } catch {
+      clearTimers();
+      setLoading(false);
+      setError(t("error.generate"));
+    }
   }
 
   return (
     <>
-      <AnimatePresence>{loading && <LoadingOverlay step={loadingStep} t={t} />}</AnimatePresence>
+      <AnimatePresence>
+        {loading && <LoadingOverlay progress={progress} messageIndex={messageIndex} t={t} />}
+      </AnimatePresence>
 
       <div className="w-full max-w-lg mx-auto">
         {/* Progress */}

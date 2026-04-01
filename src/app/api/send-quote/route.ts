@@ -1,7 +1,15 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import { NextRequest, NextResponse } from "next/server";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  host: "mail.infomaniak.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
 interface QuoteRequest {
   firstName: string;
@@ -78,18 +86,20 @@ Cordialement,
 L'équipe ConfigPC.ch
     `.trim();
 
+    const from = `ConfigPC.ch <${process.env.SMTP_USER}>`;
+
     // Email au client
-    await resend.emails.send({
-      from: "ConfigPC.ch <onboarding@resend.dev>",
+    await transporter.sendMail({
+      from,
       to: body.email,
       subject: `Votre devis ConfigPC.ch — ${body.configName}`,
       text: emailBody,
     });
 
     // Copie interne
-    await resend.emails.send({
-      from: "ConfigPC.ch <onboarding@resend.dev>",
-      to: "j.barbosa@config-pc.ch",
+    await transporter.sendMail({
+      from,
+      to: process.env.SMTP_USER!,
       subject: `[NOUVEAU DEVIS] ${body.configName} — ${body.firstName} ${body.lastName}`,
       text: `Nouveau devis reçu de ${body.firstName} ${body.lastName} (${body.email})\n\n${emailBody}`,
     });

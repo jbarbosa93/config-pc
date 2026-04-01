@@ -7,20 +7,20 @@ export default function LanguageSelector() {
   const { lang, setLang } = useLanguage();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const current = LANGUAGES.find((l) => l.code === lang) || LANGUAGES[0];
+
+  const current = LANGUAGES.find((l) => l.code === lang) ?? LANGUAGES[0];
 
   useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
+    function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
-    document.addEventListener("click", onClickOutside);
-    return () => document.removeEventListener("click", onClickOutside);
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  function selectLang(code: Lang) {
-    console.log("[LanguageSelector] switching to:", code);
+  function pick(code: Lang) {
     setLang(code);
     setOpen(false);
   }
@@ -29,10 +29,7 @@ export default function LanguageSelector() {
     <div ref={ref} className="relative">
       <button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((o) => !o);
-        }}
+        onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border text-xs font-medium text-text-secondary hover:text-text hover:border-border-hover transition-colors duration-150"
       >
         <span>{current.flag}</span>
@@ -46,19 +43,16 @@ export default function LanguageSelector() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 bg-bg border border-border rounded-xl overflow-hidden shadow-lg z-[100] min-w-[160px]">
+        <div className="absolute right-0 top-full mt-1.5 bg-white border rounded-xl overflow-hidden shadow-lg z-[1000] min-w-[160px]" style={{ borderColor: "#E5E5E5" }}>
           {LANGUAGES.map((l) => (
             <button
               key={l.code}
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                selectLang(l.code);
-              }}
+              onClick={() => pick(l.code)}
               className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-left transition-colors duration-150 ${
                 lang === l.code
-                  ? "bg-accent text-white"
-                  : "hover:bg-card text-text"
+                  ? "bg-[#0A0A0A] text-white"
+                  : "hover:bg-[#F8F8F8] text-[#0A0A0A]"
               }`}
             >
               <span>{l.flag}</span>

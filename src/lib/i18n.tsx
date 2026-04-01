@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 
 export type Lang = "fr" | "en" | "de" | "it" | "pt" | "es";
 
@@ -66,13 +66,22 @@ const translations: Record<Lang, Record<string, string>> = {
     "btn.generate": "Générer ma config",
     "btn.back": "Retour",
     "loading.0": "Analyse de ton budget...",
-    "loading.1": "Sélection des meilleurs composants...",
-    "loading.2": "Optimisation des performances...",
-    "loading.3": "Vérification des compatibilités...",
-    "loading.4": "Configuration prête !",
+    "loading.1": "Sélection des composants optimaux...",
+    "loading.2": "Vérification des compatibilités...",
+    "loading.3": "Comparaison des prix Suisse & France...",
+    "loading.4": "Optimisation du rapport qualité/prix...",
+    "loading.5": "Config prête !",
     "loading.step": "Étape",
     "loading.of": "sur",
     "error.generate": "Erreur lors de la génération. Réessayez.",
+    "stock.in_stock": "En stock",
+    "stock.variable": "Variable",
+    "stock.check": "Vérifier",
+    "specs.title": "Specs",
+    "compare.prices": "Comparer les prix",
+    "compare.note.ch": "Prix via Toppreise.ch · Mis à jour en temps réel",
+    "compare.note.fr": "Prix via idealo.fr · Mis à jour en temps réel",
+    "compare.see": "Voir",
     "result.generated": "Configuration générée",
     "result.france": "France",
     "result.suisse": "Suisse",
@@ -179,13 +188,22 @@ const translations: Record<Lang, Record<string, string>> = {
     "btn.generate": "Generate my config",
     "btn.back": "Back",
     "loading.0": "Analyzing your budget...",
-    "loading.1": "Selecting the best components...",
-    "loading.2": "Optimizing performance...",
-    "loading.3": "Checking compatibility...",
-    "loading.4": "Config ready!",
+    "loading.1": "Selecting optimal components...",
+    "loading.2": "Checking compatibility...",
+    "loading.3": "Comparing Swiss & French prices...",
+    "loading.4": "Optimizing value for money...",
+    "loading.5": "Config ready!",
     "loading.step": "Step",
     "loading.of": "of",
     "error.generate": "Generation error. Please try again.",
+    "stock.in_stock": "In stock",
+    "stock.variable": "Variable",
+    "stock.check": "Check",
+    "specs.title": "Specs",
+    "compare.prices": "Compare prices",
+    "compare.note.ch": "Prices via Toppreise.ch · Updated in real time",
+    "compare.note.fr": "Prices via idealo.fr · Updated in real time",
+    "compare.see": "See",
     "result.generated": "Configuration generated",
     "result.france": "France",
     "result.suisse": "Switzerland",
@@ -292,13 +310,22 @@ const translations: Record<Lang, Record<string, string>> = {
     "btn.generate": "Konfiguration erstellen",
     "btn.back": "Zurück",
     "loading.0": "Budget wird analysiert...",
-    "loading.1": "Beste Komponenten werden ausgewählt...",
-    "loading.2": "Leistung wird optimiert...",
-    "loading.3": "Kompatibilität wird geprüft...",
-    "loading.4": "Konfiguration bereit!",
+    "loading.1": "Optimale Komponenten werden ausgewählt...",
+    "loading.2": "Kompatibilität wird geprüft...",
+    "loading.3": "Schweizer & französische Preise werden verglichen...",
+    "loading.4": "Preis-Leistungs-Verhältnis wird optimiert...",
+    "loading.5": "Konfiguration bereit!",
     "loading.step": "Schritt",
     "loading.of": "von",
     "error.generate": "Fehler bei der Erstellung. Bitte erneut versuchen.",
+    "stock.in_stock": "Auf Lager",
+    "stock.variable": "Schwankend",
+    "stock.check": "Prüfen",
+    "specs.title": "Specs",
+    "compare.prices": "Preise vergleichen",
+    "compare.note.ch": "Preise über Toppreise.ch · In Echtzeit aktualisiert",
+    "compare.note.fr": "Preise über idealo.fr · In Echtzeit aktualisiert",
+    "compare.see": "Sehen",
     "result.generated": "Konfiguration erstellt",
     "result.france": "Frankreich",
     "result.suisse": "Schweiz",
@@ -405,13 +432,22 @@ const translations: Record<Lang, Record<string, string>> = {
     "btn.generate": "Genera la mia config",
     "btn.back": "Indietro",
     "loading.0": "Analisi del budget...",
-    "loading.1": "Selezione dei migliori componenti...",
-    "loading.2": "Ottimizzazione delle prestazioni...",
-    "loading.3": "Verifica della compatibilità...",
-    "loading.4": "Configurazione pronta!",
+    "loading.1": "Selezione dei componenti ottimali...",
+    "loading.2": "Verifica della compatibilità...",
+    "loading.3": "Confronto prezzi Svizzera & Francia...",
+    "loading.4": "Ottimizzazione del rapporto qualità/prezzo...",
+    "loading.5": "Configurazione pronta!",
     "loading.step": "Passo",
     "loading.of": "di",
     "error.generate": "Errore nella generazione. Riprova.",
+    "stock.in_stock": "Disponibile",
+    "stock.variable": "Variabile",
+    "stock.check": "Verificare",
+    "specs.title": "Specs",
+    "compare.prices": "Confronta i prezzi",
+    "compare.note.ch": "Prezzi tramite Toppreise.ch · Aggiornati in tempo reale",
+    "compare.note.fr": "Prezzi tramite idealo.fr · Aggiornati in tempo reale",
+    "compare.see": "Vedi",
     "result.generated": "Configurazione generata",
     "result.france": "Francia",
     "result.suisse": "Svizzera",
@@ -518,13 +554,22 @@ const translations: Record<Lang, Record<string, string>> = {
     "btn.generate": "Gerar a minha config",
     "btn.back": "Voltar",
     "loading.0": "A analisar o teu orçamento...",
-    "loading.1": "A selecionar os melhores componentes...",
-    "loading.2": "A otimizar o desempenho...",
-    "loading.3": "A verificar compatibilidades...",
-    "loading.4": "Configuração pronta!",
+    "loading.1": "A selecionar os componentes ideais...",
+    "loading.2": "A verificar compatibilidades...",
+    "loading.3": "A comparar preços Suíça & França...",
+    "loading.4": "A otimizar a relação qualidade/preço...",
+    "loading.5": "Configuração pronta!",
     "loading.step": "Passo",
     "loading.of": "de",
     "error.generate": "Erro na geração. Tenta novamente.",
+    "stock.in_stock": "Em stock",
+    "stock.variable": "Variável",
+    "stock.check": "Verificar",
+    "specs.title": "Specs",
+    "compare.prices": "Comparar preços",
+    "compare.note.ch": "Preços via Toppreise.ch · Atualizados em tempo real",
+    "compare.note.fr": "Preços via idealo.fr · Atualizados em tempo real",
+    "compare.see": "Ver",
     "result.generated": "Configuração gerada",
     "result.france": "França",
     "result.suisse": "Suíça",
@@ -631,13 +676,22 @@ const translations: Record<Lang, Record<string, string>> = {
     "btn.generate": "Generar mi config",
     "btn.back": "Volver",
     "loading.0": "Analizando tu presupuesto...",
-    "loading.1": "Seleccionando los mejores componentes...",
-    "loading.2": "Optimizando el rendimiento...",
-    "loading.3": "Verificando compatibilidades...",
-    "loading.4": "¡Configuración lista!",
+    "loading.1": "Seleccionando los componentes óptimos...",
+    "loading.2": "Verificando compatibilidades...",
+    "loading.3": "Comparando precios Suiza & Francia...",
+    "loading.4": "Optimizando la relación calidad/precio...",
+    "loading.5": "¡Configuración lista!",
     "loading.step": "Paso",
     "loading.of": "de",
     "error.generate": "Error en la generación. Inténtalo de nuevo.",
+    "stock.in_stock": "En stock",
+    "stock.variable": "Variable",
+    "stock.check": "Verificar",
+    "specs.title": "Specs",
+    "compare.prices": "Comparar precios",
+    "compare.note.ch": "Precios a través de Toppreise.ch · Actualizado en tiempo real",
+    "compare.note.fr": "Precios a través de idealo.fr · Actualizado en tiempo real",
+    "compare.see": "Ver",
     "result.generated": "Configuración generada",
     "result.france": "Francia",
     "result.suisse": "Suiza",
@@ -711,7 +765,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem("configpc-lang") as Lang | null;
-    if (saved && translations[saved]) setLangState(saved);
+    if (saved && translations[saved]) {
+      setLangState(saved);
+      document.documentElement.lang = saved;
+    }
   }, []);
 
   const setLang = useCallback((l: Lang) => {
@@ -721,12 +778,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback(
-    (key: string) => translations[lang]?.[key] ?? translations.fr[key] ?? key,
+    (key: string): string => translations[lang]?.[key] ?? translations.fr[key] ?? key,
     [lang]
   );
 
+  const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
+
   return (
-    <LanguageContext.Provider value={{ lang, setLang, t }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );

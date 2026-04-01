@@ -23,18 +23,37 @@ Le format de sortie est :
   "components": [
     {
       "type": "CPU | GPU | RAM | Stockage | Carte mère | Alimentation | Boîtier | Refroidissement",
-      "name": "string - nom exact du produit",
-      "reason": "string - justification courte",
+      "name": "string - nom exact du produit tel qu'on le trouve en magasin",
+      "reason": "string - justification courte (1 phrase)",
       "price_fr": number,
       "price_ch": number,
       "search_terms": ["string - termes de recherche pour trouver le produit"],
-      "priority": "essentiel | recommande | optionnel"
+      "priority": "essentiel | recommande | optionnel",
+      "stock_status": "in_stock | variable | check",
+      "specs": {
+        "clé": "valeur"
+      }
     }
   ],
   "compatibility_notes": "string",
   "upgrade_path": "string",
   "alternatives": []
-}`;
+}
+
+RÈGLES POUR stock_status :
+- "in_stock" : composant populaire, généralement disponible partout
+- "variable" : composant très demandé, stock fluctuant
+- "check" : composant rare, récent ou en fin de vie, vérifier avant achat
+
+RÈGLES POUR specs (adapté au type) :
+- CPU: Cores, Fréquence, TDP, Socket, Cache
+- GPU: VRAM, Architecture, TDP, Ports
+- RAM: Fréquence, Latence, Capacité
+- Stockage: Capacité, Interface, Lecture, Écriture
+- Carte mère: Socket, Chipset, Format, RAM max
+- Alimentation: Puissance, Certification, Modularité
+- Boîtier: Format, Ventilateurs inclus, Compatibilité GPU
+- Refroidissement: Type, TDP max, Niveau sonore`;
 
 function buildUserPrompt(config: ConfigRequest): string {
   const usageLabels: Record<string, string> = {
@@ -58,7 +77,7 @@ function buildUserPrompt(config: ConfigRequest): string {
 - Niveau technique : ${config.techLevel}
 - Marché : ${marketLabels[config.market]}
 
-IMPORTANT : Les prix doivent être réalistes et correspondre aux prix de vente réels en Q1 2025. Les prix suisses doivent être 10-20% plus élevés que les prix français. Reste dans le budget de ${config.budget}€. Inclus tous les composants essentiels (CPU, GPU, RAM, stockage, carte mère, alimentation, boîtier, refroidissement).`;
+IMPORTANT : Les prix doivent être réalistes et correspondre aux prix de vente réels en Q1 2025. Les prix suisses doivent être 10-20% plus élevés que les prix français. Reste dans le budget de ${config.budget}€. Inclus tous les composants essentiels (CPU, GPU, RAM, stockage, carte mère, alimentation, boîtier, refroidissement). Inclus les specs techniques détaillées et le stock_status pour chaque composant.`;
 }
 
 export async function POST(request: NextRequest) {
@@ -67,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     const message = await client.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 2048,
+      max_tokens: 3000,
       messages: [
         {
           role: "user",
