@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
 
-/** Public API: search components in DB by type */
 export async function GET(req: NextRequest) {
+  const supabase = getServiceSupabase();
+  if (!supabase) return NextResponse.json([]);
+
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type");
   const budget = searchParams.get("budget") ? parseInt(searchParams.get("budget")!) : null;
 
-  const supabase = getServiceSupabase();
   let query = supabase
     .from("components")
     .select("*, component_images(url, is_primary, alt_text)")

@@ -92,6 +92,7 @@ IMPORTANT : Les prix doivent être réalistes et correspondre aux prix de vente 
 async function getDBComponents(budget: number): Promise<DBComponent[]> {
   try {
     const supabase = getServiceSupabase();
+    if (!supabase) return [];
     const { data } = await supabase
       .from("components")
       .select("*, component_images(url, is_primary)")
