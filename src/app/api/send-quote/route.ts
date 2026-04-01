@@ -78,11 +78,20 @@ Cordialement,
 L'équipe ConfigPC.ch
     `.trim();
 
+    // Email au client
     await resend.emails.send({
       from: "ConfigPC.ch <onboarding@resend.dev>",
       to: body.email,
       subject: `Votre devis ConfigPC.ch — ${body.configName}`,
       text: emailBody,
+    });
+
+    // Copie interne
+    await resend.emails.send({
+      from: "ConfigPC.ch <onboarding@resend.dev>",
+      to: "j.barbosa@config-pc.ch",
+      subject: `[NOUVEAU DEVIS] ${body.configName} — ${body.firstName} ${body.lastName}`,
+      text: `Nouveau devis reçu de ${body.firstName} ${body.lastName} (${body.email})\n\n${emailBody}`,
     });
 
     return NextResponse.json({ success: true });
