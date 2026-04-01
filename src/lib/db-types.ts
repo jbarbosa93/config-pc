@@ -51,8 +51,9 @@ export interface DBCompatibilityRule {
   description: string;
 }
 
-export type ComponentType = "CPU" | "GPU" | "RAM" | "Stockage" | "Carte mère" | "Alimentation" | "Boîtier" | "Refroidissement";
+export type ComponentType = "CPU" | "GPU" | "RAM" | "Stockage" | "Carte mère" | "Alimentation" | "Boîtier" | "Refroidissement" | "Moniteur" | "Clavier" | "Souris" | "Casque" | "Chaise gaming" | "Tapis de souris";
 
 export const COMPONENT_TYPES: ComponentType[] = [
-  "CPU", "GPU", "RAM", "Stockage", "Carte mère", "Alimentation", "Boîtier", "Refroidissement"
+  "CPU", "GPU", "RAM", "Stockage", "Carte mère", "Alimentation", "Boîtier", "Refroidissement",
+  "Moniteur", "Clavier", "Souris", "Casque", "Chaise gaming", "Tapis de souris"
 ];

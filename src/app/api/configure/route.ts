@@ -168,6 +168,19 @@ export async function POST(request: NextRequest) {
 
     const config = JSON.parse(jsonMatch[0]);
 
+    // Force CHF-only: zero out any EUR prices and remove non-Swiss store references
+    if (config.components) {
+      for (const comp of config.components) {
+        comp.price_fr = 0;
+        // If Claude hallucinated non-Swiss stores in search_terms, clean them
+        if (comp.search_terms) {
+          comp.search_terms = comp.search_terms.filter((t: string) =>
+            !t.toLowerCase().includes("amazon") && !t.toLowerCase().includes("ldlc") && !t.toLowerCase().includes("cdiscount")
+          );
+        }
+      }
+    }
+
     // Enrich components with DB images if available
     if (dbComponents.length > 0 && config.components) {
       for (const comp of config.components) {

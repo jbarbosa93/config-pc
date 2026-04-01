@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-mo
 import { useLanguage } from "@/lib/i18n";
 import type { PCConfig, Component, Alternative } from "@/lib/types";
 import { buildSearchUrl, getSimulatedPrices, buildToppreiseUrl } from "@/lib/affiliates";
+import { jsPDF } from "jspdf";
 import { useCart } from "@/lib/cart";
 
 /* ── Manufacturer URL mapping ── */
@@ -323,7 +324,7 @@ function ImageCarousel({ images, name, type, tall = false }: { images: DBImage[]
 /* Store label mapping — Swiss merchants only */
 const STORE_LABELS: Record<string, string> = {
   digitec: "Digitec", galaxus: "Galaxus", brack: "Brack.ch",
-  interdiscount: "Interdiscount", microspot: "Microspot", mediamarkt: "MediaMarkt",
+  interdiscount: "Interdiscount",
 };
 
 /* ── Accordion wrapper ── */
@@ -378,7 +379,7 @@ function CompatibilityScore({ score }: { score: number }) {
   );
 }
 
-function InfoModal({ component, onClose }: { component: Component; onClose: () => void }) {
+function InfoModal({ component, allComponents, onClose }: { component: Component; allComponents?: Component[]; onClose: () => void }) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [dbData, setDbData] = useState<DBComponent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -430,13 +431,48 @@ function InfoModal({ component, onClose }: { component: Component; onClose: () =
   // Compatibility score (heuristic based on having matching specs)
   const compatScore = Math.min(100, 75 + (dbData?.socket ? 5 : 0) + (dbData?.form_factor ? 5 : 0) + (dbData?.chipset ? 5 : 0) + (Object.keys(specs).length > 3 ? 10 : 0));
 
-  // "Pourquoi ce composant?" dynamic points
+  // "Pourquoi ce composant?" dynamic points — enriched with build context
   const whyPoints: string[] = [];
-  if (component.priority === "essentiel") whyPoints.push("Composant essentiel pour cette configuration.");
   if (component.reason) whyPoints.push(component.reason);
-  if (tdp && tdp <= 65) whyPoints.push("Faible consommation énergétique — bon pour le silence et la durabilité.");
-  else if (tdp && tdp > 150) whyPoints.push("Haute performance qui nécessite un bon refroidissement.");
+
+  // Build-specific context
+  const others = allComponents || [];
+  const cpu = others.find((c) => c.type === "CPU");
+  const gpu = others.find((c) => c.type === "GPU");
+  const mobo = others.find((c) => c.type === "Carte mère");
+  const ram = others.find((c) => c.type === "RAM");
+  const psu = others.find((c) => c.type === "Alimentation");
+
+  const cType = component.type.toLowerCase();
+  if (cType.includes("cpu") && gpu) {
+    whyPoints.push(`Équilibré avec la ${gpu.name} pour éviter tout goulot d'étranglement.`);
+  }
+  if (cType.includes("gpu") && cpu) {
+    whyPoints.push(`Parfaitement associé au ${cpu.name} pour des performances optimales.`);
+  }
+  if ((cType.includes("carte") && cType.includes("mère")) || cType.includes("mere")) {
+    if (cpu) whyPoints.push(`Compatible avec le ${cpu.name} — même socket, même plateforme.`);
+    if (ram) whyPoints.push(`Supporte la ${ram.name} sans problème de compatibilité.`);
+  }
+  if (cType.includes("ram") && mobo) {
+    whyPoints.push(`Compatible avec la ${mobo.name} — bon couple mémoire/carte mère.`);
+  }
+  if (cType.includes("alimentation") && gpu) {
+    whyPoints.push(`Puissance suffisante pour alimenter la ${gpu.name} et l'ensemble de la config.`);
+  }
+  if (cType.includes("refroidissement") && cpu) {
+    whyPoints.push(`Refroidissement adapté au TDP du ${cpu.name}.`);
+  }
+  if (cType.includes("boîtier") || cType.includes("boitier")) {
+    if (gpu) whyPoints.push(`Espace suffisant pour accueillir la ${gpu.name}.`);
+    if (mobo) whyPoints.push(`Format compatible avec la ${mobo.name}.`);
+  }
+
+  // General points
+  if (tdp && tdp <= 65) whyPoints.push("Faible consommation — silencieux et durable.");
+  else if (tdp && tdp > 150) whyPoints.push("Haute performance — nécessite un bon flux d'air.");
   if (dbData?.release_year && dbData.release_year >= 2024) whyPoints.push("Composant récent avec les dernières technologies.");
+  if (component.priority === "essentiel") whyPoints.push("Composant essentiel de cette configuration.");
 
   return (
     <motion.div
@@ -453,7 +489,7 @@ function InfoModal({ component, onClose }: { component: Component; onClose: () =
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
         transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col relative"
+        className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[92vh] overflow-hidden shadow-2xl flex flex-col relative"
         style={{ border: "1px solid #E5E5E5" }}
       >
         {/* ── Sticky header ── */}
@@ -474,7 +510,7 @@ function InfoModal({ component, onClose }: { component: Component; onClose: () =
             <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.9, ease: "linear" }} className="w-7 h-7 rounded-full border-2 border-[#E5E5E5]" style={{ borderTopColor: "#4f8ef7" }} />
           </div>
         ) : (
-          <div className="p-6 pb-24 flex flex-col gap-6">
+          <div className="p-6 pb-6 flex flex-col gap-6 overflow-y-auto flex-1">
 
             {/* ── TOP: Image + Info ── */}
             <div className="flex flex-col md:flex-row gap-6">
@@ -1000,26 +1036,44 @@ function PriceRow({ component, changed, t }: { component: Component; index: numb
         <span className="text-text-secondary ml-2 text-xs">{component.name}</span>
         {changed && <span className="ml-2 text-[10px] text-text-secondary">({t("result.changed")})</span>}
       </td>
-      <td className="text-right py-3 tabular-nums">{component.price_ch} CHF</td>
-      <td className="text-right py-3">
-        <a href={buildToppreiseUrl(component.name)} target="_blank" rel="noopener noreferrer" className="text-[11px] px-2 py-1 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium flex items-center gap-1 justify-end whitespace-nowrap">
-          <span className="px-1 py-0.5 rounded bg-[#FF6B00] text-white font-bold text-[9px]">TP</span>
-          TopPreise &rarr;
-        </a>
-      </td>
+      <td className="text-right py-3 tabular-nums font-medium">{component.price_ch} CHF</td>
     </tr>
   );
 }
 
 /* ── Peripherals & Setup Section ── */
 
-const PERIPHERAL_CATEGORIES = [
-  { type: "Moniteur", icon: "🖥️", desc: "Écran gaming ou productivité", color: "#3B82F6", bg: "#EFF6FF" },
-  { type: "Clavier", icon: "⌨️", desc: "Mécanique, membrane, sans fil", color: "#8B5CF6", bg: "#F5F3FF" },
-  { type: "Souris", icon: "🖱️", desc: "Gaming, ergonomique, sans fil", color: "#10B981", bg: "#ECFDF5" },
-  { type: "Casque gaming", icon: "🎧", desc: "Audio immersif, micro intégré", color: "#EF4444", bg: "#FEF2F2" },
-  { type: "Chaise gaming", icon: "🪑", desc: "Ergonomique, confort longue durée", color: "#F59E0B", bg: "#FFFBEB" },
-  { type: "Tapis de souris", icon: "🎯", desc: "XL, RGB, precision", color: "#6B7280", bg: "#F9FAFB" },
+const PERIPHERAL_PRODUCTS = [
+  { type: "Moniteur", icon: "🖥️", color: "#3B82F6", bg: "#EFF6FF", items: [
+    { brand: "ASUS", name: "ASUS ROG Swift 27\" 1440p 165Hz", search: "ASUS ROG Swift moniteur gaming 27" },
+    { brand: "Samsung", name: "Samsung Odyssey G5 27\" 1440p 165Hz", search: "Samsung Odyssey G5 27 gaming" },
+    { brand: "LG", name: "LG UltraGear 27\" IPS 1ms", search: "LG UltraGear 27 gaming moniteur" },
+  ]},
+  { type: "Clavier", icon: "⌨️", color: "#8B5CF6", bg: "#F5F3FF", items: [
+    { brand: "Razer", name: "Razer BlackWidow V4", search: "Razer BlackWidow V4 clavier" },
+    { brand: "Corsair", name: "Corsair K70 RGB Pro", search: "Corsair K70 RGB Pro clavier" },
+    { brand: "SteelSeries", name: "SteelSeries Apex Pro", search: "SteelSeries Apex Pro clavier" },
+  ]},
+  { type: "Souris", icon: "🖱️", color: "#10B981", bg: "#ECFDF5", items: [
+    { brand: "Razer", name: "Razer DeathAdder V3", search: "Razer DeathAdder V3" },
+    { brand: "Logitech", name: "Logitech G Pro X Superlight 2", search: "Logitech G Pro X Superlight 2" },
+    { brand: "SteelSeries", name: "SteelSeries Aerox 5", search: "SteelSeries Aerox 5" },
+  ]},
+  { type: "Casque", icon: "🎧", color: "#EF4444", bg: "#FEF2F2", items: [
+    { brand: "SteelSeries", name: "SteelSeries Arctis Nova 7", search: "SteelSeries Arctis Nova 7" },
+    { brand: "Corsair", name: "Corsair HS80 RGB Wireless", search: "Corsair HS80 RGB Wireless" },
+    { brand: "HyperX", name: "HyperX Cloud III Wireless", search: "HyperX Cloud III Wireless" },
+  ]},
+  { type: "Chaise", icon: "🪑", color: "#F59E0B", bg: "#FFFBEB", items: [
+    { brand: "Secretlab", name: "Secretlab Titan Evo 2024", search: "Secretlab Titan Evo chaise gaming" },
+    { brand: "noblechairs", name: "noblechairs HERO", search: "noblechairs HERO chaise" },
+    { brand: "Corsair", name: "Corsair TC200", search: "Corsair TC200 chaise gaming" },
+  ]},
+  { type: "Tapis", icon: "🎯", color: "#6B7280", bg: "#F9FAFB", items: [
+    { brand: "SteelSeries", name: "SteelSeries QcK Heavy XXL", search: "SteelSeries QcK Heavy XXL" },
+    { brand: "Razer", name: "Razer Gigantus V2 XXL", search: "Razer Gigantus V2 XXL" },
+    { brand: "Corsair", name: "Corsair MM700 RGB", search: "Corsair MM700 RGB tapis" },
+  ]},
 ];
 
 function PeripheralsSection() {
@@ -1057,27 +1111,32 @@ function PeripheralsSection() {
             transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="overflow-hidden"
           >
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-4">
-              {PERIPHERAL_CATEGORIES.map((cat, i) => (
-                <motion.a
-                  key={cat.type}
-                  href={buildSearchUrl("digitec", cat.type)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.06 }}
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  className="rounded-xl p-4 border transition-all duration-150 cursor-pointer group"
-                  style={{ borderColor: "#E5E5E5", background: cat.bg }}
-                >
-                  <div className="text-2xl mb-2">{cat.icon}</div>
-                  <p className="font-semibold text-sm" style={{ color: cat.color }}>{cat.type}</p>
-                  <p className="text-[11px] text-[#888] mt-0.5 leading-snug">{cat.desc}</p>
-                  <div className="mt-3 text-[10px] font-medium text-[#888] group-hover:text-[#4f8ef7] transition-colors flex items-center gap-1">
-                    Voir sur Digitec <span className="text-[10px]">→</span>
+            <div className="flex flex-col gap-4 pt-4">
+              {PERIPHERAL_PRODUCTS.map((cat, ci) => (
+                <motion.div key={cat.type} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: ci * 0.08 }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">{cat.icon}</span>
+                    <span className="text-sm font-bold" style={{ color: cat.color }}>{cat.type}</span>
                   </div>
-                </motion.a>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {cat.items.map((item) => (
+                      <a
+                        key={item.name}
+                        href={buildSearchUrl("galaxus", item.search)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg p-3 border transition-all duration-150 hover:border-[#CCC] hover:shadow-sm group"
+                        style={{ borderColor: "#E5E5E5", background: cat.bg }}
+                      >
+                        <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: cat.color }}>{item.brand}</p>
+                        <p className="text-xs font-medium text-[#333] mt-0.5 leading-snug">{item.name}</p>
+                        <p className="text-[10px] text-[#888] mt-2 group-hover:text-[#4f8ef7] transition-colors">
+                          Voir sur Galaxus →
+                        </p>
+                      </a>
+                    ))}
+                  </div>
+                </motion.div>
               ))}
             </div>
           </motion.div>
@@ -1114,10 +1173,126 @@ export default function ConfigResult({ config, onReset }: Props) {
   function handleRevert(index: number) { setComponents((prev) => { const next = [...prev]; next[index] = originals[index]; return next; }); }
 
   function handleSave() {
-    const exported: PCConfig = { ...config, components, total_estimated: totalCH };
-    const blob = new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `${config.config_name.replace(/\s+/g, "_")}.json`; a.click(); URL.revokeObjectURL(url);
+    const doc = new jsPDF();
+    const blue = "#4f8ef7";
+    const dark = "#0A0A0A";
+    const gray = "#666666";
+    let y = 20;
+
+    // Header
+    doc.setFontSize(24);
+    doc.setTextColor(blue);
+    doc.text("config-pc.ch", 20, y);
+    y += 8;
+    doc.setFontSize(10);
+    doc.setTextColor(gray);
+    doc.text("Ta config PC parfaite — www.config-pc.ch", 20, y);
+    y += 14;
+
+    // Config name
+    doc.setFontSize(20);
+    doc.setTextColor(dark);
+    doc.text(config.config_name, 20, y);
+    y += 10;
+
+    // Total
+    doc.setFontSize(14);
+    doc.setTextColor(blue);
+    doc.text(`Total: ${totalCH} CHF`, 20, y);
+    y += 12;
+
+    // Separator
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, y, 190, y);
+    y += 8;
+
+    // Components
+    doc.setFontSize(12);
+    doc.setTextColor(dark);
+    doc.text("Composants", 20, y);
+    y += 8;
+
+    components.forEach((c) => {
+      if (y > 260) { doc.addPage(); y = 20; }
+
+      // Type badge
+      doc.setFontSize(9);
+      doc.setTextColor(blue);
+      doc.text(c.type.toUpperCase(), 20, y);
+
+      // Price
+      doc.setTextColor(blue);
+      doc.text(`${c.price_ch} CHF`, 170, y, { align: "right" });
+
+      y += 5;
+
+      // Name
+      doc.setFontSize(11);
+      doc.setTextColor(dark);
+      doc.text(c.name, 20, y);
+      y += 5;
+
+      // Reason
+      if (c.reason) {
+        doc.setFontSize(8);
+        doc.setTextColor(gray);
+        const lines = doc.splitTextToSize(c.reason, 150);
+        doc.text(lines, 20, y);
+        y += lines.length * 4;
+      }
+
+      // Specs
+      if (c.specs && Object.keys(c.specs).length > 0) {
+        doc.setFontSize(7);
+        doc.setTextColor("#999999");
+        const specStr = Object.entries(c.specs).map(([k, v]) => `${k}: ${v}`).join(" · ");
+        const specLines = doc.splitTextToSize(specStr, 150);
+        doc.text(specLines, 20, y);
+        y += specLines.length * 3.5;
+      }
+
+      y += 6;
+    });
+
+    // Notes
+    if (y > 240) { doc.addPage(); y = 20; }
+    y += 4;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, y, 190, y);
+    y += 8;
+
+    if (config.compatibility_notes) {
+      doc.setFontSize(9);
+      doc.setTextColor(dark);
+      doc.text("Compatibilité", 20, y);
+      y += 5;
+      doc.setFontSize(8);
+      doc.setTextColor(gray);
+      const lines = doc.splitTextToSize(config.compatibility_notes, 160);
+      doc.text(lines, 20, y);
+      y += lines.length * 4 + 4;
+    }
+
+    if (config.upgrade_path) {
+      doc.setFontSize(9);
+      doc.setTextColor(dark);
+      doc.text("Évolutivité", 20, y);
+      y += 5;
+      doc.setFontSize(8);
+      doc.setTextColor(gray);
+      const lines = doc.splitTextToSize(config.upgrade_path, 160);
+      doc.text(lines, 20, y);
+      y += lines.length * 4 + 4;
+    }
+
+    // Footer
+    if (y > 270) { doc.addPage(); y = 20; }
+    y = 280;
+    doc.setFontSize(7);
+    doc.setTextColor("#AAAAAA");
+    doc.text("Généré par config-pc.ch · Prix indicatifs · j.barbosa@config-pc.ch", 105, y, { align: "center" });
+
+    doc.save(`${config.config_name.replace(/\s+/g, "_")}.pdf`);
   }
 
   return (
@@ -1162,7 +1337,6 @@ export default function ConfigResult({ config, onReset }: Props) {
             <tr className="border-b border-border text-text-secondary">
               <th className="text-left py-2 font-medium">{t("result.component")}</th>
               <th className="text-right py-2 font-medium">Prix CHF</th>
-              <th className="text-right py-2 font-medium w-24"></th>
             </tr>
           </thead>
           <tbody>
@@ -1172,7 +1346,6 @@ export default function ConfigResult({ config, onReset }: Props) {
             <tr className="font-bold">
               <td className="pt-4">{t("result.total")}</td>
               <td className="text-right pt-4 font-bold" style={{ color: "#4f8ef7" }}>{totalCH} CHF</td>
-              <td></td>
             </tr>
           </tfoot>
         </table>
@@ -1217,7 +1390,7 @@ export default function ConfigResult({ config, onReset }: Props) {
         {swapIndex !== null && <AlternativesModal component={components[swapIndex]} allComponents={components} usage={config.config_name} budget={config.total_estimated} onSelect={(alt) => handleSelectAlternative(swapIndex, alt)} onClose={() => setSwapIndex(null)} />}
       </AnimatePresence>
       <AnimatePresence>
-        {infoIndex !== null && <InfoModal component={components[infoIndex]} onClose={() => setInfoIndex(null)} />}
+        {infoIndex !== null && <InfoModal component={components[infoIndex]} allComponents={components} onClose={() => setInfoIndex(null)} />}
       </AnimatePresence>
     </div>
   );

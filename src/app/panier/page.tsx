@@ -177,7 +177,20 @@ export default function PanierPage() {
         {/* Summary sidebar */}
         <div className="lg:col-span-1">
           <div className="rounded-2xl p-6 sticky top-24" style={{ background: "#F8FAFF", border: "1px solid #E0ECFF" }}>
-            <h2 className="font-bold text-lg mb-4">Récapitulatif</h2>
+            {/* Build description */}
+            <div className="mb-4 pb-4" style={{ borderBottom: "1px solid #E0ECFF" }}>
+              <h2 className="font-bold text-lg mb-2">Ta config PC</h2>
+              <p className="text-sm text-[#666] leading-relaxed">
+                {(() => {
+                  const gpu = items.find((i) => i.type === "GPU");
+                  const cpu = items.find((i) => i.type === "CPU");
+                  const hasGpu = !!gpu;
+                  const tier = totalCHF > 2500 ? "haut de gamme" : totalCHF > 1500 ? "performant" : totalCHF > 800 ? "équilibré" : "entrée de gamme";
+                  const usage = hasGpu ? "gaming et création" : "bureautique et productivité";
+                  return `PC ${tier} orienté ${usage}${cpu ? ` — propulsé par le ${cpu.name}` : ""}${gpu ? ` et la ${gpu.name}` : ""}. Configuration ${items.length} composants, optimisée pour le marché suisse.`;
+                })()}
+              </p>
+            </div>
 
             {/* Sub-totals by category */}
             <div className="flex flex-col gap-2 mb-4 pb-4" style={{ borderBottom: "1px solid #E0ECFF" }}>

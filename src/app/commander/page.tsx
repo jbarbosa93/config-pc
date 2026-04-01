@@ -62,7 +62,7 @@ export default function CommanderPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erreur de paiement");
       if (data.url) {
-        clearCart();
+        // Don't clear cart before redirect — clear on confirmation page instead
         window.location.href = data.url;
       }
     } catch (e) {

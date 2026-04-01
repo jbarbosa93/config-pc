@@ -1,13 +1,20 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useCart } from "@/lib/cart";
 
 function ConfirmationContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
+  const { clearCart } = useCart();
+
+  // Clear cart on successful payment confirmation
+  useEffect(() => {
+    if (sessionId) clearCart();
+  }, [sessionId, clearCart]);
 
   return (
     <main className="flex-1 flex items-center justify-center py-24 px-6">
