@@ -1,65 +1,155 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import ConfiguratorForm from "@/components/ConfiguratorForm";
+import ConfigResult from "@/components/ConfigResult";
+import Logo from "@/components/Logo";
+import LanguageSelector from "@/components/LanguageSelector";
+import { useLanguage } from "@/lib/i18n";
+import type { PCConfig } from "@/lib/types";
+
+/* ── Particles ── */
+
+function Particles() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    let animationId: number;
+    const dots: { x: number; y: number; vx: number; vy: number; r: number }[] = [];
+    function resize() { canvas!.width = window.innerWidth; canvas!.height = window.innerHeight; }
+    resize();
+    window.addEventListener("resize", resize);
+    for (let i = 0; i < 40; i++) {
+      dots.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3, r: Math.random() * 2 + 1 });
+    }
+    function draw() {
+      ctx!.clearRect(0, 0, canvas!.width, canvas!.height);
+      for (const dot of dots) {
+        dot.x += dot.vx; dot.y += dot.vy;
+        if (dot.x < 0 || dot.x > canvas!.width) dot.vx *= -1;
+        if (dot.y < 0 || dot.y > canvas!.height) dot.vy *= -1;
+        ctx!.beginPath(); ctx!.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
+        ctx!.fillStyle = "rgba(10, 10, 10, 0.08)"; ctx!.fill();
+      }
+      animationId = requestAnimationFrame(draw);
+    }
+    draw();
+    return () => { cancelAnimationFrame(animationId); window.removeEventListener("resize", resize); };
+  }, []);
+  return <canvas ref={canvasRef} className="particles-canvas" />;
+}
+
+/* ── Typewriter ── */
+
+function Typewriter({ text, onDone }: { text: string; onDone?: () => void }) {
+  const [displayed, setDisplayed] = useState("");
+  const indexRef = useRef(0);
+  const textRef = useRef(text);
+  useEffect(() => {
+    textRef.current = text;
+    indexRef.current = 0;
+    setDisplayed("");
+    const interval = setInterval(() => {
+      if (indexRef.current < textRef.current.length) {
+        setDisplayed(textRef.current.slice(0, indexRef.current + 1));
+        indexRef.current++;
+      } else { clearInterval(interval); onDone?.(); }
+    }, 45);
+    return () => clearInterval(interval);
+  }, [text, onDone]);
+  return <span>{displayed}<span className="animate-pulse">|</span></span>;
+}
+
+/* ── Hero ── */
+
+function Hero({ onStart }: { onStart: () => void }) {
+  const { t } = useLanguage();
+  const [titleDone, setTitleDone] = useState(false);
+  const handleTitleDone = useCallback(() => setTitleDone(true), []);
+
+  return (
+    <div className="relative flex-1 flex flex-col">
+      <Particles />
+      {/* Top bar */}
+      <div className="relative z-10 flex items-center justify-between px-6 py-4">
+        <Logo size="small" />
+        <LanguageSelector />
+      </div>
+      {/* Content */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8 px-4 py-1.5 rounded-full border border-border text-text-secondary text-sm">
+          {t("hero.badge")}
+        </motion.div>
+        <h1 className="text-5xl sm:text-7xl lg:text-8xl font-bold text-center tracking-tight leading-[0.95] mb-6 min-h-[1.2em]">
+          <Typewriter text={t("hero.title")} onDone={handleTitleDone} />
+        </h1>
+        <AnimatePresence>
+          {titleDone && (
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-text-secondary text-lg sm:text-xl text-center max-w-md mb-12">
+              {t("hero.subtitle.1")}<br />{t("hero.subtitle.2")}
+            </motion.p>
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {titleDone && (
+            <motion.button initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, delay: 0.2 }} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }} onClick={onStart} className="px-10 py-4 bg-accent text-white font-medium rounded-full text-lg cta-pulse">
+              {t("hero.cta")}
+            </motion.button>
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {titleDone && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="mt-20 flex items-center gap-6 text-xs text-text-secondary">
+              <span>{t("hero.stat.1")}</span>
+              <span className="w-px h-3 bg-border" />
+              <span>{t("hero.stat.2")}</span>
+              <span className="w-px h-3 bg-border" />
+              <span>{t("hero.stat.3")}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+/* ── Page ── */
 
 export default function Home() {
+  const { t } = useLanguage();
+  const [result, setResult] = useState<PCConfig | null>(null);
+  const [started, setStarted] = useState(false);
+
+  function reset() { setResult(null); setStarted(false); }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="flex-1 flex flex-col min-h-screen">
+      <AnimatePresence mode="wait">
+        {result ? (
+          <motion.div key="result" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 px-6 py-16">
+            <ConfigResult config={result} onReset={reset} />
+          </motion.div>
+        ) : started ? (
+          <motion.div key="configurator" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.35 }} className="flex-1 flex flex-col items-center px-6 py-16">
+            <nav className="w-full max-w-xl flex items-center justify-between mb-16">
+              <motion.button whileHover={{ x: -3 }} onClick={() => setStarted(false)} className="text-text-secondary text-sm hover:text-text transition-colors duration-150">
+                &larr; {t("nav.back")}
+              </motion.button>
+              <Logo size="small" />
+              <LanguageSelector />
+            </nav>
+            <ConfiguratorForm onResult={setResult} />
+          </motion.div>
+        ) : (
+          <motion.div key="hero" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">
+            <Hero onStart={() => setStarted(true)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </main>
   );
 }
