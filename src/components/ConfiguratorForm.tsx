@@ -42,13 +42,13 @@ const BUDGET_PRESETS: { key: string; emoji: string; value: number; badgeKey?: st
   { key: "budget.enthusiast", emoji: "\u{1F451}", value: 3500 },
 ];
 
-const LOADING_MESSAGES = [
-  "loading.0", // "Analyse de ton budget..."
-  "loading.1", // "Sélection des composants optimaux..."
-  "loading.2", // "Vérification des compatibilités..."
-  "loading.3", // "Recherche des meilleurs prix en Suisse..."
-  "loading.4", // "Optimisation du rapport qualité/prix..."
-  "loading.5", // "Config prête !"
+const LOADING_STEPS = [
+  { icon: "💰", message: "loading.0" },     // Analyse du budget
+  { icon: "🧠", message: "loading.1" },     // Sélection CPU
+  { icon: "🎯", message: "loading.2" },     // Vérification compatibilités
+  { icon: "🎮", message: "loading.3" },     // Optimisation GPU
+  { icon: "💾", message: "loading.4" },     // Recherche meilleurs prix
+  { icon: "✅", message: "loading.5" },     // Config prête
 ];
 
 const slideVariants = {
@@ -57,38 +57,58 @@ const slideVariants = {
   exit: (dir: number) => ({ x: dir < 0 ? 80 : -80, opacity: 0, scale: 0.97 }),
 };
 
-/* ── Loading Overlay with 3-phase progress ── */
+/* ── Loading Overlay with animated icons ── */
 
 function LoadingOverlay({ progress, messageIndex, t }: {
   progress: number;
   messageIndex: number;
   t: (k: string) => string;
 }) {
+  const step = LOADING_STEPS[messageIndex] ?? LOADING_STEPS[0];
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <motion.div animate={{ rotate: [0, 5, -5, 0] }} transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }} className="text-center mb-8">
-          <span className="text-5xl">{progress < 100 ? "\u26A1" : "\u2705"}</span>
-        </motion.div>
+        {/* Animated icon */}
+        <div className="text-center mb-6 h-16 flex items-center justify-center">
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={messageIndex}
+              initial={{ opacity: 0, scale: 0.5, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.5, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="text-5xl inline-block"
+            >
+              {step.icon}
+            </motion.span>
+          </AnimatePresence>
+        </div>
+
+        {/* Animated message */}
         <AnimatePresence mode="wait">
           <motion.p
             key={messageIndex}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
             className="text-center font-medium text-lg mb-8"
           >
-            {t(LOADING_MESSAGES[messageIndex] ?? LOADING_MESSAGES[0])}
+            {t(step.message)}
           </motion.p>
         </AnimatePresence>
-        <div className="h-1.5 bg-[#E5E5E5] rounded-full overflow-hidden mb-3">
+
+        {/* Progress bar */}
+        <div className="h-2 bg-[#E5E5E5] rounded-full overflow-hidden mb-3">
           <motion.div
-            className="h-full bg-[#0A0A0A] rounded-full"
+            className="h-full rounded-full"
+            style={{ background: "linear-gradient(90deg, #4f8ef7, #7b5cf5)" }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.6, ease: "easeOut" }}
           />
         </div>
-        <p className="text-center text-xs text-[#666666]">{Math.round(progress)}%</p>
+        <p className="text-center text-xs text-[#888]">{Math.round(progress)}%</p>
       </div>
     </motion.div>
   );

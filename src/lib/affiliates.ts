@@ -18,7 +18,6 @@ const STORES: StoreConfig[] = [
   { id: "interdiscount",label: "Interdiscount",  buildSearchUrl: (q) => `https://www.interdiscount.ch/fr/search?q=${enc(q)}` },
   { id: "brack",        label: "Brack.ch",       buildSearchUrl: (q) => `https://www.brack.ch/search?q=${enc(q)}` },
   { id: "microspot",    label: "Microspot",      buildSearchUrl: (q) => `https://www.microspot.ch/fr/recherche?q=${enc(q)}` },
-  { id: "toppreise",    label: "TopPreise",      buildSearchUrl: (q) => `https://www.toppreise.ch/search.php?q=${enc(q)}` },
 ];
 
 export type StoreId = string;

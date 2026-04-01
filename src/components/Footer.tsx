@@ -9,7 +9,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-border py-6 px-6">
       <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-secondary">
-        <span>&copy; 2026 ConfigPC.ch — {t("footer.rights")}</span>
+        <span>&copy; 2026 config-pc.ch — {t("footer.rights")}</span>
         <div className="flex items-center gap-4">
           <Link
             href="/mentions-legales"

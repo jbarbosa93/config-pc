@@ -130,7 +130,26 @@ export default function Home() {
   const [result, setResult] = useState<PCConfig | null>(null);
   const [started, setStarted] = useState(false);
 
-  function reset() { setResult(null); setStarted(false); }
+  // Restore config from localStorage on mount (for "back to configurator" flow)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("configpc-last-result");
+      if (saved) {
+        const parsed = JSON.parse(saved) as PCConfig;
+        if (parsed?.config_name && parsed?.components?.length) {
+          setResult(parsed);
+        }
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Save config to localStorage when generated
+  function handleResult(config: PCConfig) {
+    setResult(config);
+    try { localStorage.setItem("configpc-last-result", JSON.stringify(config)); } catch { /* ignore */ }
+  }
+
+  function reset() { setResult(null); setStarted(false); localStorage.removeItem("configpc-last-result"); }
 
   return (
     <main className="flex-1 flex flex-col min-h-screen">
@@ -162,7 +181,7 @@ export default function Home() {
           </motion.div>
         ) : started ? (
           <motion.div key="configurator" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.35 }} className="flex-1 flex flex-col items-center px-6 py-16">
-            <ConfiguratorForm onResult={setResult} />
+            <ConfiguratorForm onResult={handleResult} />
           </motion.div>
         ) : (
           <motion.div key="hero" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">

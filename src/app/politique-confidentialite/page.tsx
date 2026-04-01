@@ -11,7 +11,7 @@ export default function PolitiqueConfidentialite() {
         <section>
           <h2 className="text-xl font-semibold mb-3">1. Introduction</h2>
           <p className="text-text-secondary leading-relaxed">
-            ConfigPC.ch (&quot;nous&quot;, &quot;notre&quot;) s&apos;engage à protéger la vie privée de ses utilisateurs.
+            config-pc.ch (&quot;nous&quot;, &quot;notre&quot;) s&apos;engage à protéger la vie privée de ses utilisateurs.
             La présente politique de confidentialité décrit les données que nous collectons, comment nous les utilisons
             et les droits dont vous disposez. Elle est conforme au Règlement général sur la protection des données (RGPD)
             de l&apos;Union européenne et à la Loi fédérale suisse sur la protection des données (nLPD, entrée en vigueur
@@ -22,9 +22,9 @@ export default function PolitiqueConfidentialite() {
         <section>
           <h2 className="text-xl font-semibold mb-3">2. Responsable du traitement</h2>
           <p className="text-text-secondary leading-relaxed">
-            ConfigPC.ch<br />
-            Vaud, Suisse<br />
-            Contact : privacy@configpc.ch
+            config-pc.ch<br />
+            Monthey, Valais, Suisse<br />
+            Contact : j.barbosa@config-pc.ch
           </p>
         </section>
 
@@ -64,7 +64,7 @@ export default function PolitiqueConfidentialite() {
         <section>
           <h2 className="text-xl font-semibold mb-3">6. Cookies</h2>
           <p className="text-text-secondary leading-relaxed">
-            ConfigPC.ch n&apos;utilise pas de cookies de suivi ou de cookies publicitaires. Seules des données de stockage
+            config-pc.ch n&apos;utilise pas de cookies de suivi ou de cookies publicitaires. Seules des données de stockage
             local (localStorage) sont utilisées pour sauvegarder vos préférences de langue. Aucun cookie tiers n&apos;est
             déposé sur votre appareil.
           </p>
@@ -79,7 +79,7 @@ export default function PolitiqueConfidentialite() {
             — <strong>Droit à l&apos;effacement :</strong> demander la suppression de vos données<br />
             — <strong>Droit à la portabilité :</strong> recevoir vos données dans un format structuré<br />
             — <strong>Droit d&apos;opposition :</strong> vous opposer au traitement de vos données<br /><br />
-            Pour exercer ces droits, contactez-nous à privacy@configpc.ch. Nous répondrons dans un délai de 30 jours.
+            Pour exercer ces droits, contactez-nous à j.barbosa@config-pc.ch. Nous répondrons dans un délai de 30 jours.
             En cas de litige, vous pouvez saisir le Préposé fédéral à la protection des données (PFPDT) en Suisse
             ou l&apos;autorité de contrôle compétente dans votre pays de résidence (CNIL pour la France).
           </p>

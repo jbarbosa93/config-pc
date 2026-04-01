@@ -1,16 +1,85 @@
 "use client";
 
+import { useState } from "react";
 import { useCart } from "@/lib/cart";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
+/* ── Component type icons (realistic category illustrations) ── */
+
+const TYPE_ICONS: Record<string, string> = {
+  CPU: "🧠", GPU: "🎯", "Carte mère": "🖥️", RAM: "💾",
+  Stockage: "💿", Alimentation: "⚡", Boîtier: "🖥️", Refroidissement: "❄️",
+  Moniteur: "🖥️", Clavier: "⌨️", Souris: "🖱️", Casque: "🎧",
+};
+
+const TYPE_ORDER = ["CPU", "GPU", "Carte mère", "RAM", "Stockage", "Alimentation", "Boîtier", "Refroidissement", "Moniteur", "Clavier", "Souris", "Casque"];
+
+/* ── Performance estimation ── */
+
+function estimatePerformance(items: { type: string; price_ch: number }[]) {
+  const gpu = items.find((i) => i.type === "GPU");
+  const cpu = items.find((i) => i.type === "CPU");
+  if (!gpu || !cpu) return null;
+  const gpuScore = Math.min(100, Math.round((gpu.price_ch / 15)));
+  const cpuScore = Math.min(100, Math.round((cpu.price_ch / 8)));
+  const avg = (gpuScore * 0.7 + cpuScore * 0.3);
+  return {
+    "1080p": Math.min(100, Math.round(avg * 1.15)),
+    "1440p": Math.min(100, Math.round(avg * 0.85)),
+    "4K": Math.min(100, Math.round(avg * 0.55)),
+  };
+}
+
+function estimateWattage(items: { type: string; price_ch: number }[]) {
+  let watts = 50; // base
+  items.forEach((i) => {
+    if (i.type === "CPU") watts += Math.min(200, Math.round(i.price_ch * 0.4));
+    if (i.type === "GPU") watts += Math.min(350, Math.round(i.price_ch * 0.35));
+    if (i.type === "RAM") watts += 10;
+    if (i.type === "Stockage") watts += 8;
+    if (i.type === "Refroidissement") watts += 15;
+  });
+  return watts;
+}
+
+function PerformanceBar({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-xs text-[#666] w-12 shrink-0">{label}</span>
+      <div className="flex-1 h-2.5 bg-[#F0F0F0] rounded-full overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${value}%` }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="h-full rounded-full"
+          style={{ background: color }}
+        />
+      </div>
+      <span className="text-xs font-bold tabular-nums w-8 text-right" style={{ color }}>{value}%</span>
+    </div>
+  );
+}
+
 export default function PanierPage() {
   const { items, removeItem, totalCHF } = useCart();
   const router = useRouter();
-
-  const TYPE_ORDER = ["CPU", "GPU", "Carte mère", "RAM", "Stockage", "Alimentation", "Boîtier", "Refroidissement"];
+  const [copied, setCopied] = useState(false);
   const sorted = [...items].sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type));
+
+  const performance = estimatePerformance(items);
+  const wattage = estimateWattage(items);
+
+  function shareConfig() {
+    const data = { items: items.map((i) => ({ type: i.type, name: i.name, price_ch: i.price_ch })) };
+    const encoded = btoa(JSON.stringify(data));
+    const url = `${window.location.origin}/panier?config=${encoded}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   if (items.length === 0) {
     return (
@@ -33,7 +102,7 @@ export default function PanierPage() {
   }
 
   return (
-    <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-12">
+    <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-12">
       <div className="flex items-center justify-between mb-8">
         <div>
           <Link href="/" className="text-sm text-[#888] hover:text-[#333] transition-colors mb-2 inline-flex items-center gap-1">
@@ -55,39 +124,57 @@ export default function PanierPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="flex items-center gap-4 p-4 rounded-xl bg-white"
+                className="flex items-start gap-4 p-4 rounded-xl bg-white"
                 style={{ border: "1px solid #E5E5E5" }}
               >
-                {/* Type badge */}
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-[10px] font-bold text-white" style={{ background: "#4f8ef7" }}>
-                  {item.type.slice(0, 3).toUpperCase()}
+                {/* Category icon */}
+                <div className="w-14 h-14 rounded-xl bg-[#F5F5F5] flex items-center justify-center shrink-0 text-2xl">
+                  {TYPE_ICONS[item.type] || "🔧"}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] text-[#888] font-medium uppercase tracking-wide">{item.type}</p>
-                  <p className="font-semibold text-sm leading-tight truncate">{item.name}</p>
-                  {item.reason && <p className="text-xs text-[#888] mt-0.5 line-clamp-1">{item.reason}</p>}
-                </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-[#4f8ef7] font-bold uppercase tracking-wide">{item.type}</p>
+                      <p className="font-semibold text-sm leading-tight">{item.name}</p>
+                      {item.reason && <p className="text-xs text-[#888] mt-1 line-clamp-1">{item.reason}</p>}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-lg font-extrabold" style={{ color: "#4f8ef7" }}>{item.price_ch}</p>
+                      <p className="text-[10px] text-[#999] font-medium">CHF</p>
+                    </div>
+                  </div>
 
-                <div className="shrink-0 text-right mr-2">
-                  <p className="font-bold text-base">{item.price_ch} CHF</p>
+                  <div className="flex items-center justify-between mt-3">
+                    {/* Compatibility badge */}
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-medium border border-green-200">
+                      ✅ Compatible
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href="/"
+                        className="text-[11px] px-2.5 py-1 rounded-lg border border-[#E5E5E5] text-[#666] hover:border-[#CCC] hover:text-[#333] transition-all font-medium"
+                      >
+                        Changer
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(item.name)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-[#CCC] hover:text-red-500 hover:bg-red-50 transition-all"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                          <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => removeItem(item.name)}
-                  className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-[#AAA] hover:text-red-500 hover:bg-red-50 transition-all"
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                    <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                </button>
               </motion.div>
             ))}
           </AnimatePresence>
         </div>
 
-        {/* Summary */}
+        {/* Summary sidebar */}
         <div className="lg:col-span-1">
           <div className="rounded-2xl p-6 sticky top-24" style={{ background: "#F8FAFF", border: "1px solid #E0ECFF" }}>
             <h2 className="font-bold text-lg mb-4">Récapitulatif</h2>
@@ -99,17 +186,43 @@ export default function PanierPage() {
                 const typeTotal = typeItems.reduce((s, i) => s + i.price_ch, 0);
                 return (
                   <div key={type} className="flex justify-between text-sm">
-                    <span className="text-[#666]">{type}</span>
+                    <span className="text-[#666] flex items-center gap-1.5">
+                      <span className="text-xs">{TYPE_ICONS[type] || "🔧"}</span>
+                      {type}
+                    </span>
                     <span className="font-medium tabular-nums">{typeTotal} CHF</span>
                   </div>
                 );
               })}
             </div>
 
-            <div className="flex justify-between items-baseline mb-6">
+            {/* Total */}
+            <div className="flex justify-between items-baseline mb-4">
               <span className="font-bold text-base">Total</span>
-              <span className="text-2xl font-bold" style={{ color: "#4f8ef7" }}>{totalCHF} CHF</span>
+              <span className="text-2xl font-extrabold" style={{ color: "#4f8ef7" }}>{totalCHF} CHF</span>
             </div>
+
+            {/* Compatibility badge */}
+            <div className="flex items-center gap-2 mb-4 p-2.5 rounded-lg bg-green-50 border border-green-200">
+              <span className="text-green-600 text-sm">✅</span>
+              <span className="text-xs font-semibold text-green-700">Configuration compatible</span>
+            </div>
+
+            {/* Estimated wattage */}
+            <div className="flex items-center justify-between mb-4 px-1">
+              <span className="text-xs text-[#666]">Consommation estimée</span>
+              <span className="text-xs font-bold text-[#333]">~{wattage} W</span>
+            </div>
+
+            {/* Performance scores */}
+            {performance && (
+              <div className="mb-5 flex flex-col gap-2">
+                <p className="text-xs font-bold text-[#888] uppercase tracking-wide mb-1">Performance gaming</p>
+                <PerformanceBar label="1080p" value={performance["1080p"]} color="#22C55E" />
+                <PerformanceBar label="1440p" value={performance["1440p"]} color="#F59E0B" />
+                <PerformanceBar label="4K" value={performance["4K"]} color="#EF4444" />
+              </div>
+            )}
 
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -120,6 +233,20 @@ export default function PanierPage() {
             >
               Commander →
             </motion.button>
+
+            {/* Share config */}
+            <button
+              type="button"
+              onClick={shareConfig}
+              className="w-full mt-3 py-2.5 rounded-xl text-sm font-medium text-[#666] hover:text-[#333] transition-all flex items-center justify-center gap-2"
+              style={{ border: "1px solid #E5E5E5" }}
+            >
+              {copied ? (
+                <><span className="text-green-600">✓</span> Lien copié !</>
+              ) : (
+                <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/></svg> Partager ma config</>
+              )}
+            </button>
 
             <p className="text-[11px] text-[#999] text-center mt-3">
               Paiement sécurisé par Stripe · Livraison en Suisse

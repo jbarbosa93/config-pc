@@ -10,13 +10,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "ConfigPC.ch — Ta config PC parfaite en 30 secondes",
+  title: "config-pc.ch — Ta config PC parfaite en 30 secondes",
   description:
-    "Configurateur PC intelligent propulsé par Claude AI. Recommandations optimisées pour la France et la Suisse.",
+    "Configurateur PC intelligent propulsé par Claude AI. Recommandations optimisées pour la Suisse.",
   openGraph: {
-    title: "ConfigPC.ch — Ta config PC parfaite en 30 secondes",
+    title: "config-pc.ch — Ta config PC parfaite en 30 secondes",
     description:
-      "Configurateur PC intelligent propulsé par Claude AI. Recommandations optimisées pour la France et la Suisse.",
+      "Configurateur PC intelligent propulsé par Claude AI. Recommandations optimisées pour la Suisse.",
   },
   icons: { icon: "/icon.svg" },
 };

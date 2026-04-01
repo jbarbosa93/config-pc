@@ -155,7 +155,7 @@ export default function CommanderPage() {
                       }}
                     >
                       <div className="font-semibold text-sm">{mode === "livraison" ? "🚚 Livraison" : "🏪 Retrait"}</div>
-                      <div className="text-xs text-[#888] mt-0.5">{mode === "livraison" ? "À domicile en Suisse" : "En personne à Vaud"}</div>
+                      <div className="text-xs text-[#888] mt-0.5">{mode === "livraison" ? "À domicile en Suisse" : "En personne à Monthey, Valais"}</div>
                     </button>
                   ))}
                 </div>
@@ -214,7 +214,7 @@ export default function CommanderPage() {
                 <p className="font-medium">{form.firstName} {form.lastName}</p>
                 <p className="text-sm text-[#666]">{form.email} · {form.phone}</p>
                 {form.delivery === "livraison" && <p className="text-sm text-[#666]">{form.address}, {form.npa} {form.city}</p>}
-                {form.delivery === "retrait" && <p className="text-sm text-[#666]">Retrait en personne — Vaud, Suisse</p>}
+                {form.delivery === "retrait" && <p className="text-sm text-[#666]">Retrait en personne — Monthey, Valais, Suisse</p>}
               </div>
 
               {/* Items */}

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { useLanguage } from "@/lib/i18n";
-import type { PCConfig, Component, Alternative, Market } from "@/lib/types";
+import type { PCConfig, Component, Alternative } from "@/lib/types";
 import { buildSearchUrl, getSimulatedPrices, buildToppreiseUrl } from "@/lib/affiliates";
 import { useCart } from "@/lib/cart";
 
@@ -320,21 +320,71 @@ function ImageCarousel({ images, name, type, tall = false }: { images: DBImage[]
   );
 }
 
-/* Store label mapping */
+/* Store label mapping — Swiss merchants only */
 const STORE_LABELS: Record<string, string> = {
-  galaxus: "Galaxus", digitec: "Digitec", brack: "Brack.ch",
-  interdiscount: "Interdiscount", conrad: "Conrad", mediamarkt: "MediaMarkt",
-  "ldlc-ch": "LDLC Suisse", "amazon-de": "Amazon.de",
-  ldlc: "LDLC", amazon: "Amazon.fr", materielnet: "Matériel.net",
-  cdiscount: "Cdiscount", topachat: "TopAchat",
+  digitec: "Digitec", galaxus: "Galaxus", brack: "Brack.ch",
+  interdiscount: "Interdiscount", microspot: "Microspot", mediamarkt: "MediaMarkt",
 };
 
-function InfoModal({ component, market, onClose }: { component: Component; market: Market; onClose: () => void }) {
+/* ── Accordion wrapper ── */
+
+function Accordion({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #E5E5E5" }}>
+      <button type="button" onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold uppercase tracking-wider text-[#888] hover:bg-[#FAFAFA] transition-colors">
+        {title}
+        <motion.svg animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }} width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path d="M4 6l4 4 4-4" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </motion.svg>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ── TDP Badge with color coding ── */
+
+function TDPBadge({ tdp }: { tdp: number }) {
+  const color = tdp > 150 ? "#EF4444" : tdp > 65 ? "#F59E0B" : "#22C55E";
+  const bg = tdp > 150 ? "#FEF2F2" : tdp > 65 ? "#FFFBEB" : "#F0FFF4";
+  const label = tdp > 150 ? "Énergivore" : tdp > 65 ? "Modéré" : "Efficace";
+  return (
+    <span className="text-xs px-2.5 py-1 rounded-lg font-medium flex items-center gap-1.5" style={{ background: bg, color, border: `1px solid ${color}20` }}>
+      <span className="w-2 h-2 rounded-full" style={{ background: color }} />
+      TDP {tdp}W · {label}
+    </span>
+  );
+}
+
+/* ── Compatibility Score Bar ── */
+
+function CompatibilityScore({ score }: { score: number }) {
+  const color = score >= 90 ? "#22C55E" : score >= 70 ? "#F59E0B" : "#EF4444";
+  const label = score >= 90 ? "Excellente" : score >= 70 ? "Bonne" : "À vérifier";
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 h-2 bg-[#F0F0F0] rounded-full overflow-hidden">
+        <motion.div initial={{ width: 0 }} animate={{ width: `${score}%` }} transition={{ duration: 0.8, delay: 0.3 }} className="h-full rounded-full" style={{ background: color }} />
+      </div>
+      <span className="text-xs font-bold tabular-nums shrink-0" style={{ color }}>{score}% · {label}</span>
+    </div>
+  );
+}
+
+function InfoModal({ component, onClose }: { component: Component; onClose: () => void }) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [dbData, setDbData] = useState<DBComponent | null>(null);
   const [loading, setLoading] = useState(true);
+  const { addItem, items: cartItems } = useCart();
+  const inCart = cartItems.some((i) => i.name === component.name);
   const manufacturerUrl = getManufacturerUrl(component.name, component.manufacturer_url);
-  const isCH = market !== "france";
 
   useEffect(() => {
     let cancelled = false;
@@ -354,7 +404,6 @@ function InfoModal({ component, market, onClose }: { component: Component; marke
     return () => document.removeEventListener("mousedown", handleOutside);
   }, [handleOutside]);
 
-  // Escape key
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
     document.addEventListener("keydown", onKey);
@@ -366,37 +415,45 @@ function InfoModal({ component, market, onClose }: { component: Component; marke
   const mfUrl = dbData?.manufacturer_url || manufacturerUrl;
   const images: DBImage[] = dbData?.component_images || [];
   const brand = dbData?.brand || component.name.split(" ")[0];
-  const priceCH = dbData?.price_ch || component.price_ch;
-  const priceFR = dbData?.price_fr || component.price_fr;
-  const displayPrice = isCH ? priceCH : priceFR;
-  const currency = isCH ? "CHF" : "€";
+  const displayPrice = dbData?.price_ch || component.price_ch;
+  const tdp = dbData?.tdp || null;
 
-  // Price comparison: DB prices or simulated
   const dbPrices: DBPrice[] = dbData?.component_prices || [];
   const hasPricesInDB = dbPrices.length > 0;
   const simulatedPrices = getSimulatedPrices(displayPrice);
   const bestSimPrice = simulatedPrices[0]?.price;
 
-  // Best merchant link for primary CTA
   const bestMerchantUrl = hasPricesInDB
     ? (dbPrices.sort((a, b) => a.price - b.price)[0]?.url || "#")
     : buildSearchUrl(simulatedPrices[0]?.storeId || "galaxus", component.name);
+
+  // Compatibility score (heuristic based on having matching specs)
+  const compatScore = Math.min(100, 75 + (dbData?.socket ? 5 : 0) + (dbData?.form_factor ? 5 : 0) + (dbData?.chipset ? 5 : 0) + (Object.keys(specs).length > 3 ? 10 : 0));
+
+  // "Pourquoi ce composant?" dynamic points
+  const whyPoints: string[] = [];
+  if (component.priority === "essentiel") whyPoints.push("Composant essentiel pour cette configuration.");
+  if (component.reason) whyPoints.push(component.reason);
+  if (tdp && tdp <= 65) whyPoints.push("Faible consommation énergétique — bon pour le silence et la durabilité.");
+  else if (tdp && tdp > 150) whyPoints.push("Haute performance qui nécessite un bon refroidissement.");
+  if (dbData?.release_year && dbData.release_year >= 2024) whyPoints.push("Composant récent avec les dernières technologies.");
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 sm:px-4 py-0 sm:py-6"
       style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
     >
       <motion.div
         ref={modalRef}
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 20 }}
-        transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="bg-white rounded-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col"
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col relative"
         style={{ border: "1px solid #E5E5E5" }}
       >
         {/* ── Sticky header ── */}
@@ -417,16 +474,14 @@ function InfoModal({ component, market, onClose }: { component: Component; marke
             <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.9, ease: "linear" }} className="w-7 h-7 rounded-full border-2 border-[#E5E5E5]" style={{ borderTopColor: "#4f8ef7" }} />
           </div>
         ) : (
-          <div className="p-6 flex flex-col gap-8">
+          <div className="p-6 pb-24 flex flex-col gap-6">
 
             {/* ── TOP: Image + Info ── */}
             <div className="flex flex-col md:flex-row gap-6">
-              {/* Left: Image */}
               <div className="md:w-[42%] shrink-0">
                 <ImageCarousel images={images} name={component.name} type={component.type} tall />
               </div>
 
-              {/* Right: Product info */}
               <div className="flex-1 flex flex-col justify-between gap-5">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
@@ -435,44 +490,38 @@ function InfoModal({ component, market, onClose }: { component: Component; marke
                   </div>
                   <h1 className="text-2xl font-bold text-[#0A0A0A] leading-tight mb-3">{component.name}</h1>
 
-                  {/* Key attributes */}
+                  {/* Attribute badges with colored TDP */}
                   <div className="flex flex-wrap gap-2 mb-4">
                     {dbData?.socket && <span className="text-xs px-2.5 py-1 rounded-lg bg-[#F0F7FF] text-[#3B70C4] font-medium">Socket {dbData.socket}</span>}
                     {dbData?.form_factor && <span className="text-xs px-2.5 py-1 rounded-lg bg-[#F5F5F5] text-[#555] font-medium">{dbData.form_factor}</span>}
-                    {dbData?.tdp && <span className="text-xs px-2.5 py-1 rounded-lg bg-[#FFF5F0] text-[#C4621B] font-medium">TDP {dbData.tdp}W</span>}
+                    {tdp ? <TDPBadge tdp={tdp} /> : null}
                     {dbData?.chipset && <span className="text-xs px-2.5 py-1 rounded-lg bg-[#F0FFF4] text-[#2F855A] font-medium">{dbData.chipset}</span>}
                   </div>
 
+                  {/* Compatibility score */}
+                  <div className="mb-4">
+                    <p className="text-[11px] text-[#888] uppercase tracking-wide font-medium mb-1.5">Compatibilité</p>
+                    <CompatibilityScore score={compatScore} />
+                  </div>
+
                   {description && (
-                    <p className="text-sm leading-relaxed text-[#555] line-clamp-4">{description}</p>
+                    <p className="text-sm leading-relaxed text-[#555] line-clamp-3">{description}</p>
                   )}
                 </div>
 
-                {/* Price + CTA */}
+                {/* Price with count-up animation */}
                 <div className="rounded-2xl p-5" style={{ background: "#F8FAFF", border: "1px solid #E0ECFF" }}>
                   <p className="text-xs text-[#888] mb-1 uppercase tracking-wide font-medium">Meilleur prix</p>
                   <div className="flex items-baseline gap-2 mb-4">
-                    <span className="text-4xl font-bold" style={{ color: "#4f8ef7" }}>{displayPrice}</span>
-                    <span className="text-xl font-semibold text-[#4f8ef7]">{currency}</span>
+                    <span className="text-4xl font-bold" style={{ color: "#4f8ef7" }}><AnimatedPrice value={displayPrice} suffix="" /></span>
+                    <span className="text-xl font-semibold text-[#4f8ef7]">CHF</span>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <a
-                      href={bestMerchantUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98]"
-                      style={{ background: "#4f8ef7" }}
-                    >
+                    <a href={bestMerchantUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98]" style={{ background: "#4f8ef7" }}>
                       Voir l&apos;offre →
                     </a>
                     {mfUrl !== "#" && (
-                      <a
-                        href={mfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-[#555] hover:text-[#0A0A0A] transition-all"
-                        style={{ border: "1px solid #E5E5E5" }}
-                      >
+                      <a href={mfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-[#555] hover:text-[#0A0A0A] transition-all" style={{ border: "1px solid #E5E5E5" }}>
                         Site fabricant →
                       </a>
                     )}
@@ -481,10 +530,27 @@ function InfoModal({ component, market, onClose }: { component: Component; marke
               </div>
             </div>
 
-            {/* ── Price comparison table ── */}
-            <div>
-              <h2 className="text-sm font-bold uppercase tracking-wider text-[#888] mb-3">Comparer les prix</h2>
-              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #E5E5E5" }}>
+            {/* ── Pourquoi ce composant? ── */}
+            {whyPoints.length > 0 && (
+              <div className="rounded-xl p-4" style={{ background: "#F8FAFF", border: "1px solid #E0ECFF" }}>
+                <h2 className="text-sm font-bold text-[#4f8ef7] mb-3 flex items-center gap-2">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#4f8ef7" strokeWidth="1.5"/><path d="M8 5v4M8 11h.01" stroke="#4f8ef7" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  Pourquoi ce composant ?
+                </h2>
+                <ul className="flex flex-col gap-2">
+                  {whyPoints.slice(0, 3).map((point, i) => (
+                    <motion.li key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 + i * 0.1 }} className="text-sm text-[#555] flex items-start gap-2">
+                      <span className="text-[#4f8ef7] mt-0.5 shrink-0">•</span>
+                      {point}
+                    </motion.li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* ── Price comparison (accordion) ── */}
+            <Accordion title="Comparer les prix" defaultOpen>
+              <div>
                 {hasPricesInDB ? (
                   [...dbPrices].sort((a, b) => a.price - b.price).map((p, i) => {
                     const isLowest = i === 0;
@@ -517,33 +583,41 @@ function InfoModal({ component, market, onClose }: { component: Component; marke
                         </div>
                         <div className="flex items-center gap-3">
                           {isLowest && <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">Meilleur prix</span>}
-                          <span className={`tabular-nums font-semibold ${isLowest ? "text-green-700 text-base" : "text-[#0A0A0A]"}`}>{p.price} {currency}</span>
+                          <span className={`tabular-nums font-semibold ${isLowest ? "text-green-700 text-base" : "text-[#0A0A0A]"}`}>{p.price} CHF</span>
                           <a href={buildSearchUrl(p.storeId, component.name)} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 rounded-lg font-medium text-white transition-opacity hover:opacity-80" style={{ background: "#4f8ef7" }}>Acheter</a>
                         </div>
                       </div>
                     );
                   })
                 )}
+                {!hasPricesInDB && (
+                  <p className="px-4 py-2 text-[11px] text-[#AAA] italic">Prix indicatifs — cliquez pour voir le prix réel sur chaque site.</p>
+                )}
               </div>
-              {!hasPricesInDB && (
-                <p className="text-[11px] text-[#AAA] italic mt-2 px-1">Prix indicatifs — cliquez pour voir le prix réel sur chaque site.</p>
-              )}
-            </div>
+              <a
+                href={buildToppreiseUrl(component.name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mx-4 mb-4 mt-2 flex items-center justify-center gap-2.5 w-[calc(100%-2rem)] py-3 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-all"
+                style={{ background: "#FF6B00" }}
+              >
+                <span className="px-1.5 py-0.5 rounded bg-white/20 text-white font-bold text-[10px] tracking-tight">TP</span>
+                Comparer les prix sur TopPreise →
+              </a>
+            </Accordion>
 
-            {/* ── Specs table ── */}
+            {/* ── Specs table (accordion) ── */}
             {specs && Object.keys(specs).length > 0 && (
-              <div>
-                <h2 className="text-sm font-bold uppercase tracking-wider text-[#888] mb-3">Fiche technique</h2>
-                <div className="rounded-xl overflow-hidden" style={{ border: "1px solid #E5E5E5" }}>
+              <Accordion title="Fiche technique" defaultOpen={false}>
+                <div>
                   {Object.entries(specs).map(([key, value], i) => (
                     <div key={key} className={`flex items-start justify-between px-4 py-3 text-sm ${i > 0 ? "border-t" : ""}`} style={{ borderColor: "#F0F0F0", background: i % 2 === 0 ? "white" : "#FAFAFA" }}>
                       <span className="text-[#666] w-2/5 shrink-0">{key}</span>
                       <span className="font-medium text-[#0A0A0A] text-right flex-1">{String(value)}</span>
                     </div>
                   ))}
-                  {/* Extra DB fields as specs */}
                   {dbData?.socket && !specs["Socket"] && (
-                    <div className="flex items-start justify-between px-4 py-3 text-sm border-t" style={{ borderColor: "#F0F0F0", background: Object.keys(specs).length % 2 === 0 ? "white" : "#FAFAFA" }}>
+                    <div className="flex items-start justify-between px-4 py-3 text-sm border-t" style={{ borderColor: "#F0F0F0" }}>
                       <span className="text-[#666] w-2/5 shrink-0">Socket</span>
                       <span className="font-medium text-[#0A0A0A] text-right flex-1">{dbData.socket}</span>
                     </div>
@@ -554,132 +628,42 @@ function InfoModal({ component, market, onClose }: { component: Component; marke
                       <span className="font-medium text-[#0A0A0A] text-right flex-1">{dbData.form_factor}</span>
                     </div>
                   )}
-                  {dbData?.tdp && !specs["TDP"] && (
+                  {tdp && !specs["TDP"] && (
                     <div className="flex items-start justify-between px-4 py-3 text-sm border-t" style={{ borderColor: "#F0F0F0" }}>
                       <span className="text-[#666] w-2/5 shrink-0">TDP</span>
-                      <span className="font-medium text-[#0A0A0A] text-right flex-1">{dbData.tdp} W</span>
+                      <span className="font-medium text-[#0A0A0A] text-right flex-1">{tdp} W</span>
                     </div>
                   )}
                 </div>
-              </div>
+              </Accordion>
             )}
 
-            {/* ── Full description ── */}
+            {/* ── Full description (accordion) ── */}
             {description && Object.keys(specs).length > 0 && (
-              <div>
-                <h2 className="text-sm font-bold uppercase tracking-wider text-[#888] mb-3">Description</h2>
-                <p className="text-sm leading-relaxed text-[#444] bg-[#FAFAFA] rounded-xl p-4" style={{ border: "1px solid #F0F0F0" }}>{description}</p>
-              </div>
+              <Accordion title="Description" defaultOpen={false}>
+                <p className="text-sm leading-relaxed text-[#444] p-4">{description}</p>
+              </Accordion>
             )}
 
           </div>
         )}
-      </motion.div>
-    </motion.div>
-  );
-}
 
-/* ── Quote Modal ── */
-
-function QuoteModal({ config, components, market, totalFR, totalCH, onClose }: {
-  config: PCConfig; components: Component[]; market: Market; totalFR: number; totalCH: number; onClose: () => void;
-}) {
-  const { t } = useLanguage();
-  const modalRef = useRef<HTMLDivElement>(null);
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState(false);
-
-  const [form, setForm] = useState({
-    firstName: "", lastName: "", email: "", phone: "",
-    address: "", npa: "", city: "", country: "Suisse",
-    message: "", delivery: false, assembly: false,
-  });
-
-  function update(field: string, value: string | boolean) {
-    setForm((f) => ({ ...f, [field]: value }));
-  }
-
-  const handleOutside = useCallback((e: MouseEvent) => {
-    if (modalRef.current && !modalRef.current.contains(e.target as Node)) onClose();
-  }, [onClose]);
-  useEffect(() => { document.addEventListener("mousedown", handleOutside); return () => document.removeEventListener("mousedown", handleOutside); }, [handleOutside]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSending(true);
-    setError(false);
-    try {
-      const res = await fetch("/api/send-quote", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          configName: config.config_name,
-          components: components.map((c) => ({ type: c.type, name: c.name, price_fr: c.price_fr, price_ch: c.price_ch })),
-          totalFR, totalCH, market,
-        }),
-      });
-      if (!res.ok) throw new Error();
-      setSent(true);
-    } catch {
-      setError(true);
-    } finally {
-      setSending(false);
-    }
-  }
-
-  const inputClass = "w-full px-3 py-2.5 rounded-xl border border-border bg-bg text-text text-sm placeholder:text-text-secondary/50 focus:outline-none focus:border-accent transition-colors duration-150";
-
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-      <motion.div ref={modalRef} initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 25 }} className="bg-bg border border-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="sticky top-0 bg-bg border-b border-border p-6 rounded-t-2xl flex items-center justify-between z-10">
-          <div className="flex items-center gap-3">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" /></svg>
-            <h3 className="font-bold text-lg">{t("quote.title")}</h3>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-text-secondary hover:text-text hover:border-border-hover transition-colors duration-150">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-          </button>
-        </div>
-
-        {sent ? (
-          <div className="p-10 text-center">
-            <div className="text-4xl mb-4">{"\u2705"}</div>
-            <p className="font-semibold text-lg mb-2">{t("quote.success")}</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <input required placeholder={t("quote.firstName")} value={form.firstName} onChange={(e) => update("firstName", e.target.value)} className={inputClass} />
-              <input required placeholder={t("quote.lastName")} value={form.lastName} onChange={(e) => update("lastName", e.target.value)} className={inputClass} />
-            </div>
-            <input required type="email" placeholder={t("quote.email")} value={form.email} onChange={(e) => update("email", e.target.value)} className={inputClass} />
-            <input placeholder={t("quote.phone")} value={form.phone} onChange={(e) => update("phone", e.target.value)} className={inputClass} />
-            <input required placeholder={t("quote.address")} value={form.address} onChange={(e) => update("address", e.target.value)} className={inputClass} />
-            <div className="grid grid-cols-2 gap-3">
-              <input required placeholder={t("quote.npa")} value={form.npa} onChange={(e) => update("npa", e.target.value)} className={inputClass} />
-              <input required placeholder={t("quote.city")} value={form.city} onChange={(e) => update("city", e.target.value)} className={inputClass} />
-            </div>
-            <input required placeholder={t("quote.country")} value={form.country} onChange={(e) => update("country", e.target.value)} className={inputClass} />
-            <textarea placeholder={t("quote.message")} value={form.message} onChange={(e) => update("message", e.target.value)} rows={3} className={inputClass} />
-
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" checked={form.delivery} onChange={(e) => update("delivery", e.target.checked)} className="w-4 h-4 rounded border-border accent-accent" />
-              <span className="text-sm">{t("quote.delivery")}</span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" checked={form.assembly} onChange={(e) => update("assembly", e.target.checked)} className="w-4 h-4 rounded border-border accent-accent" />
-              <span className="text-sm">{t("quote.assembly")}</span>
-            </label>
-
-            {error && <p className="text-sm text-red-500">{t("quote.error")}</p>}
-
-            <button type="submit" disabled={sending} className="w-full py-3 rounded-xl bg-accent text-white font-medium text-sm transition-opacity disabled:opacity-50">
-              {sending ? t("quote.sending") : t("quote.send")}
+        {/* ── Fixed bottom "Ajouter à ma config" button ── */}
+        {!loading && (
+          <div className="sticky bottom-0 bg-white px-6 py-4 flex gap-3" style={{ borderTop: "1px solid #E5E5E5" }}>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => !inCart && addItem(component)}
+              className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-all ${inCart ? "bg-green-100 text-green-700 border border-green-200" : "text-white"}`}
+              style={inCart ? {} : { background: "#4f8ef7" }}
+            >
+              {inCart ? "✓ Dans le panier" : "Ajouter à ma config"}
+            </motion.button>
+            <button type="button" onClick={onClose} className="px-5 py-3 rounded-xl text-sm font-medium text-[#666] hover:text-[#333] transition-colors" style={{ border: "1px solid #E5E5E5" }}>
+              Fermer
             </button>
-          </form>
+          </div>
         )}
       </motion.div>
     </motion.div>
@@ -949,7 +933,7 @@ function getChangeLabel(type: string): string {
 
 /* ── Component Card ── */
 
-function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }: { component: Component; original: Component | null; index: number; market: Market; onSwap: () => void; onRevert: () => void; onInfo: () => void }) {
+function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }: { component: Component; original: Component | null; index: number; onSwap: () => void; onRevert: () => void; onInfo: () => void }) {
   const { t } = useLanguage();
   const { addItem, items } = useCart();
   const isEssential = component.priority === "essentiel";
@@ -977,11 +961,9 @@ function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }:
         </div>
       </div>
 
-      <div className="flex gap-3 mb-1">
-        <div className="flex-1 bg-bg rounded-lg p-2.5 text-center border border-border">
-          <div className="text-[11px] text-text-secondary">Prix CHF</div>
-          <div className="font-semibold mt-0.5">{component.price_ch} CHF</div>
-        </div>
+      <div className="flex items-baseline gap-1.5 mb-2 mt-1">
+        <span className="text-3xl font-extrabold" style={{ color: "#4f8ef7" }}>{component.price_ch}</span>
+        <span className="text-base font-semibold text-[#4f8ef7]">CHF</span>
       </div>
 
       {/* Merchant price table */}
@@ -1010,7 +992,7 @@ function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }:
 
 /* ── Expandable Price Row ── */
 
-function PriceRow({ component, changed, t }: { component: Component; index: number; changed: boolean; market: Market; t: (k: string) => string }) {
+function PriceRow({ component, changed, t }: { component: Component; index: number; changed: boolean; t: (k: string) => string }) {
   return (
     <tr className="border-b border-border/50 hover:bg-card/50 transition-colors duration-150">
       <td className="py-3">
@@ -1029,6 +1011,82 @@ function PriceRow({ component, changed, t }: { component: Component; index: numb
   );
 }
 
+/* ── Peripherals & Setup Section ── */
+
+const PERIPHERAL_CATEGORIES = [
+  { type: "Moniteur", icon: "🖥️", desc: "Écran gaming ou productivité", color: "#3B82F6", bg: "#EFF6FF" },
+  { type: "Clavier", icon: "⌨️", desc: "Mécanique, membrane, sans fil", color: "#8B5CF6", bg: "#F5F3FF" },
+  { type: "Souris", icon: "🖱️", desc: "Gaming, ergonomique, sans fil", color: "#10B981", bg: "#ECFDF5" },
+  { type: "Casque gaming", icon: "🎧", desc: "Audio immersif, micro intégré", color: "#EF4444", bg: "#FEF2F2" },
+  { type: "Chaise gaming", icon: "🪑", desc: "Ergonomique, confort longue durée", color: "#F59E0B", bg: "#FFFBEB" },
+  { type: "Tapis de souris", icon: "🎯", desc: "XL, RGB, precision", color: "#6B7280", bg: "#F9FAFB" },
+];
+
+function PeripheralsSection() {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="mb-10">
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="w-full flex items-center justify-between px-5 py-4 rounded-xl border transition-all duration-200 hover:border-[#CCC]"
+        style={{ borderColor: expanded ? "#4f8ef7" : "#E5E5E5", background: expanded ? "#F8FAFF" : "white" }}
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-lg">🎮</span>
+          <div className="text-left">
+            <span className="font-semibold text-sm">Compléter ton setup</span>
+            <span className="text-xs text-[#888] ml-2">Périphériques & accessoires</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#F5F5F5] text-[#888] font-medium border border-[#E5E5E5]">Optionnel</span>
+          <motion.svg animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }} width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M4 6l4 4 4-4" stroke="#999" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </motion.svg>
+        </div>
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="overflow-hidden"
+          >
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-4">
+              {PERIPHERAL_CATEGORIES.map((cat, i) => (
+                <motion.a
+                  key={cat.type}
+                  href={buildSearchUrl("digitec", cat.type)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.06 }}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  className="rounded-xl p-4 border transition-all duration-150 cursor-pointer group"
+                  style={{ borderColor: "#E5E5E5", background: cat.bg }}
+                >
+                  <div className="text-2xl mb-2">{cat.icon}</div>
+                  <p className="font-semibold text-sm" style={{ color: cat.color }}>{cat.type}</p>
+                  <p className="text-[11px] text-[#888] mt-0.5 leading-snug">{cat.desc}</p>
+                  <div className="mt-3 text-[10px] font-medium text-[#888] group-hover:text-[#4f8ef7] transition-colors flex items-center gap-1">
+                    Voir sur Digitec <span className="text-[10px]">→</span>
+                  </div>
+                </motion.a>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
 /* ── Main ── */
 
 interface Props { config: PCConfig; onReset: () => void; }
@@ -1040,7 +1098,6 @@ export default function ConfigResult({ config, onReset }: Props) {
   const [swapIndex, setSwapIndex] = useState<number | null>(null);
   const [infoIndex, setInfoIndex] = useState<number | null>(null);
 
-  const market: Market = "suisse";
   const totalCH = components.reduce((s, c) => s + c.price_ch, 0);
   const hasChanges = components.some((c, i) => c.name !== originals[i].name);
   const { addItem, items: cartItems, count: cartCount } = useCart();
@@ -1083,8 +1140,11 @@ export default function ConfigResult({ config, onReset }: Props) {
 
       {/* Components */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-10">
-        {components.map((c, i) => <ComponentCard key={`${c.type}-${i}`} component={c} original={originals[i]} index={i} market={market} onSwap={() => setSwapIndex(i)} onRevert={() => handleRevert(i)} onInfo={() => setInfoIndex(i)} />)}
+        {components.map((c, i) => <ComponentCard key={`${c.type}-${i}`} component={c} original={originals[i]} index={i} onSwap={() => setSwapIndex(i)} onRevert={() => handleRevert(i)} onInfo={() => setInfoIndex(i)} />)}
       </div>
+
+      {/* Peripherals & Setup */}
+      <PeripheralsSection />
 
       {/* Notes */}
       {(config.compatibility_notes || config.upgrade_path) && (
@@ -1106,7 +1166,7 @@ export default function ConfigResult({ config, onReset }: Props) {
             </tr>
           </thead>
           <tbody>
-            {components.map((c, i) => <PriceRow key={`row-${c.type}-${i}`} component={c} index={i} changed={c.name !== originals[i].name} market={market} t={t} />)}
+            {components.map((c, i) => <PriceRow key={`row-${c.type}-${i}`} component={c} index={i} changed={c.name !== originals[i].name} t={t} />)}
           </tbody>
           <tfoot>
             <tr className="font-bold">
@@ -1148,18 +1208,6 @@ export default function ConfigResult({ config, onReset }: Props) {
           </motion.a>
         )}
 
-        <motion.button
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={() => {
-            sessionStorage.setItem("pc3d_config", JSON.stringify({ components, configName: config.config_name }));
-            window.location.href = "/configurateur/visualiseur";
-          }}
-          className="px-6 py-2.5 rounded-full text-sm font-medium text-white transition-all duration-150"
-          style={{ background: "linear-gradient(135deg, #4f8ef7, #7b5cf5)" }}
-        >
-          🖥️ Voir en 3D
-        </motion.button>
         <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={handleSave} className="px-6 py-2.5 rounded-full border border-border text-sm font-medium text-text-secondary hover:text-text hover:border-border-hover transition-all duration-150">{t("result.save")}</motion.button>
         <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={onReset} className="px-6 py-2.5 rounded-full border border-border text-sm font-medium text-text-secondary hover:text-text hover:border-border-hover transition-all duration-150">{t("result.newConfig")}</motion.button>
       </motion.div>
@@ -1169,9 +1217,7 @@ export default function ConfigResult({ config, onReset }: Props) {
         {swapIndex !== null && <AlternativesModal component={components[swapIndex]} allComponents={components} usage={config.config_name} budget={config.total_estimated} onSelect={(alt) => handleSelectAlternative(swapIndex, alt)} onClose={() => setSwapIndex(null)} />}
       </AnimatePresence>
       <AnimatePresence>
-        {infoIndex !== null && <InfoModal component={components[infoIndex]} market={market} onClose={() => setInfoIndex(null)} />}
-      </AnimatePresence>
-      <AnimatePresence>
+        {infoIndex !== null && <InfoModal component={components[infoIndex]} onClose={() => setInfoIndex(null)} />}
       </AnimatePresence>
     </div>
   );
