@@ -107,6 +107,24 @@ input[type="range"]::-moz-range-thumb {
   transform-origin: center;
 }
 
+/* InfoModal right-panel slide-in */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Pulse on CTA button */
+@keyframes pulse-slow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+}
+.animate-pulse-slow {
+  animation: pulse-slow 2.5s ease-in-out infinite;
+}
+
 /* Particles canvas */
 .particles-canvas {
   position: fixed;

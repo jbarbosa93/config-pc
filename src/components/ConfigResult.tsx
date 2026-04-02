@@ -442,7 +442,6 @@ function CompatibilityScore({ score }: { score: number }) {
 }
 
 function InfoModal({ component, allComponents, onClose }: { component: Component; allComponents?: Component[]; onClose: () => void }) {
-  const modalRef = useRef<HTMLDivElement>(null);
   const [dbData, setDbData] = useState<DBComponent | null>(null);
   const [loading, setLoading] = useState(true);
   const { addItem, items: cartItems } = useCart();
@@ -459,14 +458,6 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
     return () => { cancelled = true; };
   }, [component.name]);
 
-  const handleOutside = useCallback((e: MouseEvent) => {
-    if (modalRef.current && !modalRef.current.contains(e.target as Node)) onClose();
-  }, [onClose]);
-  useEffect(() => {
-    document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, [handleOutside]);
-
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
     document.addEventListener("keydown", onKey);
@@ -476,7 +467,6 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
   const specs = { ...(component.specs || {}), ...(dbData?.specs || {}) };
   const description = dbData?.description || component.full_description || component.reason;
   const mfUrl = dbData?.manufacturer_url || manufacturerUrl;
-  const images: DBImage[] = dbData?.component_images || [];
   const brand = dbData?.brand || component.name.split(" ")[0];
   const displayPrice = dbData?.price_ch || component.price_ch;
   const tdp = dbData?.tdp || null;
@@ -551,114 +541,110 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
   if (component.priority === "essentiel") whyPoints.push("Composant essentiel de cette configuration.");
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 overflow-y-auto"
-      style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
-    >
-      <div className="min-h-full flex items-start justify-center px-0 sm:px-4 pt-4 pb-4">
+    <AnimatePresence>
       <motion.div
-        ref={modalRef}
-        initial={{ opacity: 0, y: 60 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 40 }}
-        transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl relative"
-        style={{ border: "1px solid #E5E5E5" }}
+        key="backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div
+        key="panel"
+        className="fixed inset-y-0 right-0 z-[101] w-full max-w-3xl bg-white shadow-2xl flex flex-col animate-slide-in-right"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* ── Sticky header ── */}
-        <div className="bg-white z-10 px-6 py-4 flex items-center justify-between rounded-t-2xl" style={{ borderBottom: "1px solid #E5E5E5" }}>
+        <div className="sticky top-0 z-10 bg-white px-6 py-4 flex items-center justify-between shrink-0" style={{ borderBottom: "1px solid #E5E5E5" }}>
           <div className="flex items-center gap-2 min-w-0">
             <span className="shrink-0 text-[11px] px-2.5 py-1 rounded-full font-semibold text-white" style={{ background: "#4f8ef7" }}>{component.type}</span>
             <span className="text-sm font-medium text-[#444] truncate">{brand}</span>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[#CCC]"><path d="M4.5 2.5l3 3.5-3 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             <span className="text-sm text-[#666] truncate">{component.name}</span>
           </div>
-          <button type="button" onClick={onClose} className="shrink-0 w-9 h-9 rounded-full border-2 flex items-center justify-center text-[#666] hover:text-[#0A0A0A] hover:bg-[#F5F5F5] transition-colors ml-4" style={{ borderColor: "#E5E5E5" }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-          </button>
+          <button type="button" onClick={onClose} className="shrink-0 w-10 h-10 rounded-full bg-[#F5F5F5] hover:bg-[#EBEBEB] flex items-center justify-center text-[#444] hover:text-[#0A0A0A] transition-all ml-4 text-lg font-bold">✕</button>
         </div>
 
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center py-24">
-            {/* Skeleton loader */}
-            <div className="w-full max-w-md px-6 flex flex-col gap-4 animate-pulse">
-              <div className="h-[200px] bg-[#F0F0F0] rounded-xl" />
-              <div className="h-5 bg-[#F0F0F0] rounded w-2/3" />
-              <div className="h-4 bg-[#F0F0F0] rounded w-1/2" />
-              <div className="h-4 bg-[#F0F0F0] rounded w-full" />
-              <div className="h-4 bg-[#F0F0F0] rounded w-3/4" />
-            </div>
-          </div>
-        ) : (
-          <div className="p-4 sm:p-6 pb-6 flex flex-col gap-6">
-
-            {/* ── TOP: Image + Info ── */}
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="md:w-[42%] shrink-0">
-                <ImageCarousel images={images} name={component.name} type={component.type} tall />
+        {/* ── Scrollable content ── */}
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="p-6 flex flex-col gap-4 animate-pulse">
+              <div className="flex gap-6">
+                <div className="w-44 h-44 bg-[#F0F0F0] rounded-2xl shrink-0" />
+                <div className="flex-1 flex flex-col gap-3 pt-2">
+                  <div className="h-5 bg-[#F0F0F0] rounded w-1/3" />
+                  <div className="h-7 bg-[#F0F0F0] rounded w-3/4" />
+                  <div className="h-4 bg-[#F0F0F0] rounded w-1/2" />
+                  <div className="h-16 bg-[#F0F0F0] rounded-xl mt-2" />
+                  <div className="h-10 bg-[#F0F0F0] rounded-xl" />
+                </div>
               </div>
+            </div>
+          ) : (
+            <div className="p-6 space-y-6">
 
-              <div className="flex-1 flex flex-col justify-between gap-5">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
+              {/* ── Hero: large SVG + info ── */}
+              <div className="flex flex-col sm:flex-row gap-6">
+                {/* Large SVG */}
+                <div className="w-full sm:w-44 h-44 shrink-0 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #EFF6FF 0%, #E0ECFF 100%)" }}>
+                  <ComponentSVG type={component.type} size={120} />
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-[#4f8ef7] uppercase tracking-wide">{brand}</span>
                     {dbData?.release_year && <span className="text-xs text-[#999] bg-[#F5F5F5] px-2 py-0.5 rounded-full">{dbData.release_year}</span>}
                   </div>
-                  <h1 className="text-2xl font-bold text-[#0A0A0A] leading-tight mb-3">{component.name}</h1>
+                  <h1 className="text-xl sm:text-2xl font-bold text-[#0A0A0A] leading-tight">{component.name}</h1>
 
-                  {/* Attribute badges with stagger animation */}
-                  <div className="flex flex-wrap gap-2 mb-4">
+                  {/* Badges with stagger */}
+                  <div className="flex flex-wrap gap-2">
                     {[
                       dbData?.socket ? <span key="socket" className="text-xs px-2.5 py-1 rounded-lg bg-[#F0F7FF] text-[#3B70C4] font-medium">Socket {dbData.socket}</span> : null,
                       dbData?.form_factor ? <span key="ff" className="text-xs px-2.5 py-1 rounded-lg bg-[#F5F5F5] text-[#555] font-medium">{dbData.form_factor}</span> : null,
                       tdp ? <TDPBadge key="tdp" tdp={tdp} /> : null,
                       dbData?.chipset ? <span key="chipset" className="text-xs px-2.5 py-1 rounded-lg bg-[#F0FFF4] text-[#2F855A] font-medium">{dbData.chipset}</span> : null,
                     ].filter(Boolean).map((badge, i) => (
-                      <motion.div key={i} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 + i * 0.07, type: "spring", stiffness: 300 }}>
+                      <motion.div key={i} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.05 + i * 0.07, type: "spring", stiffness: 300 }}>
                         {badge}
                       </motion.div>
                     ))}
                   </div>
 
-                  {/* Compatibility score */}
-                  <div className="mb-4">
-                    <p className="text-[11px] text-[#888] uppercase tracking-wide font-medium mb-1.5">Compatibilité</p>
+                  {/* Compatibility */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[11px] text-[#888] uppercase tracking-wide font-medium">Compatibilité</span>
+                    </div>
                     <CompatibilityScore score={compatScore} />
                   </div>
 
-                  {description && (
-                    <p className="text-sm leading-relaxed text-[#555] line-clamp-3">{description}</p>
-                  )}
-                </div>
-
-                {/* Price with count-up animation */}
-                <div className="rounded-2xl p-5" style={{ background: "#F8FAFF", border: "1px solid #E0ECFF" }}>
-                  <p className="text-xs text-[#888] mb-1 uppercase tracking-wide font-medium">Meilleur prix</p>
-                  <div className="flex items-baseline gap-2 mb-4">
+                  {/* Price box */}
+                  <div className="rounded-xl p-4" style={{ background: "linear-gradient(135deg, #F0F7FF 0%, #EBF3FF 100%)", border: "1px solid #D0E4FF" }}>
+                    <p className="text-[11px] text-[#888] uppercase tracking-wide font-medium mb-1">Meilleur prix</p>
                     {displayPrice > 0 ? (
-                      <>
-                        <span className="text-4xl font-bold" style={{ color: "#4f8ef7" }}><AnimatedPrice value={displayPrice} suffix="" /></span>
-                        <span className="text-xl font-semibold text-[#4f8ef7]">CHF</span>
-                      </>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-3xl font-black" style={{ color: "#4f8ef7" }}><AnimatedPrice value={displayPrice} suffix="" /></span>
+                        <span className="text-lg font-bold text-[#4f8ef7]">CHF</span>
+                      </div>
                     ) : (
-                      <span className="text-lg font-medium text-[#999] italic">Prix à confirmer</span>
+                      <span className="text-base font-medium text-[#999] italic">Prix à confirmer</span>
                     )}
                   </div>
+
+                  {/* CTA buttons */}
                   <div className="flex flex-col gap-2">
-                    <motion.a
+                    <a
                       href={bestMerchantUrl}
                       target="_blank" rel="noopener noreferrer"
-                      animate={{ boxShadow: ["0 0 0 0px rgba(79,142,247,0.5)", "0 0 0 8px rgba(79,142,247,0)", "0 0 0 0px rgba(79,142,247,0)"] }}
-                      transition={{ duration: 3, repeat: Infinity, ease: "easeOut" }}
-                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-opacity"
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-opacity animate-pulse-slow"
                       style={{ background: "#4f8ef7" }}
                     >
                       Voir l&apos;offre →
-                    </motion.a>
+                    </a>
                     {mfUrl !== "#" && (
                       <a href={mfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-[#555] hover:text-[#0A0A0A] transition-all" style={{ border: "1px solid #E5E5E5" }}>
                         Site fabricant →
@@ -667,151 +653,146 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* ── Pourquoi ce composant? ── */}
-            {whyPoints.length > 0 && (
-              <div className="rounded-xl p-4" style={{ background: "#F8FAFF", border: "1px solid #E0ECFF" }}>
-                <h2 className="text-sm font-bold text-[#4f8ef7] mb-3 flex items-center gap-2">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#4f8ef7" strokeWidth="1.5"/><path d="M8 5v4M8 11h.01" stroke="#4f8ef7" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                  Pourquoi ce composant ?
-                </h2>
-                <ul className="flex flex-col gap-2">
-                  {whyPoints.slice(0, 3).map((point, i) => (
-                    <motion.li key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 + i * 0.1 }} className="text-sm text-[#555] flex items-start gap-2">
-                      <span className="text-[#4f8ef7] mt-0.5 shrink-0">•</span>
-                      {point}
-                    </motion.li>
-                  ))}
-                </ul>
-              </div>
-            )}
+              {/* ── Description ── */}
+              {description && (
+                <p className="text-sm leading-relaxed text-[#555]">{description}</p>
+              )}
 
-            {/* ── Price comparison (accordion) — always all 4 Swiss stores ── */}
-            <Accordion title="Comparer les prix" defaultOpen>
-              <div>
-                {allMerchantPrices.map((p, i) => {
-                  const isLowest = p.price === bestMerchantPrice;
-                  const href = buildSearchUrl(p.storeId, component.name);
-                  return (
-                    <motion.div
-                      key={p.storeId}
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.3 + i * 0.08 }}
-                      className={`flex items-center justify-between px-4 py-3 text-sm ${i > 0 ? "border-t" : ""}`}
-                      style={{ borderColor: "#F0F0F0", background: isLowest ? "#F0FFF4" : "white" }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: isLowest ? "#22C55E" : "#CBD5E1" }}>{p.label[0]}</span>
-                        <span className="font-medium">{p.label}</span>
-                        {!p.isReal && <span className="text-[10px] text-[#AAA] italic">indicatif</span>}
-                        {!p.inStock && <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded-full">Indisponible</span>}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {isLowest && <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">Meilleur prix</span>}
-                        <span className={`tabular-nums font-semibold ${isLowest ? "text-green-700 text-base" : "text-[#0A0A0A]"}`}>{p.price} CHF</span>
-                        <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 rounded-lg font-medium text-white transition-opacity hover:opacity-80" style={{ background: "#4f8ef7" }}>Acheter</a>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-              <a
-                href={buildToppreiseUrl(component.name)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mx-4 mb-4 mt-2 flex items-center justify-center gap-2.5 w-[calc(100%-2rem)] py-3 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-all"
-                style={{ background: "#FF6B00" }}
-              >
-                <span className="px-1.5 py-0.5 rounded bg-white/20 text-white font-bold text-[10px] tracking-tight">TP</span>
-                Comparer les prix sur TopPreise →
-              </a>
-            </Accordion>
-
-            {/* ── Specs table (accordion) ── */}
-            {(() => {
-              // Build all spec rows from DB fields + specs JSON, avoiding duplicates
-              const allRows: { label: string; value: string }[] = [];
-              const added = new Set<string>();
-              function addRow(label: string, value: string | number | null | undefined) {
-                if (value === null || value === undefined || value === "" || added.has(label.toLowerCase())) return;
-                const str = String(value);
-                if (str === "0" && (label.toLowerCase().includes("prix") || label.toLowerCase().includes("price"))) return;
-                added.add(label.toLowerCase());
-                allRows.push({ label, value: str });
-              }
-              addRow("Marque", dbData?.brand);
-              addRow("Catégorie", component.type);
-              addRow("Socket", dbData?.socket);
-              addRow("Chipset", dbData?.chipset);
-              addRow("Format", dbData?.form_factor);
-              addRow("TDP", tdp ? `${tdp} W` : null);
-              addRow("Année de sortie", dbData?.release_year);
-              // Add all specs from JSON
-              if (specs) {
-                for (const [key, value] of Object.entries(specs)) {
-                  addRow(key, value);
-                }
-              }
-              addRow("Score de popularité", dbData?.popularity_score ? `${dbData.popularity_score}/100` : null);
-              if (dbData?.available_ch !== null && dbData?.available_ch !== undefined) addRow("Dispo Suisse", dbData.available_ch ? "Oui" : "Non");
-              if (displayPrice && displayPrice > 0) addRow("Prix indicatif", `${displayPrice} CHF`);
-
-              return allRows.length > 0 ? (
-                <Accordion title="Fiche technique" defaultOpen>
-                  <div>
-                    {allRows.map((row, i) => (
-                      <motion.div key={row.label} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * i, duration: 0.2 }} className={`flex items-start justify-between px-4 py-3 text-sm ${i > 0 ? "border-t" : ""}`} style={{ borderColor: "#F0F0F0", background: i % 2 === 0 ? "white" : "#FAFAFA" }}>
-                        <span className="text-[#666] w-2/5 shrink-0">{row.label}</span>
-                        <span className="font-medium text-[#0A0A0A] text-right flex-1">{row.value}</span>
-                      </motion.div>
+              {/* ── Pourquoi ce composant? ── */}
+              {whyPoints.length > 0 && (
+                <div className="rounded-xl p-4" style={{ background: "#F8FAFF", border: "1px solid #E0ECFF" }}>
+                  <h2 className="text-sm font-bold text-[#4f8ef7] mb-3 flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#4f8ef7" strokeWidth="1.5"/><path d="M8 5v4M8 11h.01" stroke="#4f8ef7" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    Pourquoi ce composant ?
+                  </h2>
+                  <ul className="flex flex-col gap-2">
+                    {whyPoints.slice(0, 3).map((point, i) => (
+                      <motion.li key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 + i * 0.1 }} className="text-sm text-[#555] flex items-start gap-2">
+                        <span className="text-[#4f8ef7] mt-0.5 shrink-0">•</span>
+                        {point}
+                      </motion.li>
                     ))}
-                  </div>
-                </Accordion>
-              ) : null;
-            })()}
+                  </ul>
+                </div>
+              )}
 
-            {/* ── Full description (accordion) ── */}
-            {description && (
-              <Accordion title="Description" defaultOpen={false}>
-                <p className="text-sm leading-relaxed text-[#444] p-4">{description}</p>
+              {/* ── Price comparison — always all 4 Swiss stores ── */}
+              <Accordion title="Comparer les prix" defaultOpen>
+                <div>
+                  {allMerchantPrices.map((p, i) => {
+                    const isLowest = p.price === bestMerchantPrice;
+                    const href = buildSearchUrl(p.storeId, component.name);
+                    return (
+                      <motion.div
+                        key={p.storeId}
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.15 + i * 0.08 }}
+                        className={`flex items-center justify-between px-4 py-3 text-sm ${i > 0 ? "border-t" : ""}`}
+                        style={{ borderColor: "#F0F0F0", background: isLowest ? "#F0FFF4" : "white" }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: isLowest ? "#22C55E" : "#CBD5E1" }}>{p.label[0]}</span>
+                          <span className="font-medium">{p.label}</span>
+                          {!p.isReal && (
+                            <span className="relative group cursor-help">
+                              <span className="text-[11px] text-[#AAA] select-none">ⓘ</span>
+                              <span className="absolute left-5 top-0 z-10 hidden group-hover:block w-48 text-[11px] bg-[#333] text-white rounded-lg px-3 py-2 shadow-lg pointer-events-none">
+                                Prix estimé — cliquez pour voir le prix en temps réel
+                              </span>
+                            </span>
+                          )}
+                          {!p.inStock && <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded-full">Indisponible</span>}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {isLowest && <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">Meilleur prix</span>}
+                          <span className={`tabular-nums font-semibold ${isLowest ? "text-green-700 text-base" : "text-[#0A0A0A]"}`}>{p.price} CHF</span>
+                          <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 rounded-lg font-medium text-white transition-opacity hover:opacity-80" style={{ background: "#4f8ef7" }}>Acheter</a>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+                <a
+                  href={buildToppreiseUrl(component.name)}
+                  target="_blank" rel="noopener noreferrer"
+                  className="mx-4 mb-4 mt-2 flex items-center justify-center gap-2.5 w-[calc(100%-2rem)] py-3 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-all"
+                  style={{ background: "#FF6B00" }}
+                >
+                  <span className="px-1.5 py-0.5 rounded bg-white/20 text-white font-bold text-[10px] tracking-tight">TP</span>
+                  Comparer les prix sur TopPreise →
+                </a>
               </Accordion>
-            )}
 
-          </div>
-        )}
+              {/* ── Specs table ── */}
+              {(() => {
+                const allRows: { label: string; value: string }[] = [];
+                const added = new Set<string>();
+                function addRow(label: string, value: string | number | null | undefined) {
+                  if (value === null || value === undefined || value === "" || added.has(label.toLowerCase())) return;
+                  const str = String(value);
+                  if (str === "0" && (label.toLowerCase().includes("prix") || label.toLowerCase().includes("price"))) return;
+                  added.add(label.toLowerCase());
+                  allRows.push({ label, value: str });
+                }
+                addRow("Marque", dbData?.brand);
+                addRow("Catégorie", component.type);
+                addRow("Socket", dbData?.socket);
+                addRow("Chipset", dbData?.chipset);
+                addRow("Format", dbData?.form_factor);
+                addRow("TDP", tdp ? `${tdp} W` : null);
+                addRow("Année de sortie", dbData?.release_year);
+                if (specs) { for (const [key, value] of Object.entries(specs)) addRow(key, value); }
+                addRow("Score de popularité", dbData?.popularity_score ? `${dbData.popularity_score}/100` : null);
+                if (dbData?.available_ch !== null && dbData?.available_ch !== undefined) addRow("Dispo Suisse", dbData.available_ch ? "Oui" : "Non");
+                if (displayPrice && displayPrice > 0) addRow("Prix indicatif", `${displayPrice} CHF`);
 
-        {/* ── Fixed bottom buttons ── */}
+                return allRows.length > 0 ? (
+                  <Accordion title="Fiche technique" defaultOpen>
+                    <div>
+                      {allRows.map((row, i) => (
+                        <motion.div key={row.label} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.04 * i, duration: 0.18 }} className={`flex items-start justify-between px-4 py-3 text-sm ${i > 0 ? "border-t" : ""}`} style={{ borderColor: "#F0F0F0", background: i % 2 === 0 ? "white" : "#FAFAFA" }}>
+                          <span className="text-[#666] w-2/5 shrink-0">{row.label}</span>
+                          <span className="font-medium text-[#0A0A0A] text-right flex-1">{row.value}</span>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </Accordion>
+                ) : null;
+              })()}
+
+            </div>
+          )}
+        </div>
+
+        {/* ── Sticky footer ── */}
         {!loading && (
-          <div className="bg-white px-4 sm:px-6 py-4 flex flex-wrap gap-2 sm:gap-3 rounded-b-2xl" style={{ borderTop: "1px solid #E5E5E5" }}>
+          <div className="shrink-0 bg-white px-6 py-4 flex flex-wrap gap-2 sm:gap-3" style={{ borderTop: "1px solid #E5E5E5" }}>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => !inCart && addItem(component)}
               className={`flex-1 min-w-[140px] py-3 rounded-xl text-sm font-semibold transition-all ${inCart ? "bg-green-100 text-green-700 border border-green-200" : "text-white"}`}
               style={inCart ? {} : { background: "#4f8ef7" }}
-              aria-label={inCart ? "Déjà dans le panier" : "Ajouter à ma configuration"}
             >
               {inCart ? "✓ Dans le panier" : "Ajouter à ma config"}
             </motion.button>
             <a
               href={bestMerchantUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 min-w-[120px] py-3 rounded-xl text-sm font-semibold text-center transition-all hover:opacity-90 text-white"
+              target="_blank" rel="noopener noreferrer"
+              className="flex-1 min-w-[120px] py-3 rounded-xl text-sm font-semibold text-center hover:opacity-90 transition-opacity text-white"
               style={{ background: "#22C55E" }}
             >
               Voir l&apos;offre →
             </a>
-            <button type="button" onClick={onClose} className="px-5 py-3 rounded-xl text-sm font-medium text-[#666] hover:text-[#333] transition-colors" style={{ border: "1px solid #E5E5E5" }} aria-label="Fermer la fiche produit">
+            <button type="button" onClick={onClose} className="px-5 py-3 rounded-xl text-sm font-medium text-[#666] hover:text-[#333] transition-colors" style={{ border: "1px solid #E5E5E5" }}>
               Fermer
             </button>
           </div>
         )}
-      </motion.div>
       </div>
-    </motion.div>
+    </AnimatePresence>
   );
 }
 
@@ -857,7 +838,11 @@ function assignTiers(items: DBComponent[], currentPrice: number): Alternative[] 
     if (c.chipset) mergedSpecs["Chipset"] = c.chipset;
     if (c.form_factor) mergedSpecs["Format"] = c.form_factor;
     if (c.tdp) mergedSpecs["TDP"] = `${c.tdp}W`;
-    if (c.specs) Object.assign(mergedSpecs, c.specs);
+    if (c.specs) {
+      for (const [k, v] of Object.entries(c.specs)) {
+        if (v !== null && v !== undefined) mergedSpecs[k] = typeof v === "object" ? JSON.stringify(v) : String(v);
+      }
+    }
     return {
       name: c.name,
       reason: c.description || "",
@@ -873,9 +858,10 @@ function assignTiers(items: DBComponent[], currentPrice: number): Alternative[] 
 
 /* ── Spec comparison helpers ── */
 
-function parseNumeric(v: string): number | null {
-  if (!v) return null;
-  const m = v.match(/[\d.]+/);
+function parseNumeric(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  if (typeof v === "number") return v;
+  const m = String(v).match(/[\d.]+/);
   return m ? parseFloat(m[0]) : null;
 }
 
@@ -926,7 +912,11 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
             if (dbCurrent.chipset) merged["Chipset"] = dbCurrent.chipset;
             if (dbCurrent.form_factor) merged["Format"] = dbCurrent.form_factor;
             if (dbCurrent.tdp) merged["TDP"] = `${dbCurrent.tdp}W`;
-            if (dbCurrent.specs) Object.assign(merged, dbCurrent.specs);
+            if (dbCurrent.specs) {
+              for (const [k, v] of Object.entries(dbCurrent.specs)) {
+                if (v !== null && v !== undefined) merged[k] = typeof v === "object" ? JSON.stringify(v) : String(v);
+              }
+            }
             setCurrentSpecs(merged);
           } else if (component.specs && Object.keys(component.specs).length > 0) {
             setCurrentSpecs(component.specs);
@@ -1050,8 +1040,8 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
                             return (
                               <tr key={k} style={{ background: si % 2 === 0 ? "#FFFFFF" : "#FAFAFA", borderTop: "1px solid #F0F0F0" }}>
                                 <td className="px-3 py-1.5 text-text-secondary font-medium">{k}</td>
-                                <td className={`px-2 py-1.5 text-center tabular-nums ${curV ? "text-text-secondary" : "text-[#CCC] italic"}`}>{curV || "N/A"}</td>
-                                <td className={`px-2 py-1.5 text-center tabular-nums font-medium ${altV ? "text-text" : "text-[#CCC] italic"}`}>{altV || "N/A"}</td>
+                                <td className={`px-2 py-1.5 text-center tabular-nums ${curV != null ? "text-text-secondary" : "text-[#CCC] italic"}`}>{curV != null ? String(curV) : "N/A"}</td>
+                                <td className={`px-2 py-1.5 text-center tabular-nums font-medium ${altV != null ? "text-text" : "text-[#CCC] italic"}`}>{altV != null ? String(altV) : "N/A"}</td>
                                 <td className="px-2 py-1.5 text-center">
                                   <SpecDelta specKey={k} currentVal={curV} altVal={altV} />
                                 </td>
