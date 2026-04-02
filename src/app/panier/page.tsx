@@ -63,6 +63,19 @@ function PerformanceBar({ label, value, color }: { label: string; value: number;
   );
 }
 
+/* Map component type → manual configurator step index (1-based) */
+const TYPE_TO_STEP: Record<string, number> = {
+  "Carte mère": 1, "CPU": 2, "RAM": 3, "GPU": 4,
+  "Stockage": 5, "Refroidissement": 6, "Alimentation": 7, "Boîtier": 8,
+};
+
+function getChangeUrl(type: string): string {
+  const step = TYPE_TO_STEP[type];
+  if (step) return `/configurateur/manuel?step=${step}`;
+  // For peripherals: go to catalogue filtered by type
+  return `/catalogue?type=${encodeURIComponent(type)}`;
+}
+
 export default function PanierPage() {
   const { items, removeItem, totalCHF } = useCart();
   const router = useRouter();
@@ -159,8 +172,8 @@ export default function PanierPage() {
                     </span>
                     <div className="flex items-center gap-2">
                       <Link
-                        href="/"
-                        className="text-[11px] px-2.5 py-1 rounded-lg border border-[#E5E5E5] text-[#666] hover:border-[#CCC] hover:text-[#333] transition-all font-medium"
+                        href={getChangeUrl(item.type)}
+                        className="text-[11px] px-2.5 py-1 rounded-lg border border-[#E5E5E5] text-[#666] hover:border-[#4f8ef7] hover:text-[#4f8ef7] transition-all font-medium"
                       >
                         Changer
                       </Link>

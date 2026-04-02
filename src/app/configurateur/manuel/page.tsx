@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Logo from "@/components/Logo";
@@ -667,9 +668,12 @@ function RecapSection({ build, onReset }: { build: Build; onReset: () => void })
 
 /* ─── Main Page ─── */
 
-export default function ManualConfiguratorPage() {
+function ManualConfiguratorInner() {
   const { count: cartCount } = useCart();
-  const [currentStep, setCurrentStep] = useState(0);
+  const searchParams = useSearchParams();
+  // ?step=N jumps to step N (1-based, clamped)
+  const initialStep = Math.min(Math.max((parseInt(searchParams.get("step") || "1") - 1), 0), 7);
+  const [currentStep, setCurrentStep] = useState(initialStep);
   const [build, setBuild] = useState<Build>({});
   const [done, setDone] = useState(false);
 
@@ -952,5 +956,13 @@ export default function ManualConfiguratorPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ManualConfiguratorPage() {
+  return (
+    <Suspense fallback={null}>
+      <ManualConfiguratorInner />
+    </Suspense>
   );
 }
