@@ -533,8 +533,8 @@ export default function CataloguePage() {
       {/* Hero */}
       <section className="bg-gradient-to-b from-gray-50 to-white py-12">
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">Catalogue Composants</h1>
-          <p className="text-text-secondary max-w-lg mx-auto mb-8">{components.length} composants et périphériques disponibles pour ta configuration PC</p>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">Trouve ton composant idéal</h1>
+          <p className="text-text-secondary max-w-xl mx-auto mb-8">Composants PC et périphériques gaming — meilleurs prix en CHF chez les marchands suisses. Filtrez, comparez, configurez.</p>
           <div className="max-w-md mx-auto relative">
             <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1110.5 3a7.5 7.5 0 016.15 13.65z" />
