@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import ConfiguratorForm from "@/components/ConfiguratorForm";
 import ConfigResult from "@/components/ConfigResult";
 import Logo from "@/components/Logo";
@@ -94,21 +95,80 @@ function Hero({ onStart }: { onStart: () => void }) {
         </h1>
         <AnimatePresence>
           {titleDone && (
-            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-text-secondary text-lg sm:text-xl text-center max-w-md mb-12">
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-text-secondary text-lg sm:text-xl text-center max-w-md mb-10">
               {t("hero.subtitle.1")}<br />{t("hero.subtitle.2")}
             </motion.p>
           )}
         </AnimatePresence>
+
+        {/* Two-option cards */}
         <AnimatePresence>
           {titleDone && (
-            <motion.button initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, delay: 0.2 }} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }} onClick={onStart} className="px-10 py-4 bg-accent text-white font-medium rounded-full text-lg cta-pulse">
-              {t("hero.cta")}
-            </motion.button>
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.15 }}
+              className="w-full max-w-2xl"
+            >
+              <p className="text-center text-sm font-medium text-text-secondary mb-4">
+                Comment veux-tu configurer ton PC ?
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* AI Option */}
+                <motion.div
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex flex-col gap-3 p-5 rounded-2xl cursor-pointer"
+                  style={{ background: '#0A0A0A', border: '2px solid #1a1a1a' }}
+                  onClick={onStart}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">🤖</span>
+                    <span className="font-bold text-white text-lg">Config IA</span>
+                  </div>
+                  <p className="text-sm" style={{ color: '#999' }}>
+                    L'IA choisit pour toi selon ton budget et ton usage — rapide et optimisé.
+                  </p>
+                  <button
+                    onClick={onStart}
+                    className="mt-auto w-full py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 cta-pulse"
+                    style={{ background: '#4f8ef7', color: 'white' }}
+                  >
+                    {t("hero.cta")}
+                  </button>
+                </motion.div>
+
+                {/* Manual Option */}
+                <motion.div
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex flex-col gap-3 p-5 rounded-2xl cursor-pointer"
+                  style={{ background: '#FAFAFA', border: '2px solid #4f8ef7' }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">🔧</span>
+                    <span className="font-bold text-[#0A0A0A] text-lg">Config manuelle</span>
+                  </div>
+                  <p className="text-sm text-text-secondary">
+                    Tu choisis chaque composant étape par étape — contrôle total avec vérification de compatibilité.
+                  </p>
+                  <Link
+                    href="/configurateur/manuel"
+                    className="mt-auto w-full py-2.5 rounded-xl text-sm font-semibold text-center transition-opacity hover:opacity-90 block"
+                    style={{ background: 'transparent', color: '#4f8ef7', border: '2px solid #4f8ef7' }}
+                  >
+                    Commencer →
+                  </Link>
+                </motion.div>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Stats row */}
         <AnimatePresence>
           {titleDone && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="mt-20 flex items-center gap-6 text-xs text-text-secondary">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="mt-12 flex items-center gap-6 text-xs text-text-secondary">
               <span>{t("hero.stat.1")}</span>
               <span className="w-px h-3 bg-border" />
               <span>{t("hero.stat.2")}</span>
