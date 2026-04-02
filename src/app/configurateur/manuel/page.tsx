@@ -41,14 +41,14 @@ type Build = Partial<Record<StepId, DBCompWithImages>>;
 /* ─── Steps config ─── */
 
 const STEPS: StepConfig[] = [
-  { id: 'mobo',    type: 'Carte mère',     label: 'Carte mère',       icon: '🔧', desc: 'Détermine le socket et le format — point de départ de toute config' },
-  { id: 'cpu',     type: 'CPU',            label: 'Processeur',       icon: '⚡', desc: 'Filtré par socket de la carte mère choisie' },
-  { id: 'ram',     type: 'RAM',            label: 'Mémoire RAM',      icon: '📊', desc: 'DDR4 ou DDR5 selon la carte mère' },
+  { id: 'mobo',    type: 'Carte mère',     label: 'Carte mère',       icon: '🖥️', desc: 'Détermine le socket et le format — point de départ de toute config' },
+  { id: 'cpu',     type: 'CPU',            label: 'Processeur',       icon: '🧠', desc: 'Filtré par socket de la carte mère choisie' },
+  { id: 'ram',     type: 'RAM',            label: 'Mémoire RAM',      icon: '💾', desc: 'DDR4 ou DDR5 selon la carte mère' },
   { id: 'gpu',     type: 'GPU',            label: 'Carte graphique',  icon: '🎮', desc: 'Vérification alimentation recommandée' },
-  { id: 'storage', type: 'Stockage',       label: 'Stockage',         icon: '💾', desc: 'SSD M.2 ou SATA' },
+  { id: 'storage', type: 'Stockage',       label: 'Stockage',         icon: '💿', desc: 'SSD M.2 ou SATA' },
   { id: 'cooler',  type: 'Refroidissement',label: 'Refroidissement',  icon: '❄️', desc: 'Filtré par socket CPU' },
-  { id: 'psu',     type: 'Alimentation',   label: 'Alimentation',     icon: '🔌', desc: 'Calculé selon CPU + GPU TDP' },
-  { id: 'case',    type: 'Boîtier',        label: 'Boîtier',          icon: '🖥️', desc: 'Filtré par format carte mère' },
+  { id: 'psu',     type: 'Alimentation',   label: 'Alimentation',     icon: '⚡', desc: 'Calculé selon CPU + GPU TDP' },
+  { id: 'case',    type: 'Boîtier',        label: 'Boîtier',          icon: '📦', desc: 'Filtré par format carte mère' },
 ];
 
 /* ─── SVG Icons per component type ─── */
@@ -579,10 +579,6 @@ function Sidebar({
 
   return (
     <div className="w-72 shrink-0 flex flex-col gap-2 sticky top-[73px] h-[calc(100vh-73px)] overflow-y-auto pb-6">
-      {/* Logo */}
-      <div className="flex items-center px-1 py-2 mb-1">
-        <Logo size="small" />
-      </div>
       {/* Steps */}
       <div className="rounded-xl p-4" style={{ border: '1px solid #E5E5E5', background: '#FAFAFA' }}>
         <p className="text-xs font-semibold uppercase tracking-wider text-[#666] mb-3">Progression</p>
@@ -601,13 +597,17 @@ function Sidebar({
                   border: isCurrent ? '1px solid #4f8ef7' : '1px solid transparent',
                 }}
               >
-                <span className="text-base w-6 flex-shrink-0">
-                  {isDone ? '✅' : isCurrent ? '🔵' : '⬜'}
+                <span className="text-base w-5 flex-shrink-0 text-center">
+                  {step.icon}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium" style={{ color: isCurrent ? '#4f8ef7' : '#0A0A0A' }}>
-                    {step.label}
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-medium" style={{ color: isCurrent ? '#4f8ef7' : '#0A0A0A' }}>
+                      {step.label}
+                    </p>
+                    {isDone && <span className="text-[10px]">✅</span>}
+                    {isCurrent && !isDone && <span className="text-[10px]">←</span>}
+                  </div>
                   {selected && (
                     <p className="text-xs truncate" style={{ color: '#666' }}>
                       {selected.name}
