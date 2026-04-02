@@ -39,3 +39,21 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local data / scratch files
+b*.json
+batch_*.json
+chunk_*.json
+ls_chunk_*.json
+all_products.json
+products_compact.json
+products_with_iid.json
+database_components.json
+image_data.txt
+fix_images_galaxus.mjs
+update_images.mjs
+inject_products.js
+scripts/seed-database.mjs
+
+# Claude CLI
+.claude/bin/
