@@ -19,6 +19,10 @@ on:
         description: 'Only process this component type (e.g. GPU, CPU)'
         type: string
         default: ''
+      debug:
+        description: 'Debug mode — dump search page HTML for diagnosis'
+        type: boolean
+        default: false
 
 jobs:
   scrape:
@@ -48,6 +52,7 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
           if [ -n "${{ inputs.limit }}" ] && [ "${{ inputs.limit }}" != "0" ]; then ARGS="$ARGS --limit=${{ inputs.limit }}"; fi
           if [ -n "${{ inputs.type_filter }}" ]; then ARGS="$ARGS --type=${{ inputs.type_filter }}"; fi
+          if [ "${{ inputs.debug }}" = "true" ]; then ARGS="$ARGS --debug"; fi
           npx tsx scripts/scrape-prices.ts $ARGS
 
       - name: Upload results on failure

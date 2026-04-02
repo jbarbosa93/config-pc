@@ -61,16 +61,22 @@ export function extractProductIdFromUrl(url: string): number | null {
 
 /**
  * Search Digitec.ch for a product by name and return the first match's product ID.
- * Parses the search page HTML using cheerio (no headless browser needed).
- * NOTE: May return 403 from residential/dev IPs — designed for GitHub Actions runners.
+ *
+ * Strategy (in order):
+ *  1. Fetch search page HTML and parse __NEXT_DATA__ (Next.js SSR JSON blob)
+ *  2. Regex-scan the HTML for product IDs / URLs (fallback if SSR data absent)
+ *
+ * NOTE: The search page is blocked on residential/dev IPs (403). GitHub Actions
+ * runners (Azure IPs) receive a 200 with the page HTML.
  */
 export async function searchDigitecProductId(query: string): Promise<number | null> {
-  const { load } = await import('cheerio');
   const searchUrl = `${DIGITEC_BASE}/fr/search?q=${encodeURIComponent(query)}`;
 
   let html: string;
+  let httpStatus: number;
   try {
     const res = await fetch(searchUrl, { headers: BROWSER_HEADERS, redirect: 'follow' });
+    httpStatus = res.status;
     if (!res.ok) {
       console.warn(`[digitec] Search HTTP ${res.status} for query: ${query}`);
       return null;
@@ -81,29 +87,45 @@ export async function searchDigitecProductId(query: string): Promise<number | nu
     return null;
   }
 
-  const $ = load(html);
-
-  // Try to find a product link in the search results
-  // Digitec product URLs end with -XXXXXXX (numeric ID)
-  const productLinks: string[] = [];
-  $('a[href*="/fr/s1/product/"]').each((_i, el) => {
-    const href = $(el).attr('href');
-    if (href) productLinks.push(href);
-  });
-
-  if (productLinks.length === 0) {
-    console.warn(`[digitec] No product links found for query: ${query}`);
-    return null;
+  // ── Strategy 1: parse __NEXT_DATA__ (Next.js SSR JSON blob) ────────────────
+  // Digitec embeds the full SSR props in a <script id="__NEXT_DATA__"> tag.
+  // Product listings are in props.pageProps.searchResult.products[].productId
+  const nextDataMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">([^<]+)<\/script>/);
+  if (nextDataMatch) {
+    try {
+      const nextData = JSON.parse(nextDataMatch[1]);
+      // Walk the nested structure — exact path may change with Digitec's deploy
+      const products =
+        nextData?.props?.pageProps?.searchResult?.products ??
+        nextData?.props?.pageProps?.initialData?.searchResult?.products ??
+        nextData?.props?.pageProps?.data?.products ??
+        [];
+      if (Array.isArray(products) && products.length > 0) {
+        const id = products[0]?.productId ?? products[0]?.id;
+        if (id) return parseInt(String(id).replace(/\D/g, ''), 10);
+      }
+    } catch {
+      // JSON parse failed — fall through to regex strategy
+    }
   }
 
-  // Take the first result and extract ID
-  const firstLink = productLinks[0];
-  const id = extractProductIdFromUrl(firstLink);
-  if (!id) {
-    console.warn(`[digitec] Could not extract ID from URL: ${firstLink}`);
-    return null;
+  // ── Strategy 2: regex scan for product IDs in inline scripts ───────────────
+  // Digitec may embed product IDs as "productId":XXXXXXXX in script tags
+  const productIdMatches = html.matchAll(/"productId"\s*:\s*(\d{6,})/g);
+  for (const m of productIdMatches) {
+    const id = parseInt(m[1], 10);
+    if (id > 0) return id;
   }
-  return id;
+
+  // ── Strategy 3: scan for product URLs ──────────────────────────────────────
+  const urlMatches = html.matchAll(/\/fr\/s\d\/product\/[a-z0-9-]+-(\d{6,})/gi);
+  for (const m of urlMatches) {
+    const id = parseInt(m[1], 10);
+    if (id > 0) return id;
+  }
+
+  console.warn(`[digitec] No product data found in HTML for query: ${query} (HTTP ${httpStatus})`);
+  return null;
 }
 
 /**

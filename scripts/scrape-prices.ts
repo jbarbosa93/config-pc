@@ -36,6 +36,7 @@ const supabase = createClient(supabaseUrl, serviceKey);
 // Parse CLI args
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
+const DEBUG = args.includes('--debug');
 const LIMIT = parseInt(args.find((a) => a.startsWith('--limit='))?.split('=')[1] ?? '0', 10) || 500;
 const TYPE_FILTER = args.find((a) => a.startsWith('--type='))?.split('=')[1];
 
@@ -96,6 +97,30 @@ async function sleep(ms: number) {
 async function main() {
   console.log(`\n🚀 Digitec price scraper — ${DRY_RUN ? 'DRY RUN' : 'LIVE'}`);
   console.log(`   Limit: ${LIMIT} | Type filter: ${TYPE_FILTER ?? 'all'}\n`);
+
+  // 0. Debug probe — show what the search page looks like from this runner
+  if (DEBUG) {
+    console.log('🔍 Debug probe: fetching Digitec search page...');
+    const probeRes = await fetch(
+      'https://www.digitec.ch/fr/search?q=RTX+4060',
+      {
+        headers: {
+          'Accept': 'text/html,*/*',
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Accept-Language': 'fr-CH,fr;q=0.9',
+          'Cookie': 'language=fr; platform=web',
+        },
+        redirect: 'follow',
+      }
+    );
+    const probeHtml = await probeRes.text();
+    console.log(`   HTTP status: ${probeRes.status}`);
+    console.log(`   HTML length: ${probeHtml.length} chars`);
+    console.log(`   Has __NEXT_DATA__: ${probeHtml.includes('__NEXT_DATA__')}`);
+    console.log(`   Has productId: ${probeHtml.includes('"productId"')}`);
+    console.log(`   Has /fr/s1/product/: ${probeHtml.includes('/fr/s1/product/')}`);
+    console.log(`   First 500 chars: ${probeHtml.slice(0, 500)}\n`);
+  }
 
   // 1. Load components
   let query = supabase

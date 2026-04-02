@@ -35,14 +35,16 @@ export interface GalaxusPrice extends DigitecPrice {
 /**
  * Search Galaxus.ch for a product and return the first match's product ID.
  * Product IDs are shared between Digitec and Galaxus.
+ * Uses the same __NEXT_DATA__ / regex approach as the Digitec scraper.
  */
 export async function searchGalaxusProductId(query: string): Promise<number | null> {
-  const { load } = await import('cheerio');
   const searchUrl = `${GALAXUS_BASE}/fr/search?q=${encodeURIComponent(query)}`;
 
   let html: string;
+  let httpStatus: number;
   try {
     const res = await fetch(searchUrl, { headers: BROWSER_HEADERS, redirect: 'follow' });
+    httpStatus = res.status;
     if (!res.ok) {
       console.warn(`[galaxus] Search HTTP ${res.status} for query: ${query}`);
       return null;
@@ -53,16 +55,33 @@ export async function searchGalaxusProductId(query: string): Promise<number | nu
     return null;
   }
 
-  const $ = load(html);
-  const productLinks: string[] = [];
-  $('a[href*="/fr/s1/product/"], a[href*="/fr/s2/product/"]').each((_i, el) => {
-    const href = $(el).attr('href');
-    if (href) productLinks.push(href);
-  });
+  // ── __NEXT_DATA__ ───────────────────────────────────────────────────────────
+  const nextDataMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">([^<]+)<\/script>/);
+  if (nextDataMatch) {
+    try {
+      const nextData = JSON.parse(nextDataMatch[1]);
+      const products =
+        nextData?.props?.pageProps?.searchResult?.products ??
+        nextData?.props?.pageProps?.initialData?.searchResult?.products ??
+        nextData?.props?.pageProps?.data?.products ??
+        [];
+      if (Array.isArray(products) && products.length > 0) {
+        const id = products[0]?.productId ?? products[0]?.id;
+        if (id) return parseInt(String(id).replace(/\D/g, ''), 10);
+      }
+    } catch { /* fall through */ }
+  }
 
-  if (productLinks.length === 0) return null;
+  // ── Regex fallback ──────────────────────────────────────────────────────────
+  for (const m of html.matchAll(/"productId"\s*:\s*(\d{6,})/g)) {
+    return parseInt(m[1], 10);
+  }
+  for (const m of html.matchAll(/\/fr\/s\d\/product\/[a-z0-9-]+-(\d{6,})/gi)) {
+    return parseInt(m[1], 10);
+  }
 
-  return extractProductIdFromUrl(productLinks[0]);
+  console.warn(`[galaxus] No product data found for query: ${query} (HTTP ${httpStatus})`);
+  return null;
 }
 
 /**
