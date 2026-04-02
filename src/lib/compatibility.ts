@@ -112,19 +112,23 @@ export function checkRAMMotherboard(ram: DBComp, mobo: DBComp): CompatResult {
   };
 }
 
-// Cooler ↔ CPU: socket + TDP check
+// Cooler ↔ CPU: TDP check (socket data not in DB for coolers)
 export function checkCoolerCPU(cooler: DBComp, cpu: DBComp): CompatResult {
-  const coolerSockets = String(cooler.specs?.['Sockets'] || cooler.specs?.['Socket'] || cooler.socket || '').toUpperCase();
-  const cpuSocket = (cpu.socket || '').toUpperCase();
-  const socketOk = !coolerSockets || !cpuSocket || coolerSockets.includes(cpuSocket);
+  // DB has tdp column + specs.tdp_max_w — no socket data for coolers
+  const coolerTDP = cooler.tdp || Number(cooler.specs?.tdp_max_w || 0) || null;
+  const cpuTDP = cpu.tdp || null;
 
-  if (!socketOk) return { status: 'incompatible', message: `Ce ventirad ne supporte pas le socket ${cpu.socket}` };
-
-  if (cpu.tdp && cooler.tdp) {
-    if (cooler.tdp >= cpu.tdp) return { status: 'compatible', message: `TDP OK : ventirad ${cooler.tdp}W ≥ CPU ${cpu.tdp}W` };
-    return { status: 'warning', message: `TDP insuffisant : ventirad ${cooler.tdp}W < CPU ${cpu.tdp}W — peut chauffer` };
+  if (!coolerTDP || !cpuTDP) {
+    return { status: 'warning', message: 'TDP non vérifiable — vérifiez la compatibilité', noData: true };
   }
-  return { status: 'warning', message: 'TDP non vérifiable — vérifiez la compatibilité', noData: true };
+
+  if (coolerTDP >= cpuTDP) {
+    return { status: 'compatible', message: `${coolerTDP}W suffisant pour votre CPU (${cpuTDP}W TDP)` };
+  }
+  if (coolerTDP >= Math.round(cpuTDP * 0.85)) {
+    return { status: 'warning', message: `Limite — CPU ${cpuTDP}W TDP, ce ventirad supporte ${coolerTDP}W` };
+  }
+  return { status: 'incompatible', message: `Insuffisant — CPU ${cpuTDP}W TDP mais ventirad max ${coolerTDP}W` };
 }
 
 // PSU: calculate required wattage
@@ -143,25 +147,51 @@ export function checkPSU(psu: DBComp, cpu: DBComp | null, gpu: DBComp | null): C
   return { status: 'incompatible', message: `${psuWatts}W insuffisant — minimum ${required}W requis` };
 }
 
-// Case ↔ Motherboard: form factor
-const CASE_COMPAT: Record<string, string[]> = {
-  'full tower': ['ATX', 'E-ATX', 'mATX', 'Micro-ATX', 'ITX', 'Mini-ITX'],
-  'mid tower': ['ATX', 'mATX', 'Micro-ATX', 'ITX', 'Mini-ITX'],
-  'mini tower': ['mATX', 'Micro-ATX', 'ITX', 'Mini-ITX'],
-  'matx': ['mATX', 'Micro-ATX', 'ITX', 'Mini-ITX'],
-  'itx': ['ITX', 'Mini-ITX'],
-};
+// ── Case helpers ─────────────────────────────────────────────────────────────
 
+/** Normalize mobo form_factor string to one of: ATX | mATX | ITX | E-ATX */
+function normalizeMoboFormat(mobo: DBComp): string | null {
+  const raw = (mobo.form_factor || String(mobo.specs?.form_factor || '')).toLowerCase().replace(/[-\s]/g, '');
+  if (raw.includes('mini') || raw === 'itx') return 'ITX';
+  if (raw.includes('micro') || raw === 'matx') return 'mATX';
+  if (raw.includes('eatx') || raw.includes('extended')) return 'E-ATX';
+  if (raw.includes('atx')) return 'ATX';
+  return null;
+}
+
+// Case ↔ Motherboard: use DB's supported_mb_formats array when available
 export function checkCaseMotherboard(pcCase: DBComp, mobo: DBComp): CompatResult {
-  if (!pcCase.form_factor || !mobo.form_factor) return { status: 'warning', message: 'Format non vérifiable — vérifiez la compatibilité', noData: true };
+  const moboFmt = normalizeMoboFormat(mobo);
+
+  // DB stores supported_mb_formats directly (e.g. ["ATX","mATX","ITX"])
+  const supportedFormats = pcCase.specs?.supported_mb_formats;
+  if (Array.isArray(supportedFormats) && supportedFormats.length > 0) {
+    if (!moboFmt) return { status: 'warning', message: 'Format carte mère non détecté — vérifiez manuellement', noData: true };
+    if (supportedFormats.includes(moboFmt)) {
+      return { status: 'compatible', message: `${moboFmt} supporté par ce boîtier` };
+    }
+    return {
+      status: 'incompatible',
+      message: `Format ${moboFmt} non supporté — ce boîtier accepte : ${supportedFormats.join(', ')}`,
+    };
+  }
+
+  // Fallback: infer from form_factor string
+  if (!pcCase.form_factor || !moboFmt) {
+    return { status: 'warning', message: 'Format non vérifiable — vérifiez la compatibilité', noData: true };
+  }
   const caseFmt = pcCase.form_factor.toLowerCase();
-  const moboFmt = mobo.form_factor;
-  for (const [caseKey, supported] of Object.entries(CASE_COMPAT)) {
-    if (caseFmt.includes(caseKey)) {
-      if (supported.some(s => moboFmt.toLowerCase().includes(s.toLowerCase()))) {
-        return { status: 'compatible', message: `Format ${moboFmt} compatible avec ce boîtier` };
-      }
-      return { status: 'incompatible', message: `Format ${moboFmt} trop grand pour ce boîtier` };
+  const fallbackCompat: Record<string, string[]> = {
+    'full': ['ITX', 'mATX', 'ATX', 'E-ATX'],
+    'mid':  ['ITX', 'mATX', 'ATX'],
+    'mini': ['ITX'],
+    'micro': ['ITX', 'mATX'],
+  };
+  for (const [key, supported] of Object.entries(fallbackCompat)) {
+    if (caseFmt.includes(key)) {
+      return supported.includes(moboFmt)
+        ? { status: 'compatible', message: `${moboFmt} compatible avec ce boîtier` }
+        : { status: 'incompatible', message: `Format ${moboFmt} trop grand pour ce boîtier` };
     }
   }
   return { status: 'warning', message: 'Compatibilité format non vérifiable', noData: true };

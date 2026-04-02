@@ -561,6 +561,92 @@ function CompCard({
   );
 }
 
+/* ─── Compatibility Summary (sidebar panel) ─── */
+
+type CompatRow = {
+  icon: string;
+  label: string;
+  result: CompatResult | null; // null = not enough components selected yet
+};
+
+function CompatSummaryRow({ icon, label, result }: CompatRow) {
+  const dot = !result
+    ? { color: '#CCC', symbol: '·', text: 'Non disponible', textColor: '#CCC' }
+    : result.noData
+    ? { color: '#CCC', symbol: '·', text: 'Données manquantes', textColor: '#CCC' }
+    : result.status === 'compatible'
+    ? { color: '#22C55E', symbol: '✓', text: result.message, textColor: '#166534' }
+    : result.status === 'warning'
+    ? { color: '#F59E0B', symbol: '⚠', text: result.message, textColor: '#92400E' }
+    : { color: '#EF4444', symbol: '✕', text: result.message, textColor: '#991B1B' };
+
+  return (
+    <div className="flex items-start gap-2 py-1.5" style={{ borderBottom: '1px solid #F0F0F0' }}>
+      <span className="text-sm w-5 shrink-0 text-center">{icon}</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] font-medium text-[#444]">{label}</span>
+          <span className="text-[11px] font-bold" style={{ color: dot.color }}>{dot.symbol}</span>
+        </div>
+        <p className="text-[10px] leading-tight mt-0.5 truncate" style={{ color: dot.textColor }}>
+          {dot.text}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function CompatSummary({ build }: { build: Build }) {
+  const { mobo, cpu, ram, gpu, psu, cooler, case: pcCase } = build as {
+    mobo?: DBCompWithImages; cpu?: DBCompWithImages; ram?: DBCompWithImages;
+    gpu?: DBCompWithImages; psu?: DBCompWithImages; cooler?: DBCompWithImages;
+    case?: DBCompWithImages;
+  };
+
+  const rows: CompatRow[] = [
+    {
+      icon: '🧠',
+      label: 'CPU ↔ Carte mère',
+      result: mobo && cpu ? checkCPUMotherboard(cpu, mobo) : null,
+    },
+    {
+      icon: '💾',
+      label: 'RAM',
+      result: mobo && ram ? checkRAMMotherboard(ram, mobo) : null,
+    },
+    {
+      icon: '📦',
+      label: 'Boîtier',
+      result: mobo && pcCase ? checkCaseMotherboard(pcCase, mobo) : null,
+    },
+    {
+      icon: '❄️',
+      label: 'Refroidissement',
+      result: cpu && cooler ? checkCoolerCPU(cooler, cpu) : null,
+    },
+    {
+      icon: '⚡',
+      label: 'Alimentation',
+      result: psu ? checkPSU(psu, cpu ?? null, gpu ?? null) : null,
+    },
+  ];
+
+  // Only show if at least one check is possible
+  const hasAny = rows.some(r => r.result !== null);
+  if (!hasAny) return null;
+
+  return (
+    <div className="rounded-xl p-4" style={{ border: '1px solid #E5E5E5', background: '#FAFAFA' }}>
+      <p className="text-xs font-semibold uppercase tracking-wider text-[#666] mb-2">Compatibilité</p>
+      <div>
+        {rows.map(row => (
+          <CompatSummaryRow key={row.label} {...row} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Sidebar ─── */
 
 function Sidebar({
@@ -665,6 +751,9 @@ function Sidebar({
           <p className="text-[10px] text-[#CCC] italic mt-1">Sélectionnez CPU et GPU pour le calcul</p>
         )}
       </div>
+
+      {/* Compatibility summary */}
+      <CompatSummary build={build} />
     </div>
   );
 }
