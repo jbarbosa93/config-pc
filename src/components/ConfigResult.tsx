@@ -178,6 +178,93 @@ function ComponentSVG({ type, size = 80 }: { type: string; size?: number }) {
     </svg>
   );
 
+  if (key.includes("moniteur") || key.includes("ecran") || key.includes("monitor")) return (
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <rect x="10" y="12" width="60" height="40" rx="4" fill="#EFF6FF" stroke="#3B82F6" strokeWidth="1.5"/>
+      <rect x="14" y="16" width="52" height="32" rx="2" fill="#3B82F6" opacity="0.08"/>
+      <line x1="14" y1="44" x2="66" y2="44" stroke="#3B82F6" strokeWidth="0.8" opacity="0.3"/>
+      <rect x="30" y="52" width="20" height="4" rx="1.5" fill="#3B82F6" opacity="0.15" stroke="#3B82F6" strokeWidth="0.8"/>
+      <rect x="25" y="56" width="30" height="3" rx="1.5" fill="#3B82F6" opacity="0.1" stroke="#3B82F6" strokeWidth="0.6"/>
+      <circle cx="40" cy="32" r="6" fill="#3B82F6" opacity="0.1">
+        <animate attributeName="opacity" values="0.05;0.15;0.05" dur="2s" repeatCount="indefinite"/>
+      </circle>
+      <rect x="18" y="20" width="8" height="5" rx="1" fill="#3B82F6" opacity="0.12"/>
+      <text x="40" y="69" textAnchor="middle" fontSize="6" fill="#3B82F6" opacity="0.4" fontFamily="system-ui">Hz</text>
+    </svg>
+  );
+
+  if (key.includes("souris") || key.includes("mouse")) return (
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <rect x="24" y="12" width="32" height="52" rx="16" fill="#ECFDF5" stroke="#10B981" strokeWidth="1.5"/>
+      <line x1="40" y1="12" x2="40" y2="32" stroke="#10B981" strokeWidth="1" opacity="0.3"/>
+      <rect x="36" y="18" width="8" height="12" rx="4" fill="#10B981" opacity="0.12" stroke="#10B981" strokeWidth="0.8"/>
+      <circle cx="40" cy="24" r="2" fill="#10B981" opacity="0.3">
+        <animate attributeName="opacity" values="0.2;0.5;0.2" dur="1.5s" repeatCount="indefinite"/>
+      </circle>
+      <ellipse cx="40" cy="48" rx="10" ry="8" fill="#10B981" opacity="0.05"/>
+      <circle cx="32" cy="40" r="1.5" fill="#10B981" opacity="0.2"/>
+      <circle cx="48" cy="40" r="1.5" fill="#10B981" opacity="0.2"/>
+    </svg>
+  );
+
+  if (key.includes("clavier") || key.includes("keyboard")) return (
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <rect x="6" y="26" width="68" height="32" rx="5" fill="#F5F3FF" stroke="#8B5CF6" strokeWidth="1.5"/>
+      {[14,22,30,38,46,54,62].map((x,i) => (
+        <rect key={`k1${x}`} x={x} y="32" width="6" height="6" rx="1" fill="#8B5CF6" opacity="0.12" stroke="#8B5CF6" strokeWidth="0.5">
+          <animate attributeName="opacity" values="0.08;0.2;0.08" dur="2s" begin={`${i*0.2}s`} repeatCount="indefinite"/>
+        </rect>
+      ))}
+      {[18,26,34,42,50,58].map(x => (
+        <rect key={`k2${x}`} x={x} y="40" width="6" height="6" rx="1" fill="#8B5CF6" opacity="0.1" stroke="#8B5CF6" strokeWidth="0.5"/>
+      ))}
+      <rect x="22" y="48" width="36" height="5" rx="1.5" fill="#8B5CF6" opacity="0.08" stroke="#8B5CF6" strokeWidth="0.5"/>
+    </svg>
+  );
+
+  if (key.includes("casque") || key.includes("headset") || key.includes("headphone")) return (
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <path d="M20 42C20 28.745 30.745 18 44 18H36C49.255 18 60 28.745 60 42" stroke="#EF4444" strokeWidth="2" fill="none"/>
+      <rect x="16" y="38" width="10" height="18" rx="5" fill="#FEF2F2" stroke="#EF4444" strokeWidth="1.5"/>
+      <rect x="54" y="38" width="10" height="18" rx="5" fill="#FEF2F2" stroke="#EF4444" strokeWidth="1.5"/>
+      <rect x="18" y="42" width="6" height="10" rx="3" fill="#EF4444" opacity="0.15">
+        <animate attributeName="opacity" values="0.1;0.25;0.1" dur="2s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="56" y="42" width="6" height="10" rx="3" fill="#EF4444" opacity="0.15">
+        <animate attributeName="opacity" values="0.1;0.25;0.1" dur="2s" begin="0.5s" repeatCount="indefinite"/>
+      </rect>
+      <path d="M22 56L22 62C22 64 24 66 26 66L30 66" stroke="#EF4444" strokeWidth="1" opacity="0.3" strokeLinecap="round"/>
+    </svg>
+  );
+
+  if (key.includes("chaise") || key.includes("chair") || key.includes("siege")) return (
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <path d="M28 16C28 14 30 12 32 12H48C50 12 52 14 52 16V44H28V16Z" fill="#FFFBEB" stroke="#F59E0B" strokeWidth="1.5" rx="3"/>
+      <rect x="26" y="44" width="28" height="8" rx="2" fill="#F59E0B" opacity="0.15" stroke="#F59E0B" strokeWidth="1"/>
+      <path d="M30 52V60" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M50 52V60" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M26 60L30 60" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M50 60L54 60" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="28" cy="62" r="2" fill="#F59E0B" opacity="0.3"/>
+      <circle cx="52" cy="62" r="2" fill="#F59E0B" opacity="0.3"/>
+      <rect x="24" y="20" width="4" height="16" rx="2" fill="#F59E0B" opacity="0.1" stroke="#F59E0B" strokeWidth="0.8"/>
+      <rect x="52" y="20" width="4" height="16" rx="2" fill="#F59E0B" opacity="0.1" stroke="#F59E0B" strokeWidth="0.8"/>
+    </svg>
+  );
+
+  if (key.includes("tapis") || key.includes("mousepad") || key.includes("deskpad")) return (
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
+      <rect x="8" y="24" width="64" height="32" rx="4" fill="#F9FAFB" stroke="#6B7280" strokeWidth="1.5"/>
+      <rect x="12" y="28" width="56" height="24" rx="2" fill="#6B7280" opacity="0.04"/>
+      {[20,32,44,56].map((x,i) => (
+        <line key={x} x1={x} y1="30" x2={x} y2="50" stroke="#6B7280" strokeWidth="0.3" opacity="0.15">
+          <animate attributeName="opacity" values="0.1;0.2;0.1" dur="3s" begin={`${i*0.5}s`} repeatCount="indefinite"/>
+        </line>
+      ))}
+      <rect x="48" y="32" width="14" height="20" rx="7" stroke="#6B7280" strokeWidth="0.8" opacity="0.2"/>
+    </svg>
+  );
+
   return (
     <svg width={s} height={s} viewBox="0 0 80 80" fill="none">
       <rect x="20" y="20" width="40" height="40" rx="5" fill="#F3F4F6" stroke="#9CA3AF" strokeWidth="1.5"/>
@@ -188,42 +275,12 @@ function ComponentSVG({ type, size = 80 }: { type: string; size?: number }) {
   );
 }
 
-/* ── Default generic images per component type (Supabase Storage) ── */
 
-const SUPABASE_STORAGE = "https://gxremrjbwtnmiiiujjem.supabase.co/storage/v1/object/public/component-defaults";
-const DEFAULT_TYPE_IMAGES: Record<string, string> = {
-  cpu: `${SUPABASE_STORAGE}/cpu.jpg`,
-  gpu: `${SUPABASE_STORAGE}/gpu.jpg`,
-  ram: `${SUPABASE_STORAGE}/ram.jpg`,
-  stockage: `${SUPABASE_STORAGE}/stockage.jpg`,
-  "carte mere": `${SUPABASE_STORAGE}/carte-mere.jpg`,
-  "carte mère": `${SUPABASE_STORAGE}/carte-mere.jpg`,
-  alimentation: `${SUPABASE_STORAGE}/alimentation.jpg`,
-  boitier: `${SUPABASE_STORAGE}/boitier.jpg`,
-  "boîtier": `${SUPABASE_STORAGE}/boitier.jpg`,
-  refroidissement: `${SUPABASE_STORAGE}/refroidissement.jpg`,
-  moniteur: `${SUPABASE_STORAGE}/moniteur.jpg`,
-  clavier: `${SUPABASE_STORAGE}/clavier.jpg`,
-  souris: `${SUPABASE_STORAGE}/souris.jpg`,
-  casque: `${SUPABASE_STORAGE}/casque.jpg`,
-  "chaise gaming": `${SUPABASE_STORAGE}/chaise-gaming.jpg`,
-  "tapis de souris": `${SUPABASE_STORAGE}/tapis-de-souris.jpg`,
-};
-
-function getDefaultTypeImage(type: string): string | undefined {
-  const key = type.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  return DEFAULT_TYPE_IMAGES[key] || Object.entries(DEFAULT_TYPE_IMAGES).find(([k]) => key.includes(k))?.[1];
-}
-
-function ProductImage({ type, imageUrl, name }: { type: string; imageUrl?: string; name?: string }) {
+function ProductImage({ type }: { type: string }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotateX = useTransform(y, [-50, 50], [8, -8]);
   const rotateY = useTransform(x, [-50, 50], [-8, 8]);
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const [imgError, setImgError] = useState(false);
-  const [fallbackError, setFallbackError] = useState(false);
-  const defaultImg = getDefaultTypeImage(type);
 
   function handleMouse(e: React.MouseEvent<HTMLDivElement>) {
     const r = e.currentTarget.getBoundingClientRect();
@@ -232,65 +289,18 @@ function ProductImage({ type, imageUrl, name }: { type: string; imageUrl?: strin
   }
   function handleLeave() { x.set(0); y.set(0); }
 
-  const showImage = imageUrl && !imgError;
-  const showFallback = !showImage && defaultImg && !fallbackError;
-
   return (
     <motion.div
       onMouseMove={handleMouse}
       onMouseLeave={handleLeave}
       style={{ rotateX, rotateY, perspective: 600 }}
-      className="w-[80px] h-[80px] rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary shrink-0 overflow-hidden relative"
+      className="w-[80px] h-[80px] rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary shrink-0 overflow-hidden"
     >
-      {(!showImage && !showFallback || (!imgLoaded && !showFallback)) && <ComponentSVG type={type} />}
-      {showImage && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={imageUrl}
-          alt={name || type}
-          className={`absolute inset-0 w-full h-full object-contain p-1.5 transition-opacity duration-200 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
-          loading="lazy"
-          onLoad={() => setImgLoaded(true)}
-          onError={() => setImgError(true)}
-        />
-      )}
-      {showFallback && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={defaultImg}
-          alt={type}
-          className="absolute inset-0 w-full h-full object-contain p-1.5"
-          loading="lazy"
-          onError={() => setFallbackError(true)}
-        />
-      )}
+      <ComponentSVG type={type} />
     </motion.div>
   );
 }
 
-/* ── Inline image with 3-tier fallback (specific → generic type → hide) ── */
-
-function FallbackImg({ src, alt, type, className, style }: { src: string; alt: string; type: string; className: string; style?: React.CSSProperties }) {
-  const [phase, setPhase] = useState<"primary" | "default" | "hidden">("primary");
-  const defaultImg = getDefaultTypeImage(type);
-  if (phase === "hidden") return null;
-  const currentSrc = phase === "primary" ? src : defaultImg!;
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={currentSrc}
-      alt={alt}
-      className={className}
-      loading="lazy"
-      onLoad={(e) => { (e.target as HTMLImageElement).style.opacity = "1"; }}
-      onError={() => {
-        if (phase === "primary" && defaultImg) setPhase("default");
-        else setPhase("hidden");
-      }}
-      style={style || { opacity: 0, transition: "opacity 0.2s" }}
-    />
-  );
-}
 
 /* ── Animated Counter ── */
 
@@ -355,93 +365,11 @@ interface DBComponent {
   component_prices: DBPrice[];
 }
 
-function CarouselImage({ src, alt, className, type }: { src: string; alt: string; className: string; type?: string }) {
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState(false);
-  const [fallbackError, setFallbackError] = useState(false);
-  const defaultImg = type ? getDefaultTypeImage(type) : undefined;
-
-  if (error && (!defaultImg || fallbackError)) return null;
-  return (
-    <>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={error ? defaultImg! : src}
-        alt={alt}
-        className={`${className} transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
-        loading="lazy"
-        onLoad={() => setLoaded(true)}
-        onError={() => { if (error) setFallbackError(true); else { setError(true); setLoaded(false); } }}
-      />
-    </>
-  );
-}
-
-function ImageCarousel({ images, name, type, tall = false }: { images: DBImage[]; name: string; type: string; tall?: boolean }) {
-  const [idx, setIdx] = useState(0);
-  const [failed, setFailed] = useState<Set<number>>(new Set());
-  const sorted = [...images].sort((a, b) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0) || a.order_index - b.order_index);
-  const valid = sorted.filter((_, i) => !failed.has(i));
+function ImageCarousel({ name, type, tall = false }: { images: DBImage[]; name: string; type: string; tall?: boolean }) {
   const h = tall ? "h-[300px]" : "h-[220px]";
-
-  const defaultImg = getDefaultTypeImage(type);
-  const [defaultFailed, setDefaultFailed] = useState(false);
-
-  if (valid.length === 0) {
-    return (
-      <div className={`w-full ${h} rounded-xl bg-[#F8F8F8] border flex items-center justify-center overflow-hidden relative`} style={{ borderColor: "#E5E5E5" }}>
-        <ComponentSVG type={type} size={tall ? 160 : 110} />
-        {defaultImg && !defaultFailed && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={defaultImg}
-            alt={type}
-            className="absolute inset-0 w-full h-full object-contain p-4"
-            loading="lazy"
-            onLoad={(e) => { (e.target as HTMLImageElement).style.opacity = "1"; }}
-            onError={() => setDefaultFailed(true)}
-            style={{ opacity: 0, transition: "opacity 0.2s" }}
-          />
-        )}
-      </div>
-    );
-  }
-
-  const cur = valid[Math.min(idx, valid.length - 1)];
   return (
-    <div>
-      <div className={`relative w-full ${h} rounded-xl bg-[#F8F8F8] border flex items-center justify-center overflow-hidden`} style={{ borderColor: "#E5E5E5" }}>
-        <ComponentSVG type={type} size={tall ? 100 : 70} />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={cur.url}
-          alt={cur.alt_text || name}
-          className="absolute inset-0 w-full h-full object-contain p-4"
-          loading="lazy"
-          onLoad={(e) => { (e.target as HTMLImageElement).style.opacity = "1"; }}
-          onError={() => { setFailed((s) => new Set([...s, sorted.indexOf(cur)])); }}
-          style={{ opacity: 0, transition: "opacity 0.2s" }}
-        />
-        {valid.length > 1 && (
-          <>
-            <button type="button" onClick={() => setIdx((i) => (i - 1 + valid.length) % valid.length)} className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 border flex items-center justify-center text-[#666] hover:bg-white shadow-sm transition-all z-10" style={{ borderColor: "#E5E5E5" }} aria-label="Image précédente">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 2L4 6l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-            <button type="button" onClick={() => setIdx((i) => (i + 1) % valid.length)} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 border flex items-center justify-center text-[#666] hover:bg-white shadow-sm transition-all z-10" style={{ borderColor: "#E5E5E5" }} aria-label="Image suivante">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-          </>
-        )}
-      </div>
-      {valid.length > 1 && (
-        <div className="flex gap-1.5 justify-center mt-2">
-          {valid.map((img, i) => (
-            <button key={i} type="button" onClick={() => setIdx(i)} className={`w-12 h-12 rounded-lg border overflow-hidden transition-all ${i === Math.min(idx, valid.length - 1) ? "border-[#4f8ef7]" : "border-[#E5E5E5] opacity-60 hover:opacity-100"}`}>
-              <CarouselImage src={img.url} alt="" className="w-full h-full object-contain p-1" type={type} />
-            </button>
-          ))}
-        </div>
-      )}
+    <div className={`w-full ${h} rounded-xl bg-[#F8F8F8] border flex items-center justify-center`} style={{ borderColor: "#E5E5E5" }}>
+      <ComponentSVG type={type} size={tall ? 160 : 110} />
     </div>
   );
 }
@@ -605,28 +533,29 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 sm:px-4 py-0 sm:py-6"
+      className="fixed inset-0 z-50 overflow-y-auto"
       style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
     >
+      <div className="min-h-full flex items-start justify-center px-0 sm:px-4 pt-4 pb-4">
       <motion.div
         ref={modalRef}
         initial={{ opacity: 0, y: 60 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
         transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[92vh] overflow-hidden shadow-2xl flex flex-col relative"
+        className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl relative"
         style={{ border: "1px solid #E5E5E5" }}
       >
         {/* ── Sticky header ── */}
-        <div className="sticky top-0 bg-white z-10 px-6 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid #E5E5E5" }}>
+        <div className="bg-white z-10 px-6 py-4 flex items-center justify-between rounded-t-2xl" style={{ borderBottom: "1px solid #E5E5E5" }}>
           <div className="flex items-center gap-2 min-w-0">
             <span className="shrink-0 text-[11px] px-2.5 py-1 rounded-full font-semibold text-white" style={{ background: "#4f8ef7" }}>{component.type}</span>
             <span className="text-sm font-medium text-[#444] truncate">{brand}</span>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[#CCC]"><path d="M4.5 2.5l3 3.5-3 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             <span className="text-sm text-[#666] truncate">{component.name}</span>
           </div>
-          <button type="button" onClick={onClose} className="shrink-0 w-8 h-8 rounded-lg border flex items-center justify-center text-[#666] hover:text-[#0A0A0A] transition-colors ml-4" style={{ borderColor: "#E5E5E5" }}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <button type="button" onClick={onClose} className="shrink-0 w-9 h-9 rounded-full border-2 flex items-center justify-center text-[#666] hover:text-[#0A0A0A] hover:bg-[#F5F5F5] transition-colors ml-4" style={{ borderColor: "#E5E5E5" }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
           </button>
         </div>
 
@@ -642,7 +571,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
             </div>
           </div>
         ) : (
-          <div className="p-4 sm:p-6 pb-6 flex flex-col gap-6 overflow-y-auto flex-1 overscroll-contain">
+          <div className="p-4 sm:p-6 pb-6 flex flex-col gap-6">
 
             {/* ── TOP: Image + Info ── */}
             <div className="flex flex-col md:flex-row gap-6">
@@ -835,7 +764,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
 
         {/* ── Fixed bottom buttons ── */}
         {!loading && (
-          <div className="sticky bottom-0 bg-white px-4 sm:px-6 py-4 flex flex-wrap gap-2 sm:gap-3" style={{ borderTop: "1px solid #E5E5E5" }}>
+          <div className="bg-white px-4 sm:px-6 py-4 flex flex-wrap gap-2 sm:gap-3 rounded-b-2xl" style={{ borderTop: "1px solid #E5E5E5" }}>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
@@ -861,6 +790,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
           </div>
         )}
       </motion.div>
+      </div>
     </motion.div>
   );
 }
@@ -1005,9 +935,11 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
     ? alternatives.reduce((bi, alt, i) => alt.price_ch < alternatives[bi].price_ch ? i : bi, 0)
     : -1;
 
-  const currentKeySpecs = Object.keys(currentSpecs).length > 0
-    ? getKeySpecs(component.type, currentSpecs)
-    : [];
+  // Collect ALL spec keys from current + all alternatives for full comparison
+  const allSpecKeys = Array.from(new Set([
+    ...Object.keys(currentSpecs),
+    ...alternatives.flatMap((a) => Object.keys((a as Alternative & { specs?: Record<string, string> }).specs || {})),
+  ]));
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
@@ -1028,13 +960,13 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
             <span className="text-xs font-bold text-[#4f8ef7] tabular-nums">{component.price_ch} CHF</span>
           </div>
           <p className="font-semibold text-sm leading-tight mb-2">{component.name}</p>
-          {currentKeySpecs.length > 0 && (
+          {Object.keys(currentSpecs).length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {currentKeySpecs.map((k) => currentSpecs[k] ? (
+              {Object.entries(currentSpecs).map(([k, v]) => (
                 <span key={k} className="text-[10px] px-2 py-0.5 rounded-md bg-white/70 border border-blue-200 text-[#4f8ef7] font-medium">
-                  {k}: {currentSpecs[k]}
+                  {k}: {v}
                 </span>
-              ) : null)}
+              ))}
             </div>
           )}
         </div>
@@ -1049,7 +981,8 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
               const priceDiffStr = priceDiff === 0 ? "= prix" : priceDiff > 0 ? `+${priceDiff} CHF` : `${priceDiff} CHF`;
               const altWithExtras = alt as Alternative & { specs?: Record<string, string>; images?: DBImage[] };
               const altSpecs = altWithExtras.specs || {};
-              const keySpecs = Object.keys(altSpecs).length > 0 ? getKeySpecs(component.type, altSpecs) : currentKeySpecs;
+              // Union of all spec keys for this alternative + current
+              const specKeys = Array.from(new Set([...allSpecKeys, ...Object.keys(altSpecs)]));
               const primaryImg = altWithExtras.images?.find((img) => img.is_primary) || altWithExtras.images?.[0];
               const isBestValue = i === bestValueIndex;
               return (
@@ -1057,11 +990,8 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
 
                   {/* Alt header row */}
                   <div className="flex gap-3 mb-3">
-                    <div className="w-14 h-14 rounded-lg bg-bg border border-border flex items-center justify-center shrink-0 overflow-hidden relative">
+                    <div className="w-14 h-14 rounded-lg bg-bg border border-border flex items-center justify-center shrink-0 overflow-hidden">
                       <ComponentSVG type={component.type} size={36} />
-                      {primaryImg && (
-                        <FallbackImg src={primaryImg.url} alt={alt.name} type={component.type} className="absolute inset-0 w-full h-full object-contain p-1" />
-                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5 mb-1">
@@ -1080,8 +1010,8 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
                     </div>
                   </div>
 
-                  {/* Spec comparison table */}
-                  {keySpecs.length > 0 && (
+                  {/* Spec comparison table — ALL specs */}
+                  {specKeys.length > 0 && (
                     <div className="rounded-lg overflow-hidden border border-border mb-3">
                       <table className="w-full text-[11px]">
                         <thead>
@@ -1093,7 +1023,7 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
                           </tr>
                         </thead>
                         <tbody>
-                          {keySpecs.map((k, si) => {
+                          {specKeys.map((k, si) => {
                             const curV = currentSpecs[k];
                             const altV = altSpecs[k];
                             if (!curV && !altV) return null;
@@ -1155,7 +1085,7 @@ function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }:
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1, type: "spring", stiffness: 200, damping: 20 }} className="rounded-xl border border-border bg-card p-5 transition-colors duration-150 hover:border-border-hover">
       <div className="flex gap-4 mb-3">
-        <ProductImage type={component.type} imageUrl={component.image_url} name={component.name} />
+        <ProductImage type={component.type} />
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div>
@@ -1210,7 +1140,7 @@ function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }:
 
 /* ── Expandable Price Row ── */
 
-function PriceRow({ component, changed, t }: { component: Component; index: number; changed: boolean; t: (k: string) => string }) {
+function PriceRow({ component, changed, t, onInfo }: { component: Component; index: number; changed: boolean; t: (k: string) => string; onInfo: () => void }) {
   return (
     <tr className="border-b border-border/50 hover:bg-card/50 transition-colors duration-150">
       <td className="py-3">
@@ -1218,7 +1148,10 @@ function PriceRow({ component, changed, t }: { component: Component; index: numb
         <span className="text-text-secondary ml-2 text-xs">{component.name}</span>
         {changed && <span className="ml-2 text-[10px] text-text-secondary">({t("result.changed")})</span>}
       </td>
-      <td className="text-right py-3 tabular-nums font-medium">{component.price_ch > 0 ? `${component.price_ch} CHF` : <span className="text-[#999] italic text-xs">Prix à confirmer</span>}</td>
+      <td className="text-right py-3 flex items-center justify-end gap-3">
+        <button type="button" onClick={onInfo} className="text-[10px] px-2 py-0.5 rounded border border-border text-text-secondary hover:text-[#4f8ef7] hover:border-[#4f8ef7] transition-all font-medium">Infos &rarr;</button>
+        <span className="tabular-nums font-medium">{component.price_ch > 0 ? `${component.price_ch} CHF` : <span className="text-[#999] italic text-xs">Prix à confirmer</span>}</span>
+      </td>
     </tr>
   );
 }
@@ -1234,38 +1167,58 @@ const PERIPHERAL_CATEGORIES = [
   { type: "Tapis de souris", icon: "🎯", color: "#6B7280", bg: "#F9FAFB" },
 ];
 
+/** Get type-specific spec keys to display on peripheral cards */
+function getPeripheralSpecs(type: string, specs: Record<string, string>): [string, string][] {
+  const t = type.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const s = (keys: string[]): [string, string][] => {
+    const results: [string, string][] = [];
+    for (const key of keys) {
+      // Find matching spec key (case-insensitive partial match)
+      const found = Object.entries(specs).find(([k]) => k.toLowerCase().includes(key.toLowerCase()));
+      if (found) results.push(found);
+    }
+    return results;
+  };
+
+  if (t.includes("moniteur") || t.includes("ecran")) return s(["taille", "resolution", "hz", "rafra", "dalle", "panel", "hdr", "temps de reponse", "response"]);
+  if (t.includes("souris")) return s(["dpi", "bouton", "poids", "weight", "filaire", "sans fil", "wireless", "capteur", "sensor"]);
+  if (t.includes("clavier")) return s(["switch", "format", "layout", "rgb", "retroeclair", "sans fil", "wireless", "filaire"]);
+  if (t.includes("casque")) return s(["type", "micro", "sans fil", "wireless", "impedance", "driver", "frequence", "reponse"]);
+  if (t.includes("chaise")) return s(["materiau", "poids max", "accoudoir", "garantie", "inclinaison", "roulette"]);
+  if (t.includes("tapis")) return s(["dimension", "taille", "epaisseur", "surface", "base", "materiau"]);
+  // Generic fallback
+  return Object.entries(specs).slice(0, 4).map(([k, v]) => [k, v]);
+}
+
 function PeripheralCard({ item, color, bg, onInfo }: { item: DBComponent & { component_images?: DBImage[] }; color: string; bg: string; onInfo: () => void }) {
   const { addItem, items } = useCart();
   const inCart = items.some((i) => i.name === item.name);
-  const primaryImg = item.component_images?.find((img: DBImage) => img.is_primary) || item.component_images?.[0];
   const specs = item.specs || {};
-  const topSpecs = Object.entries(specs).slice(0, 2);
 
   const asComponent: Component = {
     type: item.type, name: item.name, reason: item.description || "",
     price_fr: item.price_fr, price_ch: item.price_ch, search_terms: [item.name],
-    priority: "optionnel", image_url: primaryImg?.url, manufacturer_url: item.manufacturer_url,
+    priority: "optionnel", manufacturer_url: item.manufacturer_url,
     specs: item.specs,
   };
+
+  const displaySpecs = getPeripheralSpecs(item.type, specs);
 
   return (
     <div className="rounded-xl border p-3 transition-all duration-150 hover:border-[#CCC] hover:shadow-sm group flex flex-col" style={{ borderColor: "#E5E5E5", background: bg }}>
       {/* Image */}
-      <div className="w-full h-24 rounded-lg bg-white/60 border border-white/80 flex items-center justify-center mb-2.5 overflow-hidden relative">
-        <ComponentSVG type={item.type} size={48} />
-        {primaryImg && (
-          <FallbackImg src={primaryImg.url} alt={item.name} type={item.type} className="absolute inset-0 w-full h-full object-contain p-2" />
-        )}
+      <div className="w-full h-24 rounded-lg bg-white/60 border border-white/80 flex items-center justify-center mb-2.5 overflow-hidden">
+        <ComponentSVG type={item.type} size={56} />
       </div>
 
       {/* Info */}
       <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color }}>{item.brand}</p>
       <p className="text-xs font-semibold text-[#333] mt-0.5 leading-snug line-clamp-2">{item.name}</p>
 
-      {/* Key specs */}
-      {topSpecs.length > 0 && (
+      {/* Type-specific specs */}
+      {displaySpecs.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-1.5">
-          {topSpecs.map(([k, v]) => (
+          {displaySpecs.slice(0, 5).map(([k, v]) => (
             <span key={k} className="text-[9px] px-1.5 py-0.5 rounded bg-white/70 border border-white text-[#666]">{k}: {String(v)}</span>
           ))}
         </div>
@@ -1600,7 +1553,7 @@ export default function ConfigResult({ config, onReset }: Props) {
             </tr>
           </thead>
           <tbody>
-            {components.map((c, i) => <PriceRow key={`row-${c.type}-${i}`} component={c} index={i} changed={c.name !== originals[i].name} t={t} />)}
+            {components.map((c, i) => <PriceRow key={`row-${c.type}-${i}`} component={c} index={i} changed={c.name !== originals[i].name} t={t} onInfo={() => setInfoIndex(i)} />)}
           </tbody>
           <tfoot>
             <tr className="font-bold">
