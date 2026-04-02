@@ -158,34 +158,40 @@ export default function ConfiguratorForm({ onResult }: Props) {
     setProgress(0);
     setMessageIndex(0);
 
-    // Phase 1: 0% → 60% in 2 seconds
+    // Phase 1: 0% → 30% in 3 seconds (slow ramp-up)
     let p = 0;
     phase1Ref.current = setInterval(() => {
-      p = Math.min(p + 3, 60);
+      p = Math.min(p + 1, 30);
       setProgress(p);
-      if (p >= 60 && phase1Ref.current) clearInterval(phase1Ref.current);
+      if (p >= 30 && phase1Ref.current) clearInterval(phase1Ref.current);
     }, 100);
 
-    // Message rotation every 2.5 seconds
+    // Message rotation every 4 seconds (slower to feel real)
     let msg = 0;
     msgRef.current = setInterval(() => {
       msg = Math.min(msg + 1, 4);
       setMessageIndex(msg);
-    }, 2500);
+    }, 4000);
 
     try {
-      // Phase 2: 60% → 90% during API call (starts after phase 1)
+      // Phase 2: 30% → 92% during API call — logarithmic slowdown
+      // Starts fast, progressively slows so it never feels stuck
       const phase2Start = setTimeout(() => {
+        let elapsed = 0;
         phase2Ref.current = setInterval(() => {
+          elapsed += 300;
           setProgress((prev) => {
-            if (prev >= 90) {
+            if (prev >= 92) {
               if (phase2Ref.current) clearInterval(phase2Ref.current);
-              return 90;
+              return 92;
             }
-            return prev + 0.5;
+            // Increment shrinks over time: fast at start, crawls near 92%
+            const remaining = 92 - prev;
+            const increment = Math.max(0.1, remaining * 0.04);
+            return Math.min(prev + increment, 92);
           });
-        }, 200);
-      }, 2000);
+        }, 300);
+      }, 3000);
 
       const res = await fetch("/api/configure", {
         method: "POST",
