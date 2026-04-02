@@ -1132,7 +1132,7 @@ function PeripheralsSection({ onPeripheralInfo }: { onPeripheralInfo: (comp: Com
     setLoading(true);
     Promise.all(
       PERIPHERAL_CATEGORIES.map((cat) =>
-        fetch(`/api/db-components?type=${encodeURIComponent(cat.type)}`)
+        fetch(`/api/db-components?type=${encodeURIComponent(cat.type)}&limit=12`)
           .then((r) => r.json())
           .then((data: DBComponent[]) => ({ type: cat.type, items: data }))
           .catch(() => ({ type: cat.type, items: [] }))
@@ -1185,7 +1185,7 @@ function PeripheralsSection({ onPeripheralInfo }: { onPeripheralInfo: (comp: Com
             ) : (
               <div className="flex flex-col gap-5 pt-4">
                 {PERIPHERAL_CATEGORIES.map((cat, ci) => {
-                  const items = (peripherals[cat.type] || []).slice(0, 4);
+                  const items = (peripherals[cat.type] || []).slice(0, 8);
                   if (items.length === 0) return null;
                   return (
                     <motion.div key={cat.type} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: ci * 0.08 }}>
