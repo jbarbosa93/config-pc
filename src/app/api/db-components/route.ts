@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   if (type) query = query.eq("type", type);
   if (budget) query = query.lte("price_ch", budget);
 
-  query = query.order("popularity_score", { ascending: false }).limit(Math.min(limitParam, 50));
+  query = query.order("popularity_score", { ascending: false }).limit(Math.min(limitParam, 200));
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

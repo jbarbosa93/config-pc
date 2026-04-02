@@ -276,11 +276,37 @@ function ComponentSVG({ type, size = 80 }: { type: string; size?: number }) {
 }
 
 
-function ProductImage({ type }: { type: string }) {
+function ProductImageWithFallback({ url, alt, type }: { url: string; alt: string; type: string }) {
+  const [error, setError] = useState(false);
+  if (error) return <ComponentSVG type={type} size={120} />;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={url} alt={alt} className="w-full h-full object-contain p-4" onError={() => setError(true)} />
+  );
+}
+
+function ProductImage({ type, name }: { type: string; name: string }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotateX = useTransform(y, [-50, 50], [8, -8]);
   const rotateY = useTransform(x, [-50, 50], [-8, 8]);
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (!name) return;
+    let cancelled = false;
+    fetch(`/api/components/search?name=${encodeURIComponent(name)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return;
+        const images: { url: string; is_primary: boolean }[] = data?.component_images || [];
+        const primary = images.find(i => i.is_primary)?.url || images[0]?.url || null;
+        setImgUrl(primary);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [name]);
 
   function handleMouse(e: React.MouseEvent<HTMLDivElement>) {
     const r = e.currentTarget.getBoundingClientRect();
@@ -296,7 +322,17 @@ function ProductImage({ type }: { type: string }) {
       style={{ rotateX, rotateY, perspective: 600 }}
       className="w-[80px] h-[80px] rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary shrink-0 overflow-hidden"
     >
-      <ComponentSVG type={type} />
+      {imgUrl && !imgError ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imgUrl}
+          alt={name}
+          className="w-full h-full object-contain p-1.5"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <ComponentSVG type={type} />
+      )}
     </motion.div>
   );
 }
@@ -610,12 +646,22 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
           ) : (
             <div className="p-6 space-y-6">
 
-              {/* ── Hero: large SVG + info ── */}
+              {/* ── Hero: image or SVG + info ── */}
               <div className="flex flex-col sm:flex-row gap-6">
-                {/* Large SVG */}
-                <div className="w-full sm:w-44 h-44 shrink-0 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #EFF6FF 0%, #E0ECFF 100%)" }}>
-                  <ComponentSVG type={component.type} size={120} />
-                </div>
+                {/* Product image */}
+                {(() => {
+                  const primaryImg = dbData?.component_images?.find(i => i.is_primary)?.url
+                    || dbData?.component_images?.[0]?.url;
+                  return (
+                    <div className="w-full sm:w-44 h-44 shrink-0 rounded-2xl flex items-center justify-center overflow-hidden" style={{ background: "linear-gradient(135deg, #EFF6FF 0%, #E0ECFF 100%)" }}>
+                      {primaryImg ? (
+                        <ProductImageWithFallback url={primaryImg} alt={component.name} type={component.type} />
+                      ) : (
+                        <ComponentSVG type={component.type} size={120} />
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Info */}
                 <div className="flex-1 flex flex-col gap-3">
@@ -1120,7 +1166,7 @@ function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }:
   return (
     <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1, type: "spring", stiffness: 200, damping: 20 }} className="rounded-xl border border-border bg-card p-5 transition-colors duration-150 hover:border-border-hover">
       <div className="flex gap-4 mb-3">
-        <ProductImage type={component.type} />
+        <ProductImage type={component.type} name={component.name} />
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between">
             <div>

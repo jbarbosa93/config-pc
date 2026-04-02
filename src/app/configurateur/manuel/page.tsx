@@ -260,6 +260,27 @@ function getCompatResult(comp: DBCompWithImages, stepId: StepId, build: Build): 
   }
 }
 
+/* ─── Component image with SVG fallback ─── */
+
+function ComponentImageOrIcon({ comp }: { comp: DBCompWithImages }) {
+  const [imgError, setImgError] = useState(false);
+  const primaryImg = comp.component_images?.find((i) => i.is_primary)?.url
+    || comp.component_images?.[0]?.url;
+
+  if (primaryImg && !imgError) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={primaryImg}
+        alt={comp.name}
+        className="w-[44px] h-[44px] object-contain"
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+  return <ComponentIcon type={comp.type} size={36} />;
+}
+
 /* ─── Component Card ─── */
 
 function CompCard({
@@ -297,8 +318,8 @@ function CompCard({
     >
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="flex-shrink-0">
-          <ComponentIcon type={comp.type} size={40} />
+        <div className="flex-shrink-0 w-[52px] h-[52px] rounded-xl bg-[#F5F7FF] flex items-center justify-center overflow-hidden border border-[#E8EEFF]">
+          <ComponentImageOrIcon comp={comp} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs text-[#666] font-medium uppercase tracking-wide">{comp.brand}</p>
