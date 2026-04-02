@@ -399,6 +399,13 @@ export default function CataloguePage() {
   const [selectedComponent, setSelectedComponent] = useState<Component | null>(null);
   const [maxPrice, setMaxPrice] = useState<number>(5000);
   const [sortBy, setSortBy] = useState<"popularity" | "price_asc" | "price_desc">("popularity");
+  // Advanced filters
+  const [filterVram, setFilterVram] = useState<string | null>(null);
+  const [filterArch, setFilterArch] = useState<string | null>(null);
+  const [filterCores, setFilterCores] = useState<string | null>(null);
+  const [filterSocket, setFilterSocket] = useState<string | null>(null);
+  const [filterDdr, setFilterDdr] = useState<string | null>(null);
+  const [filterCapacity, setFilterCapacity] = useState<string | null>(null);
 
   useEffect(() => {
     fetchComponents();
@@ -434,8 +441,14 @@ export default function CataloguePage() {
     return max > 0 ? Math.ceil(max / 100) * 100 : 5000;
   }, [components, activeCategory]);
 
-  // Reset price filter when category changes
-  useEffect(() => { setMaxPrice(priceCeiling); }, [priceCeiling]);
+  // Reset all filters when category changes
+  useEffect(() => {
+    setMaxPrice(priceCeiling);
+    setFilterVram(null); setFilterArch(null);
+    setFilterCores(null); setFilterSocket(null);
+    setFilterDdr(null); setFilterCapacity(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCategory, priceCeiling]);
 
   const filtered = useMemo(() => {
     let result = components;
@@ -447,10 +460,51 @@ export default function CataloguePage() {
       result = result.filter((c) => c.name.toLowerCase().includes(q) || c.brand.toLowerCase().includes(q) || c.description?.toLowerCase().includes(q));
     }
     result = result.filter((c) => !c.price_ch || c.price_ch <= maxPrice);
+
+    // GPU filters
+    if (filterVram) {
+      result = result.filter((c) => {
+        const v = Number(c.specs?.vram_gb || 0);
+        if (filterVram === "16+") return v >= 16;
+        return v === Number(filterVram);
+      });
+    }
+    if (filterArch) {
+      result = result.filter((c) =>
+        String(c.specs?.architecture || "").toLowerCase().includes(filterArch.toLowerCase())
+      );
+    }
+
+    // CPU filters
+    if (filterCores) {
+      result = result.filter((c) => {
+        const cores = Number(c.specs?.cores || 0);
+        if (filterCores === "12+") return cores >= 12;
+        return cores === Number(filterCores);
+      });
+    }
+    if (filterSocket) {
+      result = result.filter((c) => (c.socket || "").toLowerCase() === filterSocket.toLowerCase());
+    }
+
+    // RAM filters
+    if (filterDdr) {
+      result = result.filter((c) =>
+        String(c.specs?.ddr_gen || c.specs?.speed || "").toUpperCase().includes(filterDdr)
+      );
+    }
+    if (filterCapacity) {
+      result = result.filter((c) => {
+        const gb = Number(c.specs?.total_gb || 0);
+        if (filterCapacity === "64+") return gb >= 64;
+        return gb === Number(filterCapacity);
+      });
+    }
+
     if (sortBy === "price_asc") result = [...result].sort((a, b) => (a.price_ch || 0) - (b.price_ch || 0));
     else if (sortBy === "price_desc") result = [...result].sort((a, b) => (b.price_ch || 0) - (a.price_ch || 0));
     return result;
-  }, [components, activeCategory, search, maxPrice, sortBy]);
+  }, [components, activeCategory, search, maxPrice, sortBy, filterVram, filterArch, filterCores, filterSocket, filterDdr, filterCapacity]);
 
   const counts = useMemo(() => {
     const map: Record<string, number> = { all: components.length };
@@ -534,6 +588,108 @@ export default function CataloguePage() {
           <option value="price_desc">Prix décroissant</option>
         </select>
       </div>
+
+      {/* Advanced filters — dynamic by category */}
+      {(activeCategory === "GPU" || activeCategory === "CPU" || activeCategory === "RAM") && (
+        <div className="max-w-7xl mx-auto px-4 pb-3">
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-xs text-text-secondary font-medium shrink-0 mr-1">Filtres :</span>
+
+            {/* GPU filters */}
+            {activeCategory === "GPU" && (
+              <>
+                {/* VRAM */}
+                {[
+                  { label: "4 Go", value: "4" },
+                  { label: "8 Go", value: "8" },
+                  { label: "12 Go", value: "12" },
+                  { label: "16 Go+", value: "16+" },
+                ].map(({ label, value }) => (
+                  <button
+                    key={`vram-${value}`}
+                    onClick={() => setFilterVram(filterVram === value ? null : value)}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-all font-medium ${filterVram === value ? "bg-blue-600 text-white border-blue-600" : "bg-white text-text-secondary border-border hover:border-blue-400 hover:text-blue-600"}`}
+                  >
+                    VRAM {label}
+                  </button>
+                ))}
+                <span className="w-px h-4 bg-border mx-1" />
+                {/* Architecture */}
+                {["Ampere", "Ada", "Blackwell", "RDNA 3", "RDNA 4"].map((arch) => (
+                  <button
+                    key={`arch-${arch}`}
+                    onClick={() => setFilterArch(filterArch === arch ? null : arch)}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-all font-medium ${filterArch === arch ? "bg-blue-600 text-white border-blue-600" : "bg-white text-text-secondary border-border hover:border-blue-400 hover:text-blue-600"}`}
+                  >
+                    {arch}
+                  </button>
+                ))}
+              </>
+            )}
+
+            {/* CPU filters */}
+            {activeCategory === "CPU" && (
+              <>
+                {/* Cores */}
+                {[
+                  { label: "4 cœurs", value: "4" },
+                  { label: "6 cœurs", value: "6" },
+                  { label: "8 cœurs", value: "8" },
+                  { label: "12+ cœurs", value: "12+" },
+                ].map(({ label, value }) => (
+                  <button
+                    key={`cores-${value}`}
+                    onClick={() => setFilterCores(filterCores === value ? null : value)}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-all font-medium ${filterCores === value ? "bg-blue-600 text-white border-blue-600" : "bg-white text-text-secondary border-border hover:border-blue-400 hover:text-blue-600"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+                <span className="w-px h-4 bg-border mx-1" />
+                {/* Socket */}
+                {["AM4", "AM5", "LGA1700", "LGA1851"].map((socket) => (
+                  <button
+                    key={`socket-${socket}`}
+                    onClick={() => setFilterSocket(filterSocket === socket ? null : socket)}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-all font-medium ${filterSocket === socket ? "bg-blue-600 text-white border-blue-600" : "bg-white text-text-secondary border-border hover:border-blue-400 hover:text-blue-600"}`}
+                  >
+                    {socket}
+                  </button>
+                ))}
+              </>
+            )}
+
+            {/* RAM filters */}
+            {activeCategory === "RAM" && (
+              <>
+                {["DDR4", "DDR5"].map((ddr) => (
+                  <button
+                    key={`ddr-${ddr}`}
+                    onClick={() => setFilterDdr(filterDdr === ddr ? null : ddr)}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-all font-medium ${filterDdr === ddr ? "bg-blue-600 text-white border-blue-600" : "bg-white text-text-secondary border-border hover:border-blue-400 hover:text-blue-600"}`}
+                  >
+                    {ddr}
+                  </button>
+                ))}
+                <span className="w-px h-4 bg-border mx-1" />
+                {[
+                  { label: "16 Go", value: "16" },
+                  { label: "32 Go", value: "32" },
+                  { label: "64 Go+", value: "64+" },
+                ].map(({ label, value }) => (
+                  <button
+                    key={`cap-${value}`}
+                    onClick={() => setFilterCapacity(filterCapacity === value ? null : value)}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-all font-medium ${filterCapacity === value ? "bg-blue-600 text-white border-blue-600" : "bg-white text-text-secondary border-border hover:border-blue-400 hover:text-blue-600"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Grid */}
       <main className="max-w-7xl mx-auto px-4 py-4">
