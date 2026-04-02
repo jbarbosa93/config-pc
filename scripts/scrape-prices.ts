@@ -54,6 +54,7 @@ interface Component {
   brand: string;
   type: string;
   price_ch: number | null;
+  specs: Record<string, unknown> | null;
 }
 
 interface UpdateResult {
@@ -125,7 +126,7 @@ async function main() {
   // 1. Load components
   let query = supabase
     .from('components')
-    .select('id, name, brand, type, price_ch')
+    .select('id, name, brand, type, price_ch, specs')
     .eq('active', true)
     .eq('available_ch', true)
     .order('popularity_score', { ascending: false })
@@ -154,10 +155,16 @@ async function main() {
     const progress = `[${i + 1}/${components.length}]`;
 
     try {
-      const searchQuery = buildSearchQuery(comp);
-      process.stdout.write(`${progress} ${comp.name.slice(0, 50).padEnd(50)} ... `);
+      // Use stored Digitec product ID if available — bypasses the search step entirely
+      const storedDigitecId = comp.specs?.digitec_id
+        ? parseInt(String(comp.specs.digitec_id), 10)
+        : undefined;
 
-      const result = await getDigitecPrice(searchQuery);
+      const searchQuery = buildSearchQuery(comp);
+      const label = storedDigitecId ? `[ID:${storedDigitecId}]` : '[search]';
+      process.stdout.write(`${progress} ${comp.name.slice(0, 45).padEnd(45)} ${label.padEnd(14)} `);
+
+      const result = await getDigitecPrice(searchQuery, storedDigitecId);
 
       if (!result || result.priceCHF === null) {
         process.stdout.write('⚠️  no price found\n');
