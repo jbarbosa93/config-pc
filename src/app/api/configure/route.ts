@@ -13,6 +13,8 @@ RÈGLES DE PRIX STRICTES :
 - Utilise les prix RÉELS de vente constatés en Q1 2025 sur Digitec, Galaxus, Brack et Interdiscount.
 - Ne donne JAMAIS de prix MSRP/constructeur. Donne le prix de vente moyen constaté en Suisse.
 - Composants de référence 2025 : AMD Ryzen 7000/9000, Intel Core 14e/15e gen, NVIDIA RTX 4000/5000, AMD RX 7000/9000, DDR5, NVMe Gen4/Gen5.
+- Composants dernière génération disponibles en Suisse (propose-les quand le budget le permet) : RTX 5090 (~3200 CHF), RTX 5080 (~1400 CHF), RTX 5070 Ti (~900 CHF), RTX 5070 (~700 CHF), RX 9070 XT (~700 CHF), RX 9070 (~600 CHF), Ryzen 9 9950X (~750 CHF), Ryzen 9 9900X (~500 CHF), Ryzen 7 9700X (~380 CHF), Ryzen 5 9600X (~270 CHF), Intel Core Ultra 9 285K (~620 CHF), Core Ultra 7 265K (~450 CHF).
+- Pour les configs > 2000 CHF : privilégie systématiquement les composants 2025 (RTX 5000, RX 9000, Ryzen 9000).
 - Le site cible uniquement le marché SUISSE. price_fr = 0 toujours.
 
 RÈGLES POUR config_name (IMPORTANT) :
