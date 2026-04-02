@@ -125,6 +125,29 @@ input[type="range"]::-moz-range-thumb {
   animation: pulse-slow 2.5s ease-in-out infinite;
 }
 
+/* Catalogue CTA shimmer */
+@keyframes catalogue-shimmer {
+  0%   { transform: translateX(-100%) skewX(-12deg); }
+  100% { transform: translateX(220%) skewX(-12deg); }
+}
+.catalogue-btn-shimmer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.55) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%) skewX(-12deg);
+  pointer-events: none;
+  border-radius: inherit;
+}
+.catalogue-btn-shimmer:hover::before {
+  animation: catalogue-shimmer 0.6s ease forwards;
+}
+
 /* Particles canvas */
 .particles-canvas {
   position: fixed;

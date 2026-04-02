@@ -66,6 +66,60 @@ function Typewriter({ text, onDone }: { text: string; onDone?: () => void }) {
   return <span>{displayed}<span className="animate-pulse">|</span></span>;
 }
 
+/* ── Catalogue CTA ── */
+
+function CatalogueCTA() {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.4, ease: "easeOut" }}
+      className="w-full max-w-[480px] mt-5"
+    >
+      <p className="text-center text-[14px] text-text-secondary mb-3">
+        Tu sais déjà ce que tu cherches ?
+      </p>
+      <Link href="/catalogue" className="block w-full">
+        <motion.div
+          onHoverStart={() => setHovered(true)}
+          onHoverEnd={() => setHovered(false)}
+          animate={{
+            scale: hovered ? 1.01 : 1,
+            boxShadow: hovered
+              ? "0 4px 20px rgba(79,142,247,0.15)"
+              : "0 0px 0px rgba(79,142,247,0)",
+            background: hovered ? "#f0f7ff" : "#ffffff",
+            borderColor: hovered ? "#4f8ef7" : "#e2e8f0",
+          }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="relative overflow-hidden catalogue-btn-shimmer flex items-center gap-4 px-8 py-5 cursor-pointer"
+          style={{ borderRadius: "16px", border: "1px solid #e2e8f0" }}
+        >
+          <span className="text-2xl shrink-0">🔍</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[18px] font-semibold text-[#0A0A0A] leading-tight">
+              Explorer le catalogue
+            </p>
+            <p className="text-[13px] text-text-secondary mt-0.5">
+              2 381 composants et périphériques disponibles
+            </p>
+          </div>
+          <motion.span
+            animate={{ x: hovered ? 6 : 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="text-[#4f8ef7] text-xl font-bold shrink-0"
+          >
+            →
+          </motion.span>
+        </motion.div>
+      </Link>
+    </motion.div>
+  );
+}
+
 /* ── Hero ── */
 
 function Hero({ onStart }: { onStart: () => void }) {
@@ -168,6 +222,11 @@ function Hero({ onStart }: { onStart: () => void }) {
               </div>
             </motion.div>
           )}
+        </AnimatePresence>
+
+        {/* Catalogue CTA */}
+        <AnimatePresence>
+          {titleDone && <CatalogueCTA />}
         </AnimatePresence>
 
         {/* Stats row */}
