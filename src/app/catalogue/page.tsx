@@ -82,12 +82,37 @@ function getMainSpecs(component: Component): { label: string; value: string }[] 
   const s = component.specs;
   const type = component.type;
   switch (type) {
-    case "CPU":
-      return [s.cores && { label: "Coeurs", value: s.cores }, s.boost_clock && { label: "Boost", value: s.boost_clock }, s.architecture && { label: "Arch", value: s.architecture }, component.socket && { label: "Socket", value: component.socket }].filter(Boolean) as { label: string; value: string }[];
-    case "GPU":
-      return [s.chipset && { label: "Chipset", value: s.chipset }, s.vram && { label: "VRAM", value: s.vram }, s.boost_clock && { label: "Boost", value: s.boost_clock }].filter(Boolean) as { label: string; value: string }[];
-    case "RAM":
-      return [s.speed && { label: "Vitesse", value: s.speed }, s.modules && { label: "Modules", value: s.modules }, s.cas_latency && { label: "CAS", value: s.cas_latency }].filter(Boolean) as { label: string; value: string }[];
+    case "CPU": {
+      const threads = s.threads ? String(s.threads) : null;
+      const cores = s.cores ? String(s.cores) : null;
+      const coreThread = cores && threads ? `${cores}C/${threads}T` : cores || null;
+      const l3 = s.l3_cache_mb ? `${s.l3_cache_mb} Mo L3` : null;
+      return [
+        coreThread && { label: "Cœurs", value: coreThread },
+        l3 && { label: "Cache", value: l3 },
+        s.boost_clock && { label: "Boost", value: String(s.boost_clock) },
+        component.socket && { label: "Socket", value: component.socket },
+      ].filter(Boolean) as { label: string; value: string }[];
+    }
+    case "GPU": {
+      const vram = s.vram_gb ? `${s.vram_gb} Go` : s.memory ? String(s.memory) : null;
+      const arch = s.architecture ? String(s.architecture) : null;
+      return [
+        vram && { label: "VRAM", value: vram },
+        arch && { label: "Archi", value: arch },
+        s.boost_clock && { label: "Boost", value: String(s.boost_clock) },
+      ].filter(Boolean) as { label: string; value: string }[];
+    }
+    case "RAM": {
+      const ddr = s.ddr_gen ? String(s.ddr_gen) : null;
+      const freq = s.frequency_mhz ? `${s.ddr_gen || "DDR"}-${s.frequency_mhz}` : s.speed ? String(s.speed) : null;
+      const mods = s.num_modules && s.total_gb ? `${s.num_modules}×${Math.round(Number(s.total_gb) / Number(s.num_modules))} Go` : s.modules ? String(s.modules) : null;
+      return [
+        freq && { label: "Vitesse", value: freq },
+        mods && { label: "Config", value: mods },
+        !freq && ddr && { label: "Type", value: ddr },
+      ].filter(Boolean) as { label: string; value: string }[];
+    }
     case "Stockage":
       return [s.capacity && { label: "Capacité", value: s.capacity }, s.interface && { label: "Interface", value: s.interface }, s.form_factor && { label: "Format", value: s.form_factor }].filter(Boolean) as { label: string; value: string }[];
     case "Carte mère":
@@ -194,9 +219,58 @@ function ProductDetail({ component, onClose }: { component: Component; onClose: 
           )}
 
           {component.description && (
-            <p className="text-sm text-text-secondary leading-relaxed mb-6">
+            <p className="text-sm text-text-secondary leading-relaxed mb-4">
               {component.description}
             </p>
+          )}
+
+          {/* GPU Performance bar */}
+          {component.type === "GPU" && component.specs?.perf_score && (
+            <div className="mb-6 rounded-xl p-4 bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Score Performance</p>
+              {[
+                { label: "Gaming 1080p", score: Math.min(100, Number(component.specs.perf_score)) },
+                { label: "Gaming 1440p", score: Math.min(100, Math.round(Number(component.specs.perf_score) * 0.82)) },
+                { label: "Gaming 4K",   score: Math.min(100, Math.round(Number(component.specs.perf_score) * 0.58)) },
+              ].map(({ label, score }) => (
+                <div key={label} className="mb-2 last:mb-0">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-gray-300">{label}</span>
+                    <span className="font-bold tabular-nums">{score}/100</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${score}%`,
+                        background: score >= 80 ? "#22c55e" : score >= 60 ? "#4f8ef7" : score >= 40 ? "#f59e0b" : "#ef4444",
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+              {component.specs.architecture && (
+                <p className="text-xs text-gray-400 mt-2">Architecture : {String(component.specs.architecture)}</p>
+              )}
+            </div>
+          )}
+
+          {/* CPU highlight specs */}
+          {component.type === "CPU" && (component.specs?.threads || component.specs?.l3_cache_mb) && (
+            <div className="mb-6 grid grid-cols-2 gap-3">
+              {component.specs.threads && (
+                <div className="rounded-xl p-3 bg-blue-50 text-center">
+                  <p className="text-2xl font-bold text-blue-700">{String(component.specs.threads)}</p>
+                  <p className="text-xs text-blue-500 font-medium mt-0.5">Threads</p>
+                </div>
+              )}
+              {component.specs.l3_cache_mb && (
+                <div className="rounded-xl p-3 bg-purple-50 text-center">
+                  <p className="text-2xl font-bold text-purple-700">{String(component.specs.l3_cache_mb)}</p>
+                  <p className="text-xs text-purple-500 font-medium mt-0.5">Mo Cache L3</p>
+                </div>
+              )}
+            </div>
           )}
 
           {/* All Specs */}

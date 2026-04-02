@@ -1139,6 +1139,101 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
   );
 }
 
+/* ── Performance Section ── */
+
+function PerformanceSection({ components }: { components: Component[] }) {
+  const [gpuScore, setGpuScore] = useState<number | null>(null);
+  const [cpuScore, setCpuScore] = useState<number | null>(null);
+  const [gpuName, setGpuName] = useState<string>("");
+
+  const gpuComp = components.find(c => c.type.toLowerCase().includes("gpu") || c.type.toLowerCase().includes("graphi"));
+  const cpuComp = components.find(c => c.type.toLowerCase().includes("cpu") || c.type.toLowerCase().includes("processeur"));
+
+  useEffect(() => {
+    if (!gpuComp?.name) return;
+    fetch(`/api/components/search?name=${encodeURIComponent(gpuComp.name)}`)
+      .then(r => r.json())
+      .then(data => {
+        const score = data?.specs?.perf_score;
+        if (score != null) { setGpuScore(Number(score)); setGpuName(data.name || gpuComp.name); }
+        // fallback: try from specs in config
+        else if (gpuComp.specs?.perf_score) setGpuScore(Number(gpuComp.specs.perf_score));
+      }).catch(() => {});
+  }, [gpuComp?.name]);
+
+  useEffect(() => {
+    if (!cpuComp?.name) return;
+    fetch(`/api/components/search?name=${encodeURIComponent(cpuComp.name)}`)
+      .then(r => r.json())
+      .then(data => {
+        const cores = Number(data?.specs?.cores || cpuComp.specs?.cores || 6);
+        const boost = parseFloat(String(data?.specs?.boost_clock || cpuComp.specs?.boost_clock || "4").replace(/[^\d.]/g, ""));
+        // heuristic cpu score: cores * boost / normalizer
+        const heuristic = Math.min(100, Math.round((cores * boost) / 0.6));
+        setCpuScore(heuristic);
+      }).catch(() => {});
+  }, [cpuComp?.name]);
+
+  // Only show if we have a GPU score
+  if (!gpuScore && !cpuScore) return null;
+
+  const score = gpuScore || 50;
+  const cpu = cpuScore || 60;
+
+  const perfs: { label: string; score: number; color: string }[] = [
+    { label: "Gaming 1080p",   score: Math.min(100, score),                                    color: "#22c55e" },
+    { label: "Gaming 1440p",   score: Math.min(100, Math.round(score * 0.82)),                  color: "#4f8ef7" },
+    { label: "Gaming 4K",      score: Math.min(100, Math.round(score * 0.58)),                  color: "#8b5cf6" },
+    { label: "Streaming",      score: Math.min(100, Math.round((cpu + score) / 2 * 0.78)),      color: "#f59e0b" },
+    { label: "Montage vidéo",  score: Math.min(100, Math.round(cpu * 0.65)),                    color: "#ef4444" },
+  ];
+
+  function scoreLabel(s: number) {
+    if (s >= 85) return "Excellent";
+    if (s >= 70) return "Très bon";
+    if (s >= 55) return "Bon";
+    if (s >= 40) return "Correct";
+    return "Limité";
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
+      className="rounded-xl border border-border bg-card p-6 mb-4"
+    >
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-xs uppercase tracking-wider text-text-secondary font-medium">Performances estimées</h3>
+        {gpuName && <span className="text-xs text-text-secondary truncate max-w-[200px]">{gpuName}</span>}
+      </div>
+      <div className="space-y-3">
+        {perfs.map(({ label, score: s, color }) => (
+          <div key={label}>
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-sm text-text">{label}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-secondary">{scoreLabel(s)}</span>
+                <span className="text-sm font-bold tabular-nums" style={{ color }}>{s}/100</span>
+              </div>
+            </div>
+            <div className="h-2 rounded-full bg-border overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${s}%` }}
+                transition={{ duration: 0.8, delay: 0.1, ease: "easeOut" }}
+                className="h-full rounded-full"
+                style={{ background: color }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-[11px] text-text-secondary mt-4 italic">
+        Scores basés sur le GPU {gpuName ? `(${gpuName})` : "sélectionné"}. Valeurs indicatives.
+      </p>
+    </motion.div>
+  );
+}
+
 /* ── Change button label per component type ── */
 
 function getChangeLabel(type: string): string {
@@ -1614,6 +1709,9 @@ export default function ConfigResult({ config, onReset }: Props) {
 
       {/* Peripherals & Setup */}
       <PeripheralsSection onPeripheralInfo={(comp) => setPeripheralInfo(comp)} />
+
+      {/* Performance section */}
+      <PerformanceSection components={components} />
 
       {/* Notes */}
       {(config.compatibility_notes || config.upgrade_path) && (
