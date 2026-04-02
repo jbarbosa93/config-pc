@@ -277,7 +277,6 @@ function CompCard({
 }) {
   const compat = getCompatResult(comp, stepId, build);
   const specs = getKeySpecs(comp);
-  const imgUrl = comp.component_images?.find(i => i.is_primary)?.url ?? comp.component_images?.[0]?.url;
 
   const borderColor = isSelected ? '#4f8ef7' :
     compat.status === 'incompatible' ? '#FECACA' :
@@ -298,13 +297,9 @@ function CompCard({
     >
       {/* Header */}
       <div className="flex items-start gap-3">
-        {imgUrl ? (
-          <img src={imgUrl} alt={comp.name} className="w-10 h-10 object-contain rounded flex-shrink-0" />
-        ) : (
-          <div className="flex-shrink-0">
-            <ComponentIcon type={comp.type} size={40} />
-          </div>
-        )}
+        <div className="flex-shrink-0">
+          <ComponentIcon type={comp.type} size={40} />
+        </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs text-[#666] font-medium uppercase tracking-wide">{comp.brand}</p>
           <p className="text-sm font-semibold text-[#0A0A0A] leading-snug line-clamp-2">{comp.name}</p>
@@ -428,22 +423,44 @@ function Sidebar({
         </div>
       </div>
 
-      {/* Totals */}
+      {/* Total prix */}
       <div className="rounded-xl p-4" style={{ border: '1px solid #E5E5E5', background: '#FAFAFA' }}>
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm text-[#666]">Total estimé</span>
-          <span className="text-lg font-bold" style={{ color: '#4f8ef7' }}>
-            CHF {totalPrice.toFixed(0)}
-          </span>
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-sm text-[#666]">Total config</span>
+          <span className="text-lg font-bold" style={{ color: '#4f8ef7' }}>CHF {totalPrice.toFixed(0)}</span>
         </div>
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-[#666]">Conso estimée</span>
-          <span className="text-sm font-semibold text-[#0A0A0A]">~{estimatedWatts}W</span>
+      </div>
+
+      {/* PSU Power breakdown */}
+      <div className="rounded-xl p-4" style={{ border: '1px solid #E5E5E5', background: '#FAFAFA' }}>
+        <p className="text-xs font-semibold uppercase tracking-wider text-[#666] mb-3">Consommation estimée</p>
+        {[
+          { label: 'CPU', value: cpu?.tdp ?? null, fallback: '—', color: '#4f8ef7' },
+          { label: 'GPU', value: gpu?.tdp ?? null, fallback: '—', color: '#10b981' },
+          { label: 'Système', value: 80, fallback: '80', color: '#666' },
+        ].map(({ label, value, fallback, color }) => (
+          <div key={label} className="flex justify-between items-center mb-1.5">
+            <span className="text-xs text-[#666]">{label}</span>
+            <span className="text-xs font-semibold tabular-nums" style={{ color: value ? color : '#CCC' }}>
+              {value ? `${value} W` : fallback}
+            </span>
+          </div>
+        ))}
+        <div className="my-2" style={{ borderTop: '1px solid #E5E5E5' }} />
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-xs font-medium text-[#444]">Total</span>
+          <span className="text-xs font-bold tabular-nums text-[#0A0A0A]">~{estimatedWatts} W</span>
         </div>
         {(cpu || gpu) && (
-          <p className="text-xs text-[#999] mt-1">
-            PSU recommandé : {calcRequiredWatts(cpu ?? null, gpu ?? null)}W+
-          </p>
+          <div className="flex justify-between items-center mt-1 pt-1.5" style={{ borderTop: '1px dashed #E5E5E5' }}>
+            <span className="text-xs text-[#888]">PSU min. recommandé</span>
+            <span className="text-xs font-bold tabular-nums" style={{ color: '#f59e0b' }}>
+              {calcRequiredWatts(cpu ?? null, gpu ?? null)} W
+            </span>
+          </div>
+        )}
+        {!cpu && !gpu && (
+          <p className="text-[10px] text-[#CCC] italic mt-1">Sélectionnez CPU et GPU pour le calcul</p>
         )}
       </div>
     </div>
@@ -595,7 +612,7 @@ export default function ManualConfiguratorPage() {
     setBrandFilter('');
     setMaxPrice(9999);
 
-    fetch(`/api/db-components?type=${encodeURIComponent(step.type)}&limit=50`)
+    fetch(`/api/db-components?type=${encodeURIComponent(step.type)}&limit=150`)
       .then(r => r.json())
       .then((data: DBCompWithImages[]) => {
         setComponents(Array.isArray(data) ? data : []);

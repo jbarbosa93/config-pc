@@ -320,7 +320,29 @@ function AnimatedPrice({ value, suffix }: { value: number; suffix: string }) {
 /* ── Merchant price table with "Voir plus" ── */
 
 function MerchantTable({ component, t }: { component: Component; t: (k: string) => string }) {
-  const prices = getSimulatedPrices(component.price_ch);
+  type MerchantPrice = { storeId: string; label: string; price: number; isReal: boolean };
+  const [prices, setPrices] = useState<MerchantPrice[]>(() =>
+    getSimulatedPrices(component.price_ch).map((p) => ({ ...p, isReal: false }))
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/components/search?name=${encodeURIComponent(component.name)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        const dbPrices: DBPrice[] = data?.component_prices || [];
+        if (dbPrices.length > 0) {
+          const real: MerchantPrice[] = dbPrices
+            .sort((a, b) => a.price - b.price)
+            .map((p) => ({ storeId: p.site, label: STORE_LABELS[p.site] || p.site, price: p.price, isReal: true }));
+          setPrices(real);
+        }
+      })
+      .catch(() => {/* keep simulated */});
+    return () => { cancelled = true; };
+  }, [component.name]);
+
   const best = prices[0];
 
   return (
@@ -336,6 +358,7 @@ function MerchantTable({ component, t }: { component: Component; t: (k: string) 
           <span className="flex items-center gap-1.5">
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-bold">{t("result.bestPrice")}</span>
             {best.label}
+            {best.isReal && <span className="text-[10px] px-1 py-0.5 rounded bg-green-200 text-green-800 font-medium">Prix réel</span>}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="tabular-nums font-bold text-sm">{best.price} CHF</span>
@@ -347,14 +370,16 @@ function MerchantTable({ component, t }: { component: Component; t: (k: string) 
         <a key={p.storeId} href={buildSearchUrl(p.storeId, component.name)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between px-3 py-2 text-xs border-b border-border last:border-b-0 hover:bg-card transition-colors duration-150">
           <span className="font-medium text-text-secondary">{p.label}</span>
           <span className="flex items-center gap-2">
-            <span className="tabular-nums text-text-secondary">{p.price} CHF</span>
+            <span className={`tabular-nums ${p.isReal ? "text-text font-semibold" : "text-text-secondary"}`}>{p.price} CHF</span>
             <span className="text-[10px] text-text-secondary">{t("compare.see")} &rarr;</span>
           </span>
         </a>
       ))}
-      <p className="px-3 py-1.5 text-[10px] text-text-secondary italic bg-card/30">
-        {t("compare.note.dev")}
-      </p>
+      {!prices[0]?.isReal && (
+        <p className="px-3 py-1.5 text-[10px] text-text-secondary italic bg-card/30">
+          {t("compare.note.dev")}
+        </p>
+      )}
     </div>
   );
 }

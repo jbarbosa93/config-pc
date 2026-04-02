@@ -12,7 +12,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "config-pc.ch — Ta config PC parfaite en 30 secondes",
   description:
-    "Configurateur PC intelligent propulsé par Claude AI. Recommandations optimisées pour la Suisse.",
+    "Configurateur PC intelligent propulsé par Claude AI. Recommandations optimisées pour la Suisse. Catalogue de 400+ composants.",
   openGraph: {
     title: "config-pc.ch — Ta config PC parfaite en 30 secondes",
     description:
