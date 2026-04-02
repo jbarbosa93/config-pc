@@ -536,7 +536,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const specs = dbData?.specs || component.specs || {};
+  const specs = { ...(component.specs || {}), ...(dbData?.specs || {}) };
   const description = dbData?.description || component.full_description || component.reason;
   const mfUrl = dbData?.manufacturer_url || manufacturerUrl;
   const images: DBImage[] = dbData?.component_images || [];
@@ -967,7 +967,9 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
         if (dbRes.ok) {
           const dbItems: DBComponent[] = await dbRes.json();
           // Get current component specs from DB — merge individual fields + specs JSON
-          const dbCurrent = dbItems.find((c) => c.name === component.name);
+          const compLower = component.name.toLowerCase();
+          const dbCurrent = dbItems.find((c) => c.name.toLowerCase() === compLower)
+            || dbItems.find((c) => c.name.toLowerCase().includes(compLower) || compLower.includes(c.name.toLowerCase()));
           if (dbCurrent) {
             const merged: Record<string, string> = {};
             if (dbCurrent.socket) merged["Socket"] = dbCurrent.socket;
@@ -976,8 +978,10 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
             if (dbCurrent.tdp) merged["TDP"] = `${dbCurrent.tdp}W`;
             if (dbCurrent.specs) Object.assign(merged, dbCurrent.specs);
             setCurrentSpecs(merged);
+          } else if (component.specs && Object.keys(component.specs).length > 0) {
+            setCurrentSpecs(component.specs);
           }
-          const filtered = dbItems.filter((c) => c.name !== component.name);
+          const filtered = dbItems.filter((c) => c.name.toLowerCase() !== compLower && !c.name.toLowerCase().includes(compLower));
           if (filtered.length >= 2) {
             const tiers = assignTiers(filtered, component.price_ch);
             if (!cancelled && tiers.length > 0) { setAlternatives(tiers); setLoading(false); return; }
@@ -1007,7 +1011,7 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-      <motion.div ref={modalRef} initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 25 }} className="bg-bg border border-border rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto overscroll-contain shadow-2xl">
+      <motion.div ref={modalRef} initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 25 }} className="bg-bg border border-border rounded-2xl w-full max-w-4xl max-h-[85vh] overflow-y-auto overscroll-contain shadow-2xl">
 
         {/* Header */}
         <div className="sticky top-0 bg-bg border-b border-border p-5 rounded-t-2xl flex items-center justify-between z-10">

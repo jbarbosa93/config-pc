@@ -128,7 +128,7 @@ function formatDBContext(dbComponents: DBComponent[]): string {
   for (const [type, items] of Object.entries(grouped)) {
     ctx += `\n${type}:\n`;
     for (const item of items.slice(0, 5)) {
-      ctx += `- ${item.name} | ${item.price_ch} CHF / ${item.price_fr}€ | Socket: ${item.socket || "N/A"} | TDP: ${item.tdp || "N/A"}W\n`;
+      ctx += `- ${item.name} | ${item.price_ch} CHF | Socket: ${item.socket || "N/A"} | TDP: ${item.tdp || "N/A"}W\n`;
     }
   }
   ctx += "\nSi un composant de notre DB correspond au besoin, utilise son nom exact et ses prix. Sinon, recommande un composant que tu connais.";
@@ -186,6 +186,8 @@ export async function POST(request: NextRequest) {
       for (const comp of config.components) {
         const match = dbComponents.find(
           (db) => db.name.toLowerCase() === comp.name.toLowerCase()
+        ) || dbComponents.find(
+          (db) => db.name.toLowerCase().includes(comp.name.toLowerCase()) || comp.name.toLowerCase().includes(db.name.toLowerCase())
         );
         if (match) {
           const images = (match as DBComponent & { component_images?: { url: string; is_primary: boolean }[] }).component_images;
@@ -197,6 +199,13 @@ export async function POST(request: NextRequest) {
           comp.price_ch = match.price_ch;
           comp.price_fr = match.price_fr;
           if (match.specs && Object.keys(match.specs).length > 0) comp.specs = match.specs;
+          // Merge top-level DB fields into specs for display
+          if (!comp.specs) comp.specs = {};
+          if (match.socket) comp.specs.Socket = match.socket;
+          if (match.chipset) comp.specs.Chipset = match.chipset;
+          if (match.form_factor) comp.specs.Format = match.form_factor;
+          if (match.tdp) comp.specs.TDP = `${match.tdp}W`;
+          if (match.release_year) comp.specs["Année"] = String(match.release_year);
         }
       }
     }
