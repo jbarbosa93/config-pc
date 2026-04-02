@@ -185,7 +185,13 @@ function ProductDetail({ component, onClose }: { component: Component; onClose: 
           <p className="text-xs text-text-secondary font-medium uppercase tracking-wider mb-1">
             {component.brand}
           </p>
-          <h2 className="text-xl font-bold mb-3">{component.name}</h2>
+          <h2 className="text-xl font-bold mb-2">{component.name}</h2>
+          {component.price_ch > 0 && (
+            <p className="text-2xl font-bold mb-4" style={{ color: "#0A0A0A" }}>
+              CHF {component.price_ch.toFixed(0)}
+              <span className="text-sm font-normal text-text-secondary ml-2">prix indicatif</span>
+            </p>
+          )}
 
           {component.description && (
             <p className="text-sm text-text-secondary leading-relaxed mb-6">
@@ -277,7 +283,13 @@ function ComponentCard({ component, onClick }: { component: Component; onClick: 
       </div>
       <div className="flex flex-col flex-1 p-4">
         <p className="text-xs text-text-secondary font-medium uppercase tracking-wider mb-1">{component.brand}</p>
-        <h3 className="font-semibold text-sm leading-snug mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors">{component.name}</h3>
+        <h3 className="font-semibold text-sm leading-snug mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">{component.name}</h3>
+        {component.price_ch > 0 && (
+          <p className="text-base font-bold mb-2" style={{ color: "#0A0A0A" }}>
+            CHF {component.price_ch.toFixed(0)}
+            <span className="text-xs font-normal text-text-secondary ml-1">indicatif</span>
+          </p>
+        )}
         <div className="flex flex-wrap gap-1.5 mt-auto">
           {specs.map((spec, i) => (
             <span key={i} className="inline-flex items-center text-[11px] bg-gray-100 text-text-secondary px-2 py-0.5 rounded-md">
@@ -311,6 +323,8 @@ export default function CataloguePage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedComponent, setSelectedComponent] = useState<Component | null>(null);
+  const [maxPrice, setMaxPrice] = useState<number>(5000);
+  const [sortBy, setSortBy] = useState<"popularity" | "price_asc" | "price_desc">("popularity");
 
   useEffect(() => {
     fetchComponents();
@@ -338,6 +352,17 @@ export default function CataloguePage() {
     }
   }
 
+  // Compute max price ceiling from current category
+  const priceCeiling = useMemo(() => {
+    let base = components;
+    if (activeCategory !== "all") base = base.filter((c) => c.type === activeCategory);
+    const max = Math.max(...base.map((c) => c.price_ch || 0).filter(Boolean));
+    return max > 0 ? Math.ceil(max / 100) * 100 : 5000;
+  }, [components, activeCategory]);
+
+  // Reset price filter when category changes
+  useEffect(() => { setMaxPrice(priceCeiling); }, [priceCeiling]);
+
   const filtered = useMemo(() => {
     let result = components;
     if (activeCategory !== "all") {
@@ -347,8 +372,11 @@ export default function CataloguePage() {
       const q = search.toLowerCase();
       result = result.filter((c) => c.name.toLowerCase().includes(q) || c.brand.toLowerCase().includes(q) || c.description?.toLowerCase().includes(q));
     }
+    result = result.filter((c) => !c.price_ch || c.price_ch <= maxPrice);
+    if (sortBy === "price_asc") result = [...result].sort((a, b) => (a.price_ch || 0) - (b.price_ch || 0));
+    else if (sortBy === "price_desc") result = [...result].sort((a, b) => (b.price_ch || 0) - (a.price_ch || 0));
     return result;
-  }, [components, activeCategory, search]);
+  }, [components, activeCategory, search, maxPrice, sortBy]);
 
   const counts = useMemo(() => {
     const map: Record<string, number> = { all: components.length };
@@ -401,8 +429,40 @@ export default function CataloguePage() {
         </div>
       </div>
 
+      {/* Filters bar */}
+      <div className="max-w-7xl mx-auto px-4 pt-6 pb-2 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        {/* Price range */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <label className="text-sm font-medium whitespace-nowrap text-text-secondary shrink-0">
+            Prix max
+          </label>
+          <input
+            type="range"
+            min={0}
+            max={priceCeiling}
+            step={50}
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(Number(e.target.value))}
+            className="flex-1 accent-black"
+          />
+          <span className="text-sm font-bold tabular-nums whitespace-nowrap" style={{ minWidth: "72px" }}>
+            CHF {maxPrice}
+          </span>
+        </div>
+        {/* Sort */}
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+          className="text-sm border border-border rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-black/10 shrink-0"
+        >
+          <option value="popularity">Popularité</option>
+          <option value="price_asc">Prix croissant</option>
+          <option value="price_desc">Prix décroissant</option>
+        </select>
+      </div>
+
       {/* Grid */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-4">
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {Array.from({ length: 20 }).map((_, i) => <Skeleton key={i} />)}
