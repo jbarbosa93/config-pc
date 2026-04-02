@@ -495,12 +495,49 @@ function RecapSection({ build, onReset }: { build: Build; onReset: () => void })
 
   const totalPrice = STEPS.reduce((sum, s) => sum + (build[s.id]?.price_ch ?? 0), 0);
   const selectedCount = STEPS.filter(s => build[s.id]).length;
-  const compatScore = STEPS.filter(s => {
-    const comp = build[s.id];
-    if (!comp) return false;
-    const r = getCompatResult(comp, s.id, build);
-    return r.status === 'compatible';
-  }).length;
+
+  // Precise compatibility score (100 - penalties)
+  const compatScore = (() => {
+    let score = 100;
+    const cpu = build.cpu;
+    const mobo = build.mobo;
+    const ram = build.ram;
+    const gpu = build.gpu;
+    const psu = build.psu;
+    const cooler = build.cooler;
+
+    // CPU socket ≠ carte mère socket → -50
+    if (cpu && mobo) {
+      const r = checkCPUMotherboard(cpu, mobo);
+      if (r.status === 'incompatible') score -= 50;
+    }
+    // RAM DDR ≠ carte mère DDR → -30
+    if (ram && mobo) {
+      const r = checkRAMMotherboard(ram, mobo);
+      if (r.status === 'incompatible') score -= 30;
+    }
+    // GPU TDP + CPU TDP > PSU watts × 0.8 → -20
+    if (psu && (cpu || gpu)) {
+      const r = checkPSU(psu, cpu ?? null, gpu ?? null);
+      if (r.status === 'incompatible') score -= 20;
+      else if (r.status === 'warning') score -= 10;
+    }
+    // Ventirad TDP < CPU TDP → -10
+    if (cooler && cpu) {
+      const r = checkCoolerCPU(cooler, cpu);
+      if (r.status === 'incompatible') score -= 10;
+    }
+
+    return Math.max(0, score);
+  })();
+
+  function compatLabel(score: number) {
+    if (score >= 95) return { text: '✅ Configuration parfaite', color: '#065F46', bg: '#ECFDF5', border: '#6EE7B7' };
+    if (score >= 80) return { text: '✅ Compatible', color: '#065F46', bg: '#ECFDF5', border: '#6EE7B7' };
+    if (score >= 60) return { text: '⚠️ Quelques avertissements', color: '#92400E', bg: '#FFFBEB', border: '#FDE68A' };
+    return { text: '❌ Incompatibilités détectées', color: '#991B1B', bg: '#FEF2F2', border: '#FECACA' };
+  }
+  const { text: compatText, color: compatColor, bg: compatBg, border: compatBorder } = compatLabel(compatScore);
 
   function addAllToCart() {
     for (const step of STEPS) {
@@ -533,18 +570,34 @@ function RecapSection({ build, onReset }: { build: Build; onReset: () => void })
       </div>
 
       {/* Score */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="rounded-xl p-4 text-center" style={{ border: '1px solid #E5E5E5', background: '#FAFAFA' }}>
           <p className="text-2xl font-bold" style={{ color: '#4f8ef7' }}>{selectedCount}/8</p>
           <p className="text-xs text-[#666] mt-1">Composants</p>
         </div>
         <div className="rounded-xl p-4 text-center" style={{ border: '1px solid #E5E5E5', background: '#FAFAFA' }}>
-          <p className="text-2xl font-bold" style={{ color: '#065F46' }}>{compatScore}/8</p>
-          <p className="text-xs text-[#666] mt-1">Compatibles ✅</p>
-        </div>
-        <div className="rounded-xl p-4 text-center" style={{ border: '1px solid #E5E5E5', background: '#FAFAFA' }}>
           <p className="text-2xl font-bold" style={{ color: '#4f8ef7' }}>CHF {totalPrice.toFixed(0)}</p>
           <p className="text-xs text-[#666] mt-1">Total estimé</p>
+        </div>
+      </div>
+
+      {/* Compatibility score global */}
+      <div className="rounded-xl p-4 flex items-center gap-4" style={{ border: `1px solid ${compatBorder}`, background: compatBg }}>
+        <div className="shrink-0 text-center" style={{ minWidth: '60px' }}>
+          <p className="text-3xl font-black tabular-nums" style={{ color: compatColor }}>{compatScore}</p>
+          <p className="text-[10px] font-medium" style={{ color: compatColor }}>/100</p>
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-bold" style={{ color: compatColor }}>{compatText}</p>
+          <div className="mt-1.5 h-1.5 rounded-full bg-white/50 overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${compatScore}%` }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className="h-full rounded-full"
+              style={{ background: compatColor }}
+            />
+          </div>
         </div>
       </div>
 
