@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     .select(`
       id, type, name, brand, specs, price_ch, price_fr,
       socket, chipset, form_factor, tdp, description,
-      manufacturer_url, popularity_score, release_year,
+      manufacturer_url, popularity_score, release_year, available_ch,
       component_images(url, is_primary, alt_text, order_index),
       component_prices(id, site, price, currency, url, in_stock)
     `)

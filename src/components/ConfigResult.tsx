@@ -806,6 +806,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                 }
               }
               addRow("Score de popularité", dbData?.popularity_score ? `${dbData.popularity_score}/100` : null);
+              if (dbData?.available_ch !== null && dbData?.available_ch !== undefined) addRow("Dispo Suisse", dbData.available_ch ? "Oui" : "Non");
               if (displayPrice && displayPrice > 0) addRow("Prix indicatif", `${displayPrice} CHF`);
 
               return allRows.length > 0 ? (

@@ -4,9 +4,10 @@ import type { AlternativesRequest } from "@/lib/types";
 
 const client = new Anthropic();
 
-const SYSTEM_PROMPT = `Tu es un expert hardware PC avec 15 ans d'expérience. Tu connais parfaitement les composants 2024-2025 et leurs compatibilités. Tu connais les prix du marché français et suisse.
+const SYSTEM_PROMPT = `Tu es un expert hardware PC avec 15 ans d'expérience. Tu connais parfaitement les composants 2024-2025 et leurs compatibilités. Tu connais les prix du marché suisse (Digitec, Galaxus, Brack, Interdiscount).
 
 Tu dois TOUJOURS répondre avec un JSON valide et rien d'autre.
+Tous les prix sont UNIQUEMENT en CHF (francs suisses). Aucun EUR.
 
 Le format de sortie est :
 {
@@ -15,7 +16,7 @@ Le format de sortie est :
       "tier": "budget | equilibre | performance | overkill",
       "name": "string - nom exact du produit",
       "reason": "string - une ligne courte de justification",
-      "price_fr": number,
+      "price_fr": 0,
       "price_ch": number,
       "search_terms": ["string"],
       "compatible": true/false,
@@ -39,7 +40,7 @@ Autres composants de la config :
 ${otherComponents}
 
 Usage : ${body.usage}
-Budget total : ${body.budget}€
+Budget total : ${body.budget} CHF
 
 Donne-moi exactement 4 alternatives dans cet ordre :
 1. "budget" — le moins cher qui fait le job
@@ -48,7 +49,7 @@ Donne-moi exactement 4 alternatives dans cet ordre :
 4. "overkill" — le meilleur sans compromis
 
 Pour chaque alternative, vérifie la compatibilité avec les autres composants (socket CPU, type RAM DDR4/DDR5, taille boîtier, puissance alimentation, etc).
-Prix en euros pour la France et en CHF pour la Suisse.
+Prix UNIQUEMENT en CHF (marché suisse). Mets price_fr à 0.
 Ne propose PAS le composant actuel (${body.current_component.name}).`;
 
     const message = await client.messages.create({

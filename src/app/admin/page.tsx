@@ -5,7 +5,7 @@ import type { DBComponent, ComponentType } from "@/lib/db-types";
 
 const TYPES: ComponentType[] = ["CPU", "GPU", "RAM", "Stockage", "Carte mère", "Alimentation", "Boîtier", "Refroidissement"];
 
-const SITES = ["galaxus", "digitec", "brack", "interdiscount", "steg", "conrad", "mediamarkt", "ldlc-ch", "amazon-de"];
+const SITES = ["galaxus", "digitec", "brack", "interdiscount", "microspot"];
 
 interface ComponentWithRelations extends DBComponent {
   component_images?: { id: string; url: string; is_primary: boolean; alt_text: string }[];
@@ -263,8 +263,8 @@ function ComponentForm({ component, token, onClose }: {
               <input type="number" value={form.price_ch} onChange={(e) => upd("price_ch", Number(e.target.value))} className={inputClass} />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Prix FR (EUR)</label>
-              <input type="number" value={form.price_fr} onChange={(e) => upd("price_fr", Number(e.target.value))} className={inputClass} />
+              <label className="text-xs text-gray-500 mb-1 block">Prix FR (désactivé)</label>
+              <input type="number" value={0} disabled className={`${inputClass} opacity-50`} />
             </div>
           </div>
 
