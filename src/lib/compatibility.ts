@@ -32,15 +32,84 @@ export function checkCPUMotherboard(cpu: DBComp, mobo: DBComp): CompatResult {
   return { status: 'incompatible', message: `Incompatible : CPU socket ${cpu.socket} ≠ carte mère socket ${mobo.socket}` };
 }
 
-// RAM ↔ Motherboard: DDR generation from specs
+// ── RAM helpers ──────────────────────────────────────────────────────────────
+
+// DDR5-only chipsets (AM5 platform + Intel Z890/B860)
+const DDR5_CHIPSETS = ['B650', 'B650E', 'X670', 'X670E', 'B850', 'X870', 'X870E', 'Z890', 'B860'];
+// DDR4-only chipsets (AM4 platform + older Intel)
+const DDR4_CHIPSETS = ['B550', 'X570', 'B450', 'X470', 'B350', 'X370', 'A320', 'B365', 'A520', 'X300'];
+
+function getMotherboardDDR(mobo: DBComp): string | null {
+  // 1. Board name often contains "DDR4" or "DDR5" explicitly (e.g. "B760 DDR4")
+  const name = mobo.name.toUpperCase();
+  if (name.includes('DDR5')) return 'DDR5';
+  if (name.includes('DDR4')) return 'DDR4';
+
+  // 2. Chipset column (dedicated, reliable)
+  const chipset = (mobo.chipset || '').toUpperCase();
+  if (DDR5_CHIPSETS.some(c => chipset.includes(c))) return 'DDR5';
+  if (DDR4_CHIPSETS.some(c => chipset.includes(c))) return 'DDR4';
+
+  // 3. Socket fallback — AM5 is always DDR5, AM4 always DDR4
+  const socket = (mobo.socket || '').toUpperCase();
+  if (socket === 'AM5') return 'DDR5';
+  if (socket === 'AM4') return 'DDR4';
+
+  return null; // ambiguous (e.g. Z690/Z790 without name hint)
+}
+
+function getRAMDDR(ram: DBComp): string | null {
+  // 1. ddr_gen in specs — most reliable (e.g. "DDR4", "DDR5")
+  const ddrGen = String(ram.specs?.ddr_gen || '').toUpperCase();
+  if (ddrGen.startsWith('DDR')) return ddrGen;
+
+  // 2. speed field (e.g. "DDR5-6000")
+  const speed = String(ram.specs?.speed || '').toUpperCase();
+  if (speed.includes('DDR5')) return 'DDR5';
+  if (speed.includes('DDR4')) return 'DDR4';
+  if (speed.includes('DDR3')) return 'DDR3';
+
+  // 3. Name fallback
+  const name = ram.name.toUpperCase();
+  if (name.includes('DDR5')) return 'DDR5';
+  if (name.includes('DDR4')) return 'DDR4';
+  if (name.includes('DDR3')) return 'DDR3';
+
+  return null;
+}
+
+// RAM ↔ Motherboard: DDR generation + frequency check
 export function checkRAMMotherboard(ram: DBComp, mobo: DBComp): CompatResult {
-  const ramType = String(ram.specs?.['Type'] || ram.specs?.['type'] || '').toUpperCase();
-  const moboSpecs = String(mobo.specs?.['RAM supportée'] || mobo.specs?.['DDR'] || mobo.specs?.['ram'] || '').toUpperCase();
-  if (!ramType || !moboSpecs) return { status: 'warning', message: 'Compatibilité DDR non vérifiable — vérifiez manuellement', noData: true };
-  const ramDDR = ramType.includes('DDR5') ? 'DDR5' : ramType.includes('DDR4') ? 'DDR4' : null;
-  if (!ramDDR) return { status: 'warning', message: 'Type DDR non détecté dans la fiche', noData: true };
-  if (moboSpecs.includes(ramDDR)) return { status: 'compatible', message: `${ramDDR} supportée par cette carte mère` };
-  return { status: 'incompatible', message: `${ramDDR} non supportée par cette carte mère` };
+  const mbDDR = getMotherboardDDR(mobo);
+  const ramDDR = getRAMDDR(ram);
+
+  // Not enough data → no badge
+  if (!mbDDR || !ramDDR) {
+    return { status: 'warning', message: 'Compatibilité DDR non vérifiable — vérifiez manuellement', noData: true };
+  }
+
+  // Incompatible generation
+  if (mbDDR !== ramDDR) {
+    return {
+      status: 'incompatible',
+      message: `Cette RAM est ${ramDDR} mais votre carte mère ${mobo.name} nécessite de la ${mbDDR}`,
+    };
+  }
+
+  // Compatible — optionally check frequency
+  const ramFreq = Number(ram.specs?.frequency_mhz || 0);
+  const moboMaxFreq = Number(mobo.specs?.memory_max_mhz || mobo.specs?.max_frequency_mhz || 0);
+  if (ramFreq && moboMaxFreq && ramFreq > moboMaxFreq) {
+    return {
+      status: 'warning',
+      message: `${ramFreq} MHz — sera bridée à ${moboMaxFreq} MHz par votre carte mère`,
+    };
+  }
+
+  return {
+    status: 'compatible',
+    message: `${ramDDR} compatible avec votre carte mère`,
+  };
 }
 
 // Cooler ↔ CPU: socket + TDP check
