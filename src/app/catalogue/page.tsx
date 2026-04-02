@@ -402,8 +402,13 @@ export default function CataloguePage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedComponent, setSelectedComponent] = useState<Component | null>(null);
+  const [minPrice, setMinPrice] = useState<number>(0);
   const [maxPrice, setMaxPrice] = useState<number>(5000);
   const [sortBy, setSortBy] = useState<"popularity" | "price_asc" | "price_desc">("popularity");
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [showBrandDrop, setShowBrandDrop] = useState(false);
+  const [showPriceDrop, setShowPriceDrop] = useState(false);
+  const [showSortDrop, setShowSortDrop] = useState(false);
   // Advanced filters
   const [filterVram, setFilterVram] = useState<string | null>(null);
   const [filterArch, setFilterArch] = useState<string | null>(null);
@@ -448,12 +453,31 @@ export default function CataloguePage() {
 
   // Reset all filters when category changes
   useEffect(() => {
+    setMinPrice(0);
     setMaxPrice(priceCeiling);
     setFilterVram(null); setFilterArch(null);
     setFilterCores(null); setFilterSocket(null);
     setFilterDdr(null); setFilterCapacity(null);
+    setSelectedBrands([]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory, priceCeiling]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    function handleClick() {
+      setShowBrandDrop(false); setShowPriceDrop(false); setShowSortDrop(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  // Available brands for current category
+  const availableBrands = useMemo(() => {
+    let base = components;
+    if (activeCategory !== "all") base = base.filter(c => c.type === activeCategory);
+    const brands = Array.from(new Set(base.map(c => c.brand).filter(Boolean))).sort();
+    return brands;
+  }, [components, activeCategory]);
 
   const filtered = useMemo(() => {
     let result = components;
@@ -464,7 +488,8 @@ export default function CataloguePage() {
       const q = search.toLowerCase();
       result = result.filter((c) => c.name.toLowerCase().includes(q) || c.brand.toLowerCase().includes(q) || c.description?.toLowerCase().includes(q));
     }
-    result = result.filter((c) => !c.price_ch || c.price_ch <= maxPrice);
+    result = result.filter((c) => (!c.price_ch || c.price_ch <= maxPrice) && (minPrice === 0 || (c.price_ch || 0) >= minPrice));
+    if (selectedBrands.length > 0) result = result.filter(c => selectedBrands.includes(c.brand));
 
     // GPU filters
     if (filterVram) {
@@ -509,7 +534,7 @@ export default function CataloguePage() {
     if (sortBy === "price_asc") result = [...result].sort((a, b) => (a.price_ch || 0) - (b.price_ch || 0));
     else if (sortBy === "price_desc") result = [...result].sort((a, b) => (b.price_ch || 0) - (a.price_ch || 0));
     return result;
-  }, [components, activeCategory, search, maxPrice, sortBy, filterVram, filterArch, filterCores, filterSocket, filterDdr, filterCapacity]);
+  }, [components, activeCategory, search, minPrice, maxPrice, sortBy, selectedBrands, filterVram, filterArch, filterCores, filterSocket, filterDdr, filterCapacity]);
 
   const counts = useMemo(() => {
     const map: Record<string, number> = { all: components.length };
@@ -544,54 +569,217 @@ export default function CataloguePage() {
         </div>
       </section>
 
-      {/* Category pills */}
-      <div className="sticky top-16 z-40 bg-white/80 backdrop-blur-md border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 py-3 overflow-x-auto">
+      {/* Category pills — premium style */}
+      <div className="sticky top-16 z-40 bg-white/90 backdrop-blur-md border-b border-border">
+        <div className="max-w-7xl mx-auto px-4 py-3 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
           <div className="flex gap-2 min-w-max">
-            {CATEGORIES.map((cat) => {
+            {CATEGORIES.map((cat, i) => {
               const isActive = activeCategory === cat.key;
               const count = counts[cat.key] || 0;
               return (
-                <button key={cat.key} onClick={() => setActiveCategory(cat.key)} className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${isActive ? "bg-black text-white shadow-sm" : "bg-gray-100 text-text-secondary hover:bg-gray-200 hover:text-text"}`}>
-                  <span>{cat.icon}</span><span>{cat.label}</span>
-                  {count > 0 && <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20 text-white" : "bg-white text-text-secondary"}`}>{count}</span>}
-                </button>
+                <motion.button
+                  key={cat.key}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03, duration: 0.2 }}
+                  onClick={() => setActiveCategory(cat.key)}
+                  whileHover={{ scale: isActive ? 1.05 : 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="inline-flex items-center gap-1.5 whitespace-nowrap font-medium text-sm transition-all duration-150"
+                  style={{
+                    padding: "7px 14px",
+                    borderRadius: "999px",
+                    border: `1px solid ${isActive ? "#4f8ef7" : "#e2e8f0"}`,
+                    background: isActive ? "#4f8ef7" : "#f1f5f9",
+                    color: isActive ? "#fff" : "#475569",
+                    boxShadow: isActive ? "0 2px 8px rgba(79,142,247,0.35)" : "none",
+                  }}
+                >
+                  <span className="text-sm">{cat.icon}</span>
+                  <span>{cat.label}</span>
+                  {count > 0 && (
+                    <span
+                      className="text-[11px] px-1.5 py-0.5 rounded-full font-semibold tabular-nums"
+                      style={{ background: isActive ? "rgba(255,255,255,0.25)" : "#e2e8f0", color: isActive ? "#fff" : "#64748b" }}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </motion.button>
               );
             })}
           </div>
         </div>
       </div>
 
-      {/* Filters bar */}
-      <div className="max-w-7xl mx-auto px-4 pt-6 pb-2 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        {/* Price range */}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <label className="text-sm font-medium whitespace-nowrap text-text-secondary shrink-0">
-            Prix max
-          </label>
-          <input
-            type="range"
-            min={0}
-            max={priceCeiling}
-            step={50}
-            value={maxPrice}
-            onChange={(e) => setMaxPrice(Number(e.target.value))}
-            className="flex-1 accent-black"
-          />
-          <span className="text-sm font-bold tabular-nums whitespace-nowrap" style={{ minWidth: "72px" }}>
-            CHF {maxPrice}
-          </span>
+      {/* Secondary filter bar */}
+      <div className="max-w-7xl mx-auto px-4 pt-4 pb-2">
+        <div className="flex flex-wrap items-center gap-2">
+
+          {/* Marque dropdown */}
+          <div className="relative" onMouseDown={e => e.stopPropagation()}>
+            <button
+              onClick={() => { setShowBrandDrop(v => !v); setShowPriceDrop(false); setShowSortDrop(false); }}
+              className="inline-flex items-center gap-1.5 text-sm font-medium transition-all duration-150 hover:border-[#4f8ef7] hover:text-[#4f8ef7]"
+              style={{
+                padding: "7px 14px",
+                borderRadius: "999px",
+                border: `1px solid ${selectedBrands.length > 0 ? "#4f8ef7" : "#e2e8f0"}`,
+                background: selectedBrands.length > 0 ? "#eff6ff" : "#fff",
+                color: selectedBrands.length > 0 ? "#4f8ef7" : "#475569",
+              }}
+            >
+              Marque
+              {selectedBrands.length > 0 && (
+                <span className="text-[11px] bg-[#4f8ef7] text-white rounded-full px-1.5 py-0.5 font-bold">{selectedBrands.length}</span>
+              )}
+              <svg className={`w-3 h-3 transition-transform ${showBrandDrop ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <AnimatePresence>
+              {showBrandDrop && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scaleY: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scaleY: 1 }}
+                  exit={{ opacity: 0, y: -4, scaleY: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-full left-0 mt-2 bg-white rounded-2xl shadow-xl border border-border z-50 min-w-[180px] max-h-64 overflow-y-auto"
+                  style={{ transformOrigin: "top" }}
+                >
+                  {selectedBrands.length > 0 && (
+                    <button onClick={() => setSelectedBrands([])} className="w-full text-left px-4 py-2 text-xs text-red-500 hover:bg-red-50 font-medium border-b border-border">
+                      Tout effacer
+                    </button>
+                  )}
+                  {availableBrands.map(brand => (
+                    <label key={brand} className="flex items-center gap-2.5 px-4 py-2 hover:bg-gray-50 cursor-pointer">
+                      <span
+                        className="w-4 h-4 rounded flex items-center justify-center shrink-0 transition-all"
+                        style={{
+                          border: `1.5px solid ${selectedBrands.includes(brand) ? "#4f8ef7" : "#e2e8f0"}`,
+                          background: selectedBrands.includes(brand) ? "#4f8ef7" : "#fff",
+                        }}
+                      >
+                        {selectedBrands.includes(brand) && (
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5"/></svg>
+                        )}
+                      </span>
+                      <span className="text-sm text-text">{brand}</span>
+                      <input type="checkbox" className="sr-only" checked={selectedBrands.includes(brand)}
+                        onChange={() => setSelectedBrands(prev => prev.includes(brand) ? prev.filter(b => b !== brand) : [...prev, brand])}
+                      />
+                    </label>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Prix dropdown */}
+          <div className="relative" onMouseDown={e => e.stopPropagation()}>
+            <button
+              onClick={() => { setShowPriceDrop(v => !v); setShowBrandDrop(false); setShowSortDrop(false); }}
+              className="inline-flex items-center gap-1.5 text-sm font-medium transition-all duration-150 hover:border-[#4f8ef7] hover:text-[#4f8ef7]"
+              style={{
+                padding: "7px 14px",
+                borderRadius: "999px",
+                border: `1px solid ${minPrice > 0 || maxPrice < priceCeiling ? "#4f8ef7" : "#e2e8f0"}`,
+                background: minPrice > 0 || maxPrice < priceCeiling ? "#eff6ff" : "#fff",
+                color: minPrice > 0 || maxPrice < priceCeiling ? "#4f8ef7" : "#475569",
+              }}
+            >
+              Prix
+              {(minPrice > 0 || maxPrice < priceCeiling) && <span className="text-[11px] bg-[#4f8ef7] text-white rounded-full px-1.5 py-0.5 font-bold">✓</span>}
+              <svg className={`w-3 h-3 transition-transform ${showPriceDrop ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <AnimatePresence>
+              {showPriceDrop && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scaleY: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scaleY: 1 }}
+                  exit={{ opacity: 0, y: -4, scaleY: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-full left-0 mt-2 bg-white rounded-2xl shadow-xl border border-border z-50 p-4 w-72"
+                  style={{ transformOrigin: "top" }}
+                >
+                  <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">Fourchette de prix</p>
+                  <div className="flex justify-between text-sm font-bold mb-2" style={{ color: "#4f8ef7" }}>
+                    <span>CHF {minPrice}</span>
+                    <span>CHF {maxPrice}</span>
+                  </div>
+                  <div className="space-y-2">
+                    <input type="range" min={0} max={priceCeiling} step={50} value={minPrice}
+                      onChange={e => setMinPrice(Math.min(Number(e.target.value), maxPrice - 50))}
+                      className="w-full accent-[#4f8ef7]"
+                    />
+                    <input type="range" min={0} max={priceCeiling} step={50} value={maxPrice}
+                      onChange={e => setMaxPrice(Math.max(Number(e.target.value), minPrice + 50))}
+                      className="w-full accent-[#4f8ef7]"
+                    />
+                  </div>
+                  {(minPrice > 0 || maxPrice < priceCeiling) && (
+                    <button onClick={() => { setMinPrice(0); setMaxPrice(priceCeiling); }}
+                      className="mt-3 text-xs text-red-500 hover:underline font-medium"
+                    >Réinitialiser</button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Sort dropdown */}
+          <div className="relative" onMouseDown={e => e.stopPropagation()}>
+            <button
+              onClick={() => { setShowSortDrop(v => !v); setShowBrandDrop(false); setShowPriceDrop(false); }}
+              className="inline-flex items-center gap-1.5 text-sm font-medium transition-all duration-150 hover:border-[#4f8ef7] hover:text-[#4f8ef7]"
+              style={{
+                padding: "7px 14px",
+                borderRadius: "999px",
+                border: `1px solid ${sortBy !== "popularity" ? "#4f8ef7" : "#e2e8f0"}`,
+                background: sortBy !== "popularity" ? "#eff6ff" : "#fff",
+                color: sortBy !== "popularity" ? "#4f8ef7" : "#475569",
+              }}
+            >
+              {sortBy === "popularity" ? "Trier par" : sortBy === "price_asc" ? "Prix ↑" : "Prix ↓"}
+              <svg className={`w-3 h-3 transition-transform ${showSortDrop ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <AnimatePresence>
+              {showSortDrop && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scaleY: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scaleY: 1 }}
+                  exit={{ opacity: 0, y: -4, scaleY: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-full left-0 mt-2 bg-white rounded-2xl shadow-xl border border-border z-50 min-w-[180px] overflow-hidden"
+                  style={{ transformOrigin: "top" }}
+                >
+                  {[
+                    { value: "popularity", label: "Popularité" },
+                    { value: "price_asc", label: "Prix croissant" },
+                    { value: "price_desc", label: "Prix décroissant" },
+                  ].map(opt => (
+                    <button key={opt.value} onClick={() => { setSortBy(opt.value as typeof sortBy); setShowSortDrop(false); }}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors flex items-center justify-between"
+                      style={{ color: sortBy === opt.value ? "#4f8ef7" : "#475569", fontWeight: sortBy === opt.value ? 600 : 400 }}
+                    >
+                      {opt.label}
+                      {sortBy === opt.value && <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Active filter count / clear all */}
+          {(selectedBrands.length > 0 || minPrice > 0 || maxPrice < priceCeiling || sortBy !== "popularity") && (
+            <button
+              onClick={() => { setSelectedBrands([]); setMinPrice(0); setMaxPrice(priceCeiling); setSortBy("popularity"); }}
+              className="text-xs text-red-500 hover:text-red-600 font-medium transition-colors ml-1"
+            >
+              Tout effacer ×
+            </button>
+          )}
         </div>
-        {/* Sort */}
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-          className="text-sm border border-border rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-black/10 shrink-0"
-        >
-          <option value="popularity">Popularité</option>
-          <option value="price_asc">Prix croissant</option>
-          <option value="price_desc">Prix décroissant</option>
-        </select>
       </div>
 
       {/* Advanced filters — dynamic by category */}
