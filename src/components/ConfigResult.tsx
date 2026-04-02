@@ -188,6 +188,33 @@ function ComponentSVG({ type, size = 80 }: { type: string; size?: number }) {
   );
 }
 
+/* ── Default generic images per component type (Supabase Storage) ── */
+
+const SUPABASE_STORAGE = "https://gxremrjbwtnmiiiujjem.supabase.co/storage/v1/object/public/component-defaults";
+const DEFAULT_TYPE_IMAGES: Record<string, string> = {
+  cpu: `${SUPABASE_STORAGE}/cpu.jpg`,
+  gpu: `${SUPABASE_STORAGE}/gpu.jpg`,
+  ram: `${SUPABASE_STORAGE}/ram.jpg`,
+  stockage: `${SUPABASE_STORAGE}/stockage.jpg`,
+  "carte mere": `${SUPABASE_STORAGE}/carte-mere.jpg`,
+  "carte mère": `${SUPABASE_STORAGE}/carte-mere.jpg`,
+  alimentation: `${SUPABASE_STORAGE}/alimentation.jpg`,
+  boitier: `${SUPABASE_STORAGE}/boitier.jpg`,
+  "boîtier": `${SUPABASE_STORAGE}/boitier.jpg`,
+  refroidissement: `${SUPABASE_STORAGE}/refroidissement.jpg`,
+  moniteur: `${SUPABASE_STORAGE}/moniteur.jpg`,
+  clavier: `${SUPABASE_STORAGE}/clavier.jpg`,
+  souris: `${SUPABASE_STORAGE}/souris.jpg`,
+  casque: `${SUPABASE_STORAGE}/casque.jpg`,
+  "chaise gaming": `${SUPABASE_STORAGE}/chaise-gaming.jpg`,
+  "tapis de souris": `${SUPABASE_STORAGE}/tapis-de-souris.jpg`,
+};
+
+function getDefaultTypeImage(type: string): string | undefined {
+  const key = type.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return DEFAULT_TYPE_IMAGES[key] || Object.entries(DEFAULT_TYPE_IMAGES).find(([k]) => key.includes(k))?.[1];
+}
+
 function ProductImage({ type, imageUrl, name }: { type: string; imageUrl?: string; name?: string }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -195,6 +222,8 @@ function ProductImage({ type, imageUrl, name }: { type: string; imageUrl?: strin
   const rotateY = useTransform(x, [-50, 50], [-8, 8]);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [fallbackError, setFallbackError] = useState(false);
+  const defaultImg = getDefaultTypeImage(type);
 
   function handleMouse(e: React.MouseEvent<HTMLDivElement>) {
     const r = e.currentTarget.getBoundingClientRect();
@@ -204,6 +233,7 @@ function ProductImage({ type, imageUrl, name }: { type: string; imageUrl?: strin
   function handleLeave() { x.set(0); y.set(0); }
 
   const showImage = imageUrl && !imgError;
+  const showFallback = !showImage && defaultImg && !fallbackError;
 
   return (
     <motion.div
@@ -212,7 +242,7 @@ function ProductImage({ type, imageUrl, name }: { type: string; imageUrl?: strin
       style={{ rotateX, rotateY, perspective: 600 }}
       className="w-[80px] h-[80px] rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary shrink-0 overflow-hidden relative"
     >
-      {(!showImage || !imgLoaded) && <ComponentSVG type={type} />}
+      {(!showImage && !showFallback || (!imgLoaded && !showFallback)) && <ComponentSVG type={type} />}
       {showImage && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -224,7 +254,41 @@ function ProductImage({ type, imageUrl, name }: { type: string; imageUrl?: strin
           onError={() => setImgError(true)}
         />
       )}
+      {showFallback && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={defaultImg}
+          alt={type}
+          className="absolute inset-0 w-full h-full object-contain p-1.5"
+          loading="lazy"
+          onError={() => setFallbackError(true)}
+        />
+      )}
     </motion.div>
+  );
+}
+
+/* ── Inline image with 3-tier fallback (specific → generic type → hide) ── */
+
+function FallbackImg({ src, alt, type, className, style }: { src: string; alt: string; type: string; className: string; style?: React.CSSProperties }) {
+  const [phase, setPhase] = useState<"primary" | "default" | "hidden">("primary");
+  const defaultImg = getDefaultTypeImage(type);
+  if (phase === "hidden") return null;
+  const currentSrc = phase === "primary" ? src : defaultImg!;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={currentSrc}
+      alt={alt}
+      className={className}
+      loading="lazy"
+      onLoad={(e) => { (e.target as HTMLImageElement).style.opacity = "1"; }}
+      onError={() => {
+        if (phase === "primary" && defaultImg) setPhase("default");
+        else setPhase("hidden");
+      }}
+      style={style || { opacity: 0, transition: "opacity 0.2s" }}
+    />
   );
 }
 
@@ -291,20 +355,23 @@ interface DBComponent {
   component_prices: DBPrice[];
 }
 
-function CarouselImage({ src, alt, className }: { src: string; alt: string; className: string }) {
+function CarouselImage({ src, alt, className, type }: { src: string; alt: string; className: string; type?: string }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-  if (error) return null;
+  const [fallbackError, setFallbackError] = useState(false);
+  const defaultImg = type ? getDefaultTypeImage(type) : undefined;
+
+  if (error && (!defaultImg || fallbackError)) return null;
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={src}
+        src={error ? defaultImg! : src}
         alt={alt}
         className={`${className} transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
         loading="lazy"
         onLoad={() => setLoaded(true)}
-        onError={() => setError(true)}
+        onError={() => { if (error) setFallbackError(true); else { setError(true); setLoaded(false); } }}
       />
     </>
   );
@@ -317,10 +384,25 @@ function ImageCarousel({ images, name, type, tall = false }: { images: DBImage[]
   const valid = sorted.filter((_, i) => !failed.has(i));
   const h = tall ? "h-[300px]" : "h-[220px]";
 
+  const defaultImg = getDefaultTypeImage(type);
+  const [defaultFailed, setDefaultFailed] = useState(false);
+
   if (valid.length === 0) {
     return (
-      <div className={`w-full ${h} rounded-xl bg-[#F8F8F8] border flex items-center justify-center`} style={{ borderColor: "#E5E5E5" }}>
+      <div className={`w-full ${h} rounded-xl bg-[#F8F8F8] border flex items-center justify-center overflow-hidden relative`} style={{ borderColor: "#E5E5E5" }}>
         <ComponentSVG type={type} size={tall ? 160 : 110} />
+        {defaultImg && !defaultFailed && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={defaultImg}
+            alt={type}
+            className="absolute inset-0 w-full h-full object-contain p-4"
+            loading="lazy"
+            onLoad={(e) => { (e.target as HTMLImageElement).style.opacity = "1"; }}
+            onError={() => setDefaultFailed(true)}
+            style={{ opacity: 0, transition: "opacity 0.2s" }}
+          />
+        )}
       </div>
     );
   }
@@ -355,7 +437,7 @@ function ImageCarousel({ images, name, type, tall = false }: { images: DBImage[]
         <div className="flex gap-1.5 justify-center mt-2">
           {valid.map((img, i) => (
             <button key={i} type="button" onClick={() => setIdx(i)} className={`w-12 h-12 rounded-lg border overflow-hidden transition-all ${i === Math.min(idx, valid.length - 1) ? "border-[#4f8ef7]" : "border-[#E5E5E5] opacity-60 hover:opacity-100"}`}>
-              <CarouselImage src={img.url} alt="" className="w-full h-full object-contain p-1" />
+              <CarouselImage src={img.url} alt="" className="w-full h-full object-contain p-1" type={type} />
             </button>
           ))}
         </div>
@@ -973,16 +1055,7 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
                     <div className="w-14 h-14 rounded-lg bg-bg border border-border flex items-center justify-center shrink-0 overflow-hidden relative">
                       <ComponentSVG type={component.type} size={36} />
                       {primaryImg && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={primaryImg.url}
-                          alt={alt.name}
-                          className="absolute inset-0 w-full h-full object-contain p-1"
-                          loading="lazy"
-                          onLoad={(e) => { (e.target as HTMLImageElement).style.opacity = "1"; }}
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                          style={{ opacity: 0, transition: "opacity 0.2s" }}
-                        />
+                        <FallbackImg src={primaryImg.url} alt={alt.name} type={component.type} className="absolute inset-0 w-full h-full object-contain p-1" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1176,16 +1249,7 @@ function PeripheralCard({ item, color, bg, onInfo }: { item: DBComponent & { com
       <div className="w-full h-24 rounded-lg bg-white/60 border border-white/80 flex items-center justify-center mb-2.5 overflow-hidden relative">
         <ComponentSVG type={item.type} size={48} />
         {primaryImg && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={primaryImg.url}
-            alt={item.name}
-            className="absolute inset-0 w-full h-full object-contain p-2"
-            loading="lazy"
-            onLoad={(e) => { (e.target as HTMLImageElement).style.opacity = "1"; }}
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            style={{ opacity: 0, transition: "opacity 0.2s" }}
-          />
+          <FallbackImg src={primaryImg.url} alt={item.name} type={item.type} className="absolute inset-0 w-full h-full object-contain p-2" />
         )}
       </div>
 
