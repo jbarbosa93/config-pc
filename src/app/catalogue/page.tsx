@@ -305,7 +305,7 @@ function ProductDetail({ component, onClose }: { component: Component; onClose: 
                 { name: "Digitec", url: `https://www.digitec.ch/fr/search?q=${encodeURIComponent(component.name)}` },
                 { name: "Galaxus", url: `https://www.galaxus.ch/fr/search?q=${encodeURIComponent(component.name)}` },
                 { name: "Brack", url: `https://www.brack.ch/search?query=${encodeURIComponent(component.name)}` },
-                { name: "TopPreise", url: `https://www.toppreise.ch/fr/search?q=${encodeURIComponent(component.name)}` },
+                { name: "TopPreise", url: `https://www.toppreise.ch/chercher?q=${encodeURIComponent(component.name)}` },
               ].map((store) => (
                 <a
                   key={store.name}

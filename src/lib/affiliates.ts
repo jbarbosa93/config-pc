@@ -41,7 +41,7 @@ export function buildSearchUrl(storeId: string, productName: string): string {
 }
 
 export function buildToppreiseUrl(name: string): string {
-  return `https://www.toppreise.ch/search.php?q=${enc(name)}`;
+  return `https://www.toppreise.ch/chercher?q=${enc(name)}`;
 }
 
 /** Simulated CHF prices for display (sorted ascending) */
