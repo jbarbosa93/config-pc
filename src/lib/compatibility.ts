@@ -6,6 +6,7 @@ export type CompatStatus = 'compatible' | 'warning' | 'incompatible';
 export interface CompatResult {
   status: CompatStatus;
   message: string;
+  noData?: boolean; // true when warning is only due to missing spec data (not actual incompatibility)
 }
 
 // DBComponent shape (simplified — matches Supabase components table)
@@ -26,7 +27,7 @@ export interface DBComp {
 
 // CPU ↔ Motherboard: socket must match exactly
 export function checkCPUMotherboard(cpu: DBComp, mobo: DBComp): CompatResult {
-  if (!cpu.socket || !mobo.socket) return { status: 'warning', message: 'Socket non vérifié — vérifiez la compatibilité manuellement' };
+  if (!cpu.socket || !mobo.socket) return { status: 'warning', message: 'Socket non vérifié — vérifiez la compatibilité manuellement', noData: true };
   if (cpu.socket.toLowerCase() === mobo.socket.toLowerCase()) return { status: 'compatible', message: `Socket ${cpu.socket} compatible` };
   return { status: 'incompatible', message: `Incompatible : CPU socket ${cpu.socket} ≠ carte mère socket ${mobo.socket}` };
 }
@@ -35,9 +36,9 @@ export function checkCPUMotherboard(cpu: DBComp, mobo: DBComp): CompatResult {
 export function checkRAMMotherboard(ram: DBComp, mobo: DBComp): CompatResult {
   const ramType = String(ram.specs?.['Type'] || ram.specs?.['type'] || '').toUpperCase();
   const moboSpecs = String(mobo.specs?.['RAM supportée'] || mobo.specs?.['DDR'] || mobo.specs?.['ram'] || '').toUpperCase();
-  if (!ramType || !moboSpecs) return { status: 'warning', message: 'Compatibilité DDR non vérifiable — vérifiez manuellement' };
+  if (!ramType || !moboSpecs) return { status: 'warning', message: 'Compatibilité DDR non vérifiable — vérifiez manuellement', noData: true };
   const ramDDR = ramType.includes('DDR5') ? 'DDR5' : ramType.includes('DDR4') ? 'DDR4' : null;
-  if (!ramDDR) return { status: 'warning', message: 'Type DDR non détecté dans la fiche' };
+  if (!ramDDR) return { status: 'warning', message: 'Type DDR non détecté dans la fiche', noData: true };
   if (moboSpecs.includes(ramDDR)) return { status: 'compatible', message: `${ramDDR} supportée par cette carte mère` };
   return { status: 'incompatible', message: `${ramDDR} non supportée par cette carte mère` };
 }
@@ -54,7 +55,7 @@ export function checkCoolerCPU(cooler: DBComp, cpu: DBComp): CompatResult {
     if (cooler.tdp >= cpu.tdp) return { status: 'compatible', message: `TDP OK : ventirad ${cooler.tdp}W ≥ CPU ${cpu.tdp}W` };
     return { status: 'warning', message: `TDP insuffisant : ventirad ${cooler.tdp}W < CPU ${cpu.tdp}W — peut chauffer` };
   }
-  return { status: 'warning', message: 'TDP non vérifiable — vérifiez la compatibilité' };
+  return { status: 'warning', message: 'TDP non vérifiable — vérifiez la compatibilité', noData: true };
 }
 
 // PSU: calculate required wattage
@@ -66,7 +67,7 @@ export function calcRequiredWatts(cpu: DBComp | null, gpu: DBComp | null): numbe
 
 export function checkPSU(psu: DBComp, cpu: DBComp | null, gpu: DBComp | null): CompatResult {
   const psuWatts = psu.tdp || parseInt(String(psu.specs?.['Puissance'] || psu.specs?.['Wattage'] || '0').replace(/\D/g, '')) || 0;
-  if (!psuWatts) return { status: 'warning', message: 'Puissance non vérifiable — vérifiez manuellement' };
+  if (!psuWatts) return { status: 'warning', message: 'Puissance non vérifiable — vérifiez manuellement', noData: true };
   const required = calcRequiredWatts(cpu, gpu);
   if (psuWatts >= required + 100) return { status: 'compatible', message: `${psuWatts}W suffisant (${required}W requis)` };
   if (psuWatts >= required) return { status: 'warning', message: `${psuWatts}W juste suffisant — prévoir plus de marge` };
@@ -83,7 +84,7 @@ const CASE_COMPAT: Record<string, string[]> = {
 };
 
 export function checkCaseMotherboard(pcCase: DBComp, mobo: DBComp): CompatResult {
-  if (!pcCase.form_factor || !mobo.form_factor) return { status: 'warning', message: 'Format non vérifiable — vérifiez la compatibilité' };
+  if (!pcCase.form_factor || !mobo.form_factor) return { status: 'warning', message: 'Format non vérifiable — vérifiez la compatibilité', noData: true };
   const caseFmt = pcCase.form_factor.toLowerCase();
   const moboFmt = mobo.form_factor;
   for (const [caseKey, supported] of Object.entries(CASE_COMPAT)) {
@@ -94,5 +95,5 @@ export function checkCaseMotherboard(pcCase: DBComp, mobo: DBComp): CompatResult
       return { status: 'incompatible', message: `Format ${moboFmt} trop grand pour ce boîtier` };
     }
   }
-  return { status: 'warning', message: 'Compatibilité format non vérifiable' };
+  return { status: 'warning', message: 'Compatibilité format non vérifiable', noData: true };
 }

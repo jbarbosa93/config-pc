@@ -77,10 +77,19 @@ function getChangeUrl(type: string): string {
 }
 
 export default function PanierPage() {
-  const { items, removeItem, totalCHF } = useCart();
+  const { items, removeItem, clearCart, totalCHF } = useCart();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [cleared, setCleared] = useState(false);
   const sorted = [...items].sort((a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type));
+
+  function handleClearCart() {
+    clearCart();
+    setConfirmClear(false);
+    setCleared(true);
+    setTimeout(() => setCleared(false), 3000);
+  }
 
   const performance = estimatePerformance(items);
   const wattage = estimateWattage(items);
@@ -125,7 +134,80 @@ export default function PanierPage() {
           <h1 className="text-3xl font-bold">Mon panier</h1>
           <p className="text-[#888] mt-1">{items.length} composant{items.length > 1 ? "s" : ""}</p>
         </div>
+        <button
+          type="button"
+          onClick={() => setConfirmClear(true)}
+          className="text-sm text-[#999] hover:text-red-500 transition-colors flex items-center gap-1.5"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+          </svg>
+          Vider le panier
+        </button>
       </div>
+
+      {/* Confirmation dialog */}
+      <AnimatePresence>
+        {confirmClear && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[500] bg-black/50 backdrop-blur-sm flex items-center justify-center px-4"
+            onClick={() => setConfirmClear(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/>
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-center mb-1">Vider le panier ?</h3>
+              <p className="text-sm text-[#888] text-center mb-6">Tous les {items.length} composants seront supprimés. Cette action est irréversible.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmClear(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-[#666] hover:text-[#333] transition-colors"
+                  style={{ border: "1px solid #E5E5E5" }}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleClearCart}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ background: "#EF4444" }}
+                >
+                  Vider le panier
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cleared toast */}
+      <AnimatePresence>
+        {cleared && (
+          <motion.div
+            initial={{ opacity: 0, y: 32, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ type: "spring", stiffness: 400, damping: 28 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 px-5 py-3 rounded-2xl shadow-xl"
+            style={{ background: '#0A0A0A', color: 'white' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 4.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <span className="text-sm font-medium">Panier vidé</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Items list */}

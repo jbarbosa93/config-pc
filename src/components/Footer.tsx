@@ -12,6 +12,12 @@ export default function Footer() {
         <span>&copy; 2026 config-pc.ch — {t("footer.rights")}</span>
         <div className="flex items-center gap-4">
           <Link
+            href="/support"
+            className="hover:text-text transition-colors duration-150"
+          >
+            Support
+          </Link>
+          <Link
             href="/mentions-legales"
             className="hover:text-text transition-colors duration-150"
           >

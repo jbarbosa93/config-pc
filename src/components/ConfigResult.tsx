@@ -377,7 +377,6 @@ function MerchantTable({ component, t }: { component: Component; t: (k: string) 
           style={{ color: "#16A34A" }}
         >
           <span className="flex items-center gap-1.5">
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-bold">{t("result.bestPrice")}</span>
             {best.label}
             {best.isReal && <span className="text-[10px] px-1 py-0.5 rounded bg-green-200 text-green-800 font-medium">Prix réel</span>}
           </span>
@@ -680,7 +679,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
 
                   {/* Price box */}
                   <div className="rounded-xl p-4" style={{ background: "linear-gradient(135deg, #F0F7FF 0%, #EBF3FF 100%)", border: "1px solid #D0E4FF" }}>
-                    <p className="text-[11px] text-[#888] uppercase tracking-wide font-medium mb-1">Meilleur prix</p>
+                    <p className="text-[11px] text-[#888] uppercase tracking-wide font-medium mb-1">Prix estimé</p>
                     {displayPrice > 0 ? (
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-3xl font-black" style={{ color: "#4f8ef7" }}><AnimatedPrice value={displayPrice} suffix="" /></span>
@@ -762,7 +761,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                           {!p.inStock && <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded-full">Indisponible</span>}
                         </div>
                         <div className="flex items-center gap-3">
-                          {isLowest && <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">Meilleur prix</span>}
+                          {isLowest && <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">↓ le moins cher</span>}
                           <span className={`tabular-nums font-semibold ${isLowest ? "text-green-700 text-base" : "text-[#0A0A0A]"}`}>{p.price} CHF</span>
                           <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 rounded-lg font-medium text-white transition-opacity hover:opacity-80" style={{ background: "#4f8ef7" }}>Acheter</a>
                         </div>
@@ -1057,7 +1056,7 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
                   {/* Alt header row */}
                   <div className="flex gap-3 mb-3">
                     <div className="w-14 h-14 rounded-lg bg-bg border border-border flex items-center justify-center shrink-0 overflow-hidden">
-                      <ComponentSVG type={component.type} size={36} />
+                      <ComponentImage url={primaryImg?.url} alt={alt.name} type={component.type} size={48} className="w-full h-full object-contain p-1" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5 mb-1">

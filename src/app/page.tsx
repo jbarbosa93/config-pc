@@ -119,20 +119,25 @@ function Hero({ onStart }: { onStart: () => void }) {
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   className="flex flex-col gap-3 p-5 rounded-2xl cursor-pointer"
-                  style={{ background: '#0A0A0A', border: '2px solid #1a1a1a' }}
+                  style={{ background: 'linear-gradient(135deg, #1e40af 0%, #4f46e5 100%)', border: 'none' }}
                   onClick={onStart}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">🤖</span>
-                    <span className="font-bold text-white text-lg">Config IA</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">🤖</span>
+                      <span className="font-bold text-white text-lg">Config IA</span>
+                    </div>
+                    <span className="text-xs font-semibold text-white px-3 py-1 rounded-full" style={{ background: '#4f8ef7', borderRadius: '999px', padding: '4px 12px' }}>
+                      Recommandé
+                    </span>
                   </div>
-                  <p className="text-sm" style={{ color: '#999' }}>
+                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>
                     L'IA choisit pour toi selon ton budget et ton usage — rapide et optimisé.
                   </p>
                   <button
                     onClick={onStart}
                     className="mt-auto w-full py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 cta-pulse"
-                    style={{ background: '#4f8ef7', color: 'white' }}
+                    style={{ background: 'white', color: '#1e40af' }}
                   >
                     {t("hero.cta")}
                   </button>
@@ -143,7 +148,7 @@ function Hero({ onStart }: { onStart: () => void }) {
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   className="flex flex-col gap-3 p-5 rounded-2xl cursor-pointer"
-                  style={{ background: '#FAFAFA', border: '2px solid #4f8ef7' }}
+                  style={{ background: 'white', border: '2px solid #4f8ef7' }}
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-2xl">🔧</span>
@@ -229,6 +234,9 @@ export default function Home() {
                 Panier ({cartCount})
               </a>
             )}
+            <Link href="/support" className="text-xs text-[#666] hover:text-[#333] transition-colors hidden sm:inline">
+              Support
+            </Link>
             <LanguageSelector />
           </div>
         </div>

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import { useCart } from "@/lib/cart";
 import { ComponentImage } from "@/components/ComponentSVG";
+import { buildSearchUrl, getSimulatedPrices } from "@/lib/affiliates";
 import type { Component } from "@/lib/types";
 import {
   checkCPUMotherboard,
@@ -172,6 +173,9 @@ function CompatBadge({ result }: { result: CompatResult }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  // No badge when data is missing — we can't verify, so no warning shown
+  if (result.noData) return null;
+
   const config = {
     compatible:   { bg: '#ECFDF5', border: '#6EE7B7', text: '#065F46', icon: '✅', label: 'Compatible' },
     warning:      { bg: '#FFFBEB', border: '#FDE68A', text: '#92400E', icon: '⚠️', label: 'Attention' },
@@ -283,6 +287,159 @@ function ComponentImageOrIcon({ comp }: { comp: DBCompWithImages }) {
   return <ComponentIcon type={comp.type} size={36} />;
 }
 
+/* ─── DB Info Modal (for manual configurator components) ─── */
+
+const STORE_LABELS_MANUAL: Record<string, string> = {
+  digitec: "Digitec", galaxus: "Galaxus", brack: "Brack.ch", interdiscount: "Interdiscount",
+};
+
+function DBInfoModal({ comp, onClose }: { comp: DBCompWithImages; onClose: () => void }) {
+  const { addItem, items: cartItems } = useCart();
+  const inCart = cartItems.some(i => i.name === comp.name);
+  const imageUrl = comp.component_images?.find(i => i.is_primary)?.url || comp.component_images?.[0]?.url;
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const prices = getSimulatedPrices(comp.price_ch).map(sim => ({
+    ...sim,
+    label: STORE_LABELS_MANUAL[sim.storeId] || sim.label,
+  }));
+
+  const specs = comp.specs ? Object.entries(comp.specs).slice(0, 12) : [];
+
+  function handleAddToCart() {
+    addItem({
+      type: comp.type,
+      name: comp.name,
+      reason: `Sélectionné manuellement via le configurateur`,
+      price_fr: comp.price_ch,
+      price_ch: comp.price_ch,
+      search_terms: [comp.name, comp.brand],
+      priority: 'essentiel',
+      image_url: imageUrl,
+    });
+  }
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key="backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div
+        key="panel"
+        className="fixed inset-y-0 right-0 z-[201] w-full max-w-2xl bg-white shadow-2xl flex flex-col animate-slide-in-right"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-white px-6 py-4 flex items-center justify-between shrink-0" style={{ borderBottom: '1px solid #E5E5E5' }}>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] px-2.5 py-1 rounded-full font-semibold text-white" style={{ background: '#4f8ef7' }}>{comp.type}</span>
+            <span className="text-sm font-medium text-[#444]">{comp.brand}</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#888] hover:text-[#333] hover:bg-[#F5F5F5] transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Hero */}
+          <div className="px-6 py-6 flex gap-5 items-start" style={{ background: '#F8FAFF', borderBottom: '1px solid #E5E5E5' }}>
+            <div className="w-20 h-20 rounded-2xl bg-white flex items-center justify-center shrink-0 shadow-sm border border-[#E5E5E5] overflow-hidden">
+              <ComponentImage url={imageUrl} alt={comp.name} type={comp.type} size={64} className="w-full h-full object-contain p-2" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-bold text-[#0A0A0A] leading-snug mb-1">{comp.name}</h2>
+              <p className="text-sm text-[#666] leading-relaxed line-clamp-3">{comp.description || `Composant ${comp.type} de la marque ${comp.brand}.`}</p>
+              <p className="mt-2 text-2xl font-extrabold" style={{ color: '#4f8ef7' }}>CHF {comp.price_ch.toFixed(0)}</p>
+            </div>
+          </div>
+
+          {/* Specs */}
+          {specs.length > 0 && (
+            <div className="px-6 py-5" style={{ borderBottom: '1px solid #E5E5E5' }}>
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#888] mb-3">Caractéristiques</p>
+              <div className="grid grid-cols-2 gap-2">
+                {specs.map(([key, val]) => (
+                  <div key={key} className="flex flex-col gap-0.5 p-2.5 rounded-lg" style={{ background: '#F5F7FF' }}>
+                    <span className="text-[10px] text-[#888] font-medium uppercase tracking-wide truncate">{key}</span>
+                    <span className="text-xs font-semibold text-[#0A0A0A] truncate">{String(val)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Store prices */}
+          <div className="px-6 py-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#888] mb-3">Acheter en Suisse</p>
+            <div className="flex flex-col gap-2">
+              {prices.map((p, idx) => (
+                <a
+                  key={p.storeId}
+                  href={buildSearchUrl(p.storeId, comp.name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between px-4 py-3 rounded-xl transition-colors hover:opacity-90"
+                  style={{
+                    background: idx === 0 ? '#EEF3FE' : '#F5F7FF',
+                    border: idx === 0 ? '1px solid #4f8ef7' : '1px solid #E5E5E5',
+                  }}
+                >
+                  <span className="text-sm font-semibold text-[#0A0A0A]">{p.label}</span>
+                  <div className="flex items-center gap-2">
+                    {idx === 0 && <span className="text-[10px] px-2 py-0.5 rounded-full font-bold text-green-700 bg-green-100">↓ moins cher</span>}
+                    <span className="text-sm font-bold" style={{ color: '#4f8ef7' }}>CHF {p.price.toFixed(0)}</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4f8ef7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
+                    </svg>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        <div className="sticky bottom-0 bg-white px-6 py-4 flex gap-3 shrink-0" style={{ borderTop: '1px solid #E5E5E5' }}>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={inCart ? undefined : handleAddToCart}
+            disabled={inCart}
+            className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity"
+            style={{ background: inCart ? '#E5E5E5' : '#4f8ef7', color: inCart ? '#999' : 'white' }}
+          >
+            {inCart ? '✓ Dans le panier' : '+ Ajouter au panier'}
+          </motion.button>
+          <button
+            onClick={onClose}
+            className="py-3 px-4 rounded-xl text-sm font-medium text-[#666] hover:text-[#333] transition-colors"
+            style={{ border: '1px solid #E5E5E5' }}
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
+    </AnimatePresence>
+  );
+}
+
 /* ─── Component Card ─── */
 
 function CompCard({
@@ -291,12 +448,14 @@ function CompCard({
   build,
   onSelect,
   isSelected,
+  onInfo,
 }: {
   comp: DBCompWithImages;
   stepId: StepId;
   build: Build;
   onSelect: (c: DBCompWithImages) => void;
   isSelected: boolean;
+  onInfo: (c: DBCompWithImages) => void;
 }) {
   const compat = getCompatResult(comp, stepId, build);
   const specs = getKeySpecs(comp);
@@ -351,7 +510,17 @@ function CompCard({
         <span className="text-lg font-bold" style={{ color: '#4f8ef7' }}>
           CHF {comp.price_ch.toFixed(0)}
         </span>
-        <CompatBadge result={compat} />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onInfo(comp); }}
+            className="text-[11px] px-2.5 py-1 rounded-lg font-medium transition-all hover:opacity-90"
+            style={{ background: '#F0F4FF', color: '#4f8ef7', border: '1px solid #D4E2FD' }}
+          >
+            Infos →
+          </button>
+          <CompatBadge result={compat} />
+        </div>
       </div>
 
       {/* Action button */}
@@ -410,6 +579,10 @@ function Sidebar({
 
   return (
     <div className="w-72 shrink-0 flex flex-col gap-2 sticky top-[73px] h-[calc(100vh-73px)] overflow-y-auto pb-6">
+      {/* Logo */}
+      <div className="flex items-center px-1 py-2 mb-1">
+        <Logo size="small" />
+      </div>
       {/* Steps */}
       <div className="rounded-xl p-4" style={{ border: '1px solid #E5E5E5', background: '#FAFAFA' }}>
         <p className="text-xs font-semibold uppercase tracking-wider text-[#666] mb-3">Progression</p>
@@ -500,6 +673,9 @@ function Sidebar({
 
 function RecapSection({ build, onReset }: { build: Build; onReset: () => void }) {
   const { addItem } = useCart();
+  const router = useRouter();
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const totalPrice = STEPS.reduce((sum, s) => sum + (build[s.id]?.price_ch ?? 0), 0);
   const selectedCount = STEPS.filter(s => build[s.id]).length;
@@ -546,6 +722,29 @@ function RecapSection({ build, onReset }: { build: Build; onReset: () => void })
     return { text: '❌ Incompatibilités détectées', color: '#991B1B', bg: '#FEF2F2', border: '#FECACA' };
   }
   const { text: compatText, color: compatColor, bg: compatBg, border: compatBorder } = compatLabel(compatScore);
+
+  async function optimizeWithAI() {
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const hasGpu = !!build.gpu;
+      const usage = hasGpu ? 'gaming' : 'polyvalent';
+      const budget = Math.max(500, Math.round(totalPrice * 1.1)); // slight buffer
+      const res = await fetch('/api/configure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usage, budget, resolution: '1080p', favoriteGames: '', techLevel: 'intermediaire', market: 'suisse' }),
+      });
+      if (!res.ok) throw new Error('Erreur API');
+      const data = await res.json();
+      try { localStorage.setItem('configpc-last-result', JSON.stringify(data)); } catch { /* ignore */ }
+      router.push('/');
+    } catch {
+      setAiError('Erreur lors de l\'optimisation. Réessaie.');
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   function addAllToCart() {
     for (const step of STEPS) {
@@ -647,13 +846,16 @@ function RecapSection({ build, onReset }: { build: Build; onReset: () => void })
         >
           🛒 Ajouter tout au panier
         </button>
-        <Link
-          href="/"
-          className="flex-1 py-3 px-6 rounded-xl font-semibold text-center transition-colors hover:opacity-90"
-          style={{ background: '#0A0A0A', color: 'white' }}
+        <button
+          onClick={optimizeWithAI}
+          disabled={aiLoading}
+          className="flex-1 py-3 px-6 rounded-xl font-semibold transition-opacity hover:opacity-90 flex items-center justify-center gap-2"
+          style={{ background: '#0A0A0A', color: 'white', opacity: aiLoading ? 0.7 : 1 }}
         >
-          Optimiser avec l'IA →
-        </Link>
+          {aiLoading ? (
+            <><svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="white" strokeWidth="3" strokeLinecap="round"/></svg>Optimisation…</>
+          ) : 'Optimiser avec l\'IA →'}
+        </button>
         <button
           onClick={onReset}
           className="flex-1 py-3 px-6 rounded-xl font-semibold transition-colors"
@@ -662,6 +864,9 @@ function RecapSection({ build, onReset }: { build: Build; onReset: () => void })
           Recommencer
         </button>
       </div>
+      {aiError && (
+        <p className="text-xs text-red-500 text-center mt-2">{aiError}</p>
+      )}
     </motion.div>
   );
 }
@@ -676,6 +881,7 @@ function ManualConfiguratorInner() {
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [build, setBuild] = useState<Build>({});
   const [done, setDone] = useState(false);
+  const [infoComp, setInfoComp] = useState<DBCompWithImages | null>(null);
 
   // Per-step state
   const [components, setComponents] = useState<DBCompWithImages[]>([]);
@@ -946,6 +1152,7 @@ function ManualConfiguratorInner() {
                         build={build}
                         onSelect={handleSelect}
                         isSelected={build[step.id]?.id === comp.id}
+                        onInfo={setInfoComp}
                       />
                     ))}
                   </AnimatePresence>
@@ -955,6 +1162,11 @@ function ManualConfiguratorInner() {
           </div>
         )}
       </div>
+
+      {/* DBInfoModal */}
+      <AnimatePresence>
+        {infoComp && <DBInfoModal comp={infoComp} onClose={() => setInfoComp(null)} />}
+      </AnimatePresence>
     </div>
   );
 }
