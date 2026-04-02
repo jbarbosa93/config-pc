@@ -395,6 +395,30 @@ function Skeleton() {
   );
 }
 
+/* ── Spec filter pill ── */
+function SpecPill({ label, active, onClick, delay = 0 }: { label: string; active: boolean; onClick: () => void; delay?: number }) {
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.15 }}
+      onClick={onClick}
+      whileTap={{ scale: 0.96 }}
+      className="text-xs font-medium transition-all duration-150 whitespace-nowrap"
+      style={{
+        padding: "5px 12px",
+        borderRadius: "999px",
+        border: `1px solid ${active ? "#4f8ef7" : "#e2e8f0"}`,
+        background: active ? "#4f8ef7" : "#f8fafc",
+        color: active ? "#fff" : "#475569",
+        boxShadow: active ? "0 1px 4px rgba(79,142,247,0.25)" : "none",
+      }}
+    >
+      {label}
+    </motion.button>
+  );
+}
+
 /* ── Main Page ── */
 export default function CataloguePage() {
   const [components, setComponents] = useState<Component[]>([]);
@@ -782,107 +806,119 @@ export default function CataloguePage() {
         </div>
       </div>
 
-      {/* Advanced filters — dynamic by category */}
-      {(activeCategory === "GPU" || activeCategory === "CPU" || activeCategory === "RAM") && (
-        <div className="max-w-7xl mx-auto px-4 pb-3">
-          <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-xs text-text-secondary font-medium shrink-0 mr-1">Filtres :</span>
+      {/* Category-specific filter pills — animated slide-down */}
+      <AnimatePresence>
+        {["GPU","CPU","RAM","Moniteur","Souris","Clavier","Casque"].includes(activeCategory) && (
+          <motion.div
+            key={activeCategory + "-spec-filters"}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="max-w-7xl mx-auto px-4 pb-3 pt-1">
+              <div className="flex flex-wrap gap-2 items-center">
+                {/* GPU */}
+                {activeCategory === "GPU" && <>
+                  {[{l:"4 Go",v:"4"},{l:"8 Go",v:"8"},{l:"12 Go",v:"12"},{l:"16 Go+",v:"16+"}].map(({l,v},i) => (
+                    <SpecPill key={v} label={`VRAM ${l}`} active={filterVram===v} delay={i*0.03}
+                      onClick={() => setFilterVram(filterVram===v ? null : v)} />
+                  ))}
+                  <div className="w-px h-4 bg-border mx-0.5"/>
+                  {["Ampere","Ada","Blackwell","RDNA 3","RDNA 4"].map((a,i) => (
+                    <SpecPill key={a} label={a} active={filterArch===a} delay={(i+4)*0.03}
+                      onClick={() => setFilterArch(filterArch===a ? null : a)} />
+                  ))}
+                </>}
 
-            {/* GPU filters */}
-            {activeCategory === "GPU" && (
-              <>
-                {/* VRAM */}
-                {[
-                  { label: "4 Go", value: "4" },
-                  { label: "8 Go", value: "8" },
-                  { label: "12 Go", value: "12" },
-                  { label: "16 Go+", value: "16+" },
-                ].map(({ label, value }) => (
-                  <button
-                    key={`vram-${value}`}
-                    onClick={() => setFilterVram(filterVram === value ? null : value)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-all font-medium ${filterVram === value ? "bg-blue-600 text-white border-blue-600" : "bg-white text-text-secondary border-border hover:border-blue-400 hover:text-blue-600"}`}
-                  >
-                    VRAM {label}
-                  </button>
-                ))}
-                <span className="w-px h-4 bg-border mx-1" />
-                {/* Architecture */}
-                {["Ampere", "Ada", "Blackwell", "RDNA 3", "RDNA 4"].map((arch) => (
-                  <button
-                    key={`arch-${arch}`}
-                    onClick={() => setFilterArch(filterArch === arch ? null : arch)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-all font-medium ${filterArch === arch ? "bg-blue-600 text-white border-blue-600" : "bg-white text-text-secondary border-border hover:border-blue-400 hover:text-blue-600"}`}
-                  >
-                    {arch}
-                  </button>
-                ))}
-              </>
-            )}
+                {/* CPU */}
+                {activeCategory === "CPU" && <>
+                  {[{l:"4 cœurs",v:"4"},{l:"6 cœurs",v:"6"},{l:"8 cœurs",v:"8"},{l:"12+ cœurs",v:"12+"}].map(({l,v},i) => (
+                    <SpecPill key={v} label={l} active={filterCores===v} delay={i*0.03}
+                      onClick={() => setFilterCores(filterCores===v ? null : v)} />
+                  ))}
+                  <div className="w-px h-4 bg-border mx-0.5"/>
+                  {["AM4","AM5","LGA1700","LGA1851"].map((s,i) => (
+                    <SpecPill key={s} label={s} active={filterSocket===s} delay={(i+4)*0.03}
+                      onClick={() => setFilterSocket(filterSocket===s ? null : s)} />
+                  ))}
+                </>}
 
-            {/* CPU filters */}
-            {activeCategory === "CPU" && (
-              <>
-                {/* Cores */}
-                {[
-                  { label: "4 cœurs", value: "4" },
-                  { label: "6 cœurs", value: "6" },
-                  { label: "8 cœurs", value: "8" },
-                  { label: "12+ cœurs", value: "12+" },
-                ].map(({ label, value }) => (
-                  <button
-                    key={`cores-${value}`}
-                    onClick={() => setFilterCores(filterCores === value ? null : value)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-all font-medium ${filterCores === value ? "bg-blue-600 text-white border-blue-600" : "bg-white text-text-secondary border-border hover:border-blue-400 hover:text-blue-600"}`}
-                  >
-                    {label}
-                  </button>
-                ))}
-                <span className="w-px h-4 bg-border mx-1" />
-                {/* Socket */}
-                {["AM4", "AM5", "LGA1700", "LGA1851"].map((socket) => (
-                  <button
-                    key={`socket-${socket}`}
-                    onClick={() => setFilterSocket(filterSocket === socket ? null : socket)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-all font-medium ${filterSocket === socket ? "bg-blue-600 text-white border-blue-600" : "bg-white text-text-secondary border-border hover:border-blue-400 hover:text-blue-600"}`}
-                  >
-                    {socket}
-                  </button>
-                ))}
-              </>
-            )}
+                {/* RAM */}
+                {activeCategory === "RAM" && <>
+                  {["DDR4","DDR5"].map((d,i) => (
+                    <SpecPill key={d} label={d} active={filterDdr===d} delay={i*0.03}
+                      onClick={() => setFilterDdr(filterDdr===d ? null : d)} />
+                  ))}
+                  <div className="w-px h-4 bg-border mx-0.5"/>
+                  {[{l:"16 Go",v:"16"},{l:"32 Go",v:"32"},{l:"64 Go+",v:"64+"}].map(({l,v},i) => (
+                    <SpecPill key={v} label={l} active={filterCapacity===v} delay={(i+2)*0.03}
+                      onClick={() => setFilterCapacity(filterCapacity===v ? null : v)} />
+                  ))}
+                </>}
 
-            {/* RAM filters */}
-            {activeCategory === "RAM" && (
-              <>
-                {["DDR4", "DDR5"].map((ddr) => (
-                  <button
-                    key={`ddr-${ddr}`}
-                    onClick={() => setFilterDdr(filterDdr === ddr ? null : ddr)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-all font-medium ${filterDdr === ddr ? "bg-blue-600 text-white border-blue-600" : "bg-white text-text-secondary border-border hover:border-blue-400 hover:text-blue-600"}`}
-                  >
-                    {ddr}
-                  </button>
-                ))}
-                <span className="w-px h-4 bg-border mx-1" />
-                {[
-                  { label: "16 Go", value: "16" },
-                  { label: "32 Go", value: "32" },
-                  { label: "64 Go+", value: "64+" },
-                ].map(({ label, value }) => (
-                  <button
-                    key={`cap-${value}`}
-                    onClick={() => setFilterCapacity(filterCapacity === value ? null : value)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-all font-medium ${filterCapacity === value ? "bg-blue-600 text-white border-blue-600" : "bg-white text-text-secondary border-border hover:border-blue-400 hover:text-blue-600"}`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </>
-            )}
-          </div>
-        </div>
-      )}
+                {/* Moniteur */}
+                {activeCategory === "Moniteur" && <>
+                  {["1080p","1440p","4K"].map((r,i) => (
+                    <SpecPill key={r} label={r} active={filterVram===r} delay={i*0.03}
+                      onClick={() => setFilterVram(filterVram===r ? null : r)} />
+                  ))}
+                  <div className="w-px h-4 bg-border mx-0.5"/>
+                  {["IPS","VA","OLED"].map((p,i) => (
+                    <SpecPill key={p} label={p} active={filterArch===p} delay={(i+3)*0.03}
+                      onClick={() => setFilterArch(filterArch===p ? null : p)} />
+                  ))}
+                  <div className="w-px h-4 bg-border mx-0.5"/>
+                  {["144Hz+","240Hz+","HDR"].map((f,i) => (
+                    <SpecPill key={f} label={f} active={filterCores===f} delay={(i+6)*0.03}
+                      onClick={() => setFilterCores(filterCores===f ? null : f)} />
+                  ))}
+                </>}
+
+                {/* Souris */}
+                {activeCategory === "Souris" && <>
+                  {["Filaire","Sans fil"].map((c,i) => (
+                    <SpecPill key={c} label={c} active={filterArch===c} delay={i*0.03}
+                      onClick={() => setFilterArch(filterArch===c ? null : c)} />
+                  ))}
+                  <div className="w-px h-4 bg-border mx-0.5"/>
+                  {[{l:"< 60g",v:"light"},{l:"60–100g",v:"mid"},{l:"100g+",v:"heavy"}].map(({l,v},i) => (
+                    <SpecPill key={v} label={l} active={filterCores===v} delay={(i+2)*0.03}
+                      onClick={() => setFilterCores(filterCores===v ? null : v)} />
+                  ))}
+                </>}
+
+                {/* Clavier */}
+                {activeCategory === "Clavier" && <>
+                  {["60%","TKL","Full"].map((s,i) => (
+                    <SpecPill key={s} label={s} active={filterArch===s} delay={i*0.03}
+                      onClick={() => setFilterArch(filterArch===s ? null : s)} />
+                  ))}
+                  <div className="w-px h-4 bg-border mx-0.5"/>
+                  {["Filaire","Sans fil","RGB"].map((c,i) => (
+                    <SpecPill key={c} label={c} active={filterCores===c} delay={(i+3)*0.03}
+                      onClick={() => setFilterCores(filterCores===c ? null : c)} />
+                  ))}
+                </>}
+
+                {/* Casque */}
+                {activeCategory === "Casque" && <>
+                  {["Filaire","Sans fil"].map((c,i) => (
+                    <SpecPill key={c} label={c} active={filterArch===c} delay={i*0.03}
+                      onClick={() => setFilterArch(filterArch===c ? null : c)} />
+                  ))}
+                  <div className="w-px h-4 bg-border mx-0.5"/>
+                  {["Avec micro","< 100Ω","250Ω+"].map((o,i) => (
+                    <SpecPill key={o} label={o} active={filterCores===o} delay={(i+2)*0.03}
+                      onClick={() => setFilterCores(filterCores===o ? null : o)} />
+                  ))}
+                </>}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Grid */}
       <main className="max-w-7xl mx-auto px-4 py-4">
