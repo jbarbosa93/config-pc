@@ -649,19 +649,31 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
             </Accordion>
 
             {/* ── Specs table (accordion) ── */}
-            {specs && Object.keys(specs).length > 0 && (
+            {(Object.keys(specs).length > 0 || dbData?.socket || dbData?.form_factor || tdp || dbData?.chipset || dbData?.brand) && (
               <Accordion title="Fiche technique" defaultOpen={false}>
                 <div>
-                  {Object.entries(specs).map(([key, value], i) => (
-                    <div key={key} className={`flex items-start justify-between px-4 py-3 text-sm ${i > 0 ? "border-t" : ""}`} style={{ borderColor: "#F0F0F0", background: i % 2 === 0 ? "white" : "#FAFAFA" }}>
-                      <span className="text-[#666] w-2/5 shrink-0">{key}</span>
-                      <span className="font-medium text-[#0A0A0A] text-right flex-1">{String(value)}</span>
+                  {dbData?.brand && !specs["Marque"] && (
+                    <div className="flex items-start justify-between px-4 py-3 text-sm" style={{ background: "white" }}>
+                      <span className="text-[#666] w-2/5 shrink-0">Marque</span>
+                      <span className="font-medium text-[#0A0A0A] text-right flex-1">{dbData.brand}</span>
                     </div>
-                  ))}
+                  )}
+                  {component.type && (
+                    <div className="flex items-start justify-between px-4 py-3 text-sm border-t" style={{ borderColor: "#F0F0F0", background: "#FAFAFA" }}>
+                      <span className="text-[#666] w-2/5 shrink-0">Catégorie</span>
+                      <span className="font-medium text-[#0A0A0A] text-right flex-1">{component.type}</span>
+                    </div>
+                  )}
                   {dbData?.socket && !specs["Socket"] && (
                     <div className="flex items-start justify-between px-4 py-3 text-sm border-t" style={{ borderColor: "#F0F0F0" }}>
                       <span className="text-[#666] w-2/5 shrink-0">Socket</span>
                       <span className="font-medium text-[#0A0A0A] text-right flex-1">{dbData.socket}</span>
+                    </div>
+                  )}
+                  {dbData?.chipset && !specs["Chipset"] && (
+                    <div className="flex items-start justify-between px-4 py-3 text-sm border-t" style={{ borderColor: "#F0F0F0", background: "#FAFAFA" }}>
+                      <span className="text-[#666] w-2/5 shrink-0">Chipset</span>
+                      <span className="font-medium text-[#0A0A0A] text-right flex-1">{dbData.chipset}</span>
                     </div>
                   )}
                   {dbData?.form_factor && !specs["Format"] && (
@@ -671,17 +683,35 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                     </div>
                   )}
                   {tdp && !specs["TDP"] && (
-                    <div className="flex items-start justify-between px-4 py-3 text-sm border-t" style={{ borderColor: "#F0F0F0" }}>
+                    <div className="flex items-start justify-between px-4 py-3 text-sm border-t" style={{ borderColor: "#F0F0F0", background: "#FAFAFA" }}>
                       <span className="text-[#666] w-2/5 shrink-0">TDP</span>
                       <span className="font-medium text-[#0A0A0A] text-right flex-1">{tdp} W</span>
                     </div>
                   )}
+                  {dbData?.release_year && !specs["Année"] && (
+                    <div className="flex items-start justify-between px-4 py-3 text-sm border-t" style={{ borderColor: "#F0F0F0" }}>
+                      <span className="text-[#666] w-2/5 shrink-0">Année de sortie</span>
+                      <span className="font-medium text-[#0A0A0A] text-right flex-1">{dbData.release_year}</span>
+                    </div>
+                  )}
+                  {displayPrice && !specs["Prix"] && (
+                    <div className="flex items-start justify-between px-4 py-3 text-sm border-t" style={{ borderColor: "#F0F0F0", background: "#FAFAFA" }}>
+                      <span className="text-[#666] w-2/5 shrink-0">Prix indicatif</span>
+                      <span className="font-medium text-[#0A0A0A] text-right flex-1">{displayPrice} CHF</span>
+                    </div>
+                  )}
+                  {Object.entries(specs).map(([key, value], i) => (
+                    <div key={key} className={`flex items-start justify-between px-4 py-3 text-sm border-t`} style={{ borderColor: "#F0F0F0", background: i % 2 === 0 ? "white" : "#FAFAFA" }}>
+                      <span className="text-[#666] w-2/5 shrink-0">{key}</span>
+                      <span className="font-medium text-[#0A0A0A] text-right flex-1">{String(value)}</span>
+                    </div>
+                  ))}
                 </div>
               </Accordion>
             )}
 
             {/* ── Full description (accordion) ── */}
-            {description && Object.keys(specs).length > 0 && (
+            {description && (
               <Accordion title="Description" defaultOpen={false}>
                 <p className="text-sm leading-relaxed text-[#444] p-4">{description}</p>
               </Accordion>
