@@ -5,6 +5,7 @@ import { useCart } from "@/lib/cart";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { ComponentImage } from "@/components/ComponentSVG";
 
 /* ── Component type icons (realistic category illustrations) ── */
 
@@ -127,9 +128,15 @@ export default function PanierPage() {
                 className="flex items-start gap-4 p-4 rounded-xl bg-white"
                 style={{ border: "1px solid #E5E5E5" }}
               >
-                {/* Category icon */}
-                <div className="w-14 h-14 rounded-xl bg-[#F5F5F5] flex items-center justify-center shrink-0 text-2xl">
-                  {TYPE_ICONS[item.type] || "🔧"}
+                {/* Product image with SVG fallback */}
+                <div className="w-14 h-14 rounded-xl bg-[#F5F5F5] flex items-center justify-center shrink-0 overflow-hidden">
+                  <ComponentImage
+                    url={item.image_url}
+                    alt={item.name}
+                    type={item.type}
+                    size={48}
+                    className="w-full h-full object-contain p-1"
+                  />
                 </div>
 
                 <div className="flex-1 min-w-0">

@@ -7,6 +7,7 @@ import type { PCConfig, Component, Alternative } from "@/lib/types";
 import { buildSearchUrl, getSimulatedPrices, buildToppreiseUrl } from "@/lib/affiliates";
 import { jsPDF } from "jspdf";
 import { useCart } from "@/lib/cart";
+import { ComponentSVG as SharedComponentSVG, ComponentImage } from "@/components/ComponentSVG";
 
 /* ── Manufacturer URL mapping ── */
 
@@ -277,12 +278,7 @@ function ComponentSVG({ type, size = 80 }: { type: string; size?: number }) {
 
 
 function ProductImageWithFallback({ url, alt, type }: { url: string; alt: string; type: string }) {
-  const [error, setError] = useState(false);
-  if (error) return <ComponentSVG type={type} size={120} />;
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={url} alt={alt} className="w-full h-full object-contain p-4" onError={() => setError(true)} />
-  );
+  return <ComponentImage url={url} alt={alt} type={type} size={120} className="w-full h-full object-contain p-4" />;
 }
 
 function ProductImage({ type, name }: { type: string; name: string }) {
@@ -291,7 +287,6 @@ function ProductImage({ type, name }: { type: string; name: string }) {
   const rotateX = useTransform(y, [-50, 50], [8, -8]);
   const rotateY = useTransform(x, [-50, 50], [-8, 8]);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
-  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     if (!name) return;
@@ -322,17 +317,7 @@ function ProductImage({ type, name }: { type: string; name: string }) {
       style={{ rotateX, rotateY, perspective: 600 }}
       className="w-[80px] h-[80px] rounded-xl bg-card border border-border flex items-center justify-center text-text-secondary shrink-0 overflow-hidden"
     >
-      {imgUrl && !imgError ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={imgUrl}
-          alt={name}
-          className="w-full h-full object-contain p-1.5"
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        <ComponentSVG type={type} />
-      )}
+      <ComponentImage url={imgUrl} alt={name} type={type} size={72} className="w-full h-full object-contain p-1.5" />
     </motion.div>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Logo from "@/components/Logo";
 import Link from "next/link";
+import { ComponentImage } from "@/components/ComponentSVG";
 
 /* ── Types ── */
 interface ComponentImage {
@@ -183,14 +184,14 @@ function ProductDetail({ component, onClose }: { component: Component; onClose: 
         </button>
 
         {/* Image */}
-        <div className="bg-gray-50 aspect-square flex items-center justify-center p-10">
-          {primaryImage ? (
-            <img src={primaryImage} alt={component.name} className="max-w-full max-h-full object-contain" />
-          ) : (
-            <div className="text-8xl opacity-20">
-              {CATEGORIES.find((c) => c.key === component.type)?.icon || "📦"}
-            </div>
-          )}
+        <div className="bg-gray-50 aspect-square flex items-center justify-center p-8">
+          <ComponentImage
+            url={primaryImage}
+            alt={component.name}
+            type={component.type}
+            size={160}
+            className="max-w-full max-h-full object-contain"
+          />
         </div>
 
         {/* Content */}
@@ -338,12 +339,16 @@ function ComponentCard({ component, onClick }: { component: Component; onClick: 
       onClick={onClick}
       className="group relative bg-white rounded-2xl border border-border hover:border-border-hover hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col cursor-pointer"
     >
-      <div className="relative aspect-square bg-gray-50 flex items-center justify-center p-6 overflow-hidden">
-        {primaryImage ? (
-          <img src={primaryImage} alt={component.name} className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300" loading="lazy" />
-        ) : (
-          <div className="text-6xl opacity-20">{CATEGORIES.find((c) => c.key === component.type)?.icon || "📦"}</div>
-        )}
+      <div className="relative aspect-square bg-gray-50 flex items-center justify-center p-4 overflow-hidden">
+        <div className="group-hover:scale-105 transition-transform duration-300 flex items-center justify-center w-full h-full">
+          <ComponentImage
+            url={primaryImage}
+            alt={component.name}
+            type={component.type}
+            size={100}
+            className="max-w-full max-h-full object-contain"
+          />
+        </div>
         <span className={`absolute top-3 left-3 text-xs font-medium px-2.5 py-1 rounded-full border ${colorClass}`}>{component.type}</span>
         {component.popularity_score > 0 && (
           <span className="absolute top-3 right-3 text-xs text-text-secondary bg-white/80 backdrop-blur px-2 py-1 rounded-full">★ {component.popularity_score}</span>

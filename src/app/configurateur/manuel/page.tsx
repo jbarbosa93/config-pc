@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import { useCart } from "@/lib/cart";
+import { ComponentImage } from "@/components/ComponentSVG";
 import type { Component } from "@/lib/types";
 import {
   checkCPUMotherboard,
@@ -319,7 +320,13 @@ function CompCard({
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 w-[52px] h-[52px] rounded-xl bg-[#F5F7FF] flex items-center justify-center overflow-hidden border border-[#E8EEFF]">
-          <ComponentImageOrIcon comp={comp} />
+          <ComponentImage
+            url={comp.component_images?.find(i => i.is_primary)?.url || comp.component_images?.[0]?.url}
+            alt={comp.name}
+            type={comp.type}
+            size={40}
+            className="w-[44px] h-[44px] object-contain"
+          />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs text-[#666] font-medium uppercase tracking-wide">{comp.brand}</p>
