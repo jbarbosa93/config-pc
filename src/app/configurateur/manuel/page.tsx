@@ -462,7 +462,7 @@ function CompCard({
 
   const borderColor = isSelected ? '#4f8ef7' :
     compat.status === 'incompatible' ? '#FECACA' :
-    compat.status === 'warning' ? '#FDE68A' : '#E5E5E5';
+    (compat.status === 'warning' && !compat.noData) ? '#FDE68A' : '#E5E5E5';
 
   return (
     <motion.div
@@ -540,7 +540,7 @@ function CompCard({
         >
           Choisir quand même
         </button>
-      ) : compat.status === 'warning' ? (
+      ) : (compat.status === 'warning' && !compat.noData) ? (
         <button
           onClick={() => onSelect(comp)}
           className="w-full py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-90"
