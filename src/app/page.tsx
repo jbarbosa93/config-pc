@@ -70,6 +70,7 @@ function Typewriter({ text, onDone }: { text: string; onDone?: () => void }) {
 
 function CatalogueCTA() {
   const [hovered, setHovered] = useState(false);
+  const { t } = useLanguage();
 
   return (
     <motion.div
@@ -79,7 +80,7 @@ function CatalogueCTA() {
       className="w-full max-w-[480px] mt-5"
     >
       <p className="text-center text-[14px] text-text-secondary mb-3">
-        Tu sais déjà ce que tu cherches ?
+        {t("hero.catalogue.teaser")}
       </p>
       <Link href="/catalogue" className="block w-full">
         <motion.div
@@ -101,10 +102,10 @@ function CatalogueCTA() {
           <span className="text-2xl shrink-0">🔍</span>
           <div className="flex-1 min-w-0">
             <p className="text-[18px] font-semibold text-[#0A0A0A] leading-tight">
-              Explorer le catalogue
+              {t("hero.catalogue.title")}
             </p>
             <p className="text-[13px] text-text-secondary mt-0.5">
-              2 381 composants et périphériques disponibles
+              {t("hero.catalogue.count")}
             </p>
           </div>
           <motion.span
@@ -165,7 +166,7 @@ function Hero({ onStart }: { onStart: () => void }) {
               className="w-full max-w-2xl"
             >
               <p className="text-center text-sm font-medium text-text-secondary mb-4">
-                Comment veux-tu configurer ton PC ?
+                {t("hero.howto")}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* AI Option */}
@@ -179,14 +180,14 @@ function Hero({ onStart }: { onStart: () => void }) {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">🤖</span>
-                      <span className="font-bold text-white text-lg">Config IA</span>
+                      <span className="font-bold text-white text-lg">{t("hero.ai.title")}</span>
                     </div>
                     <span className="text-xs font-semibold text-white px-3 py-1 rounded-full" style={{ background: '#4f8ef7', borderRadius: '999px', padding: '4px 12px' }}>
-                      Recommandé
+                      {t("hero.ai.badge")}
                     </span>
                   </div>
                   <p className="text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                    L'IA choisit pour toi selon ton budget et ton usage — rapide et optimisé.
+                    {t("hero.ai.desc")}
                   </p>
                   <button
                     onClick={onStart}
@@ -207,16 +208,16 @@ function Hero({ onStart }: { onStart: () => void }) {
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">🔧</span>
-                      <span className="font-bold text-[#0A0A0A] text-lg">Config manuelle</span>
+                      <span className="font-bold text-[#0A0A0A] text-lg">{t("hero.manual.title")}</span>
                     </div>
                     <p className="text-sm text-text-secondary">
-                      Tu choisis chaque composant étape par étape — contrôle total avec vérification de compatibilité.
+                      {t("hero.manual.desc")}
                     </p>
                     <div
                       className="mt-auto w-full py-2.5 rounded-xl text-sm font-semibold text-center"
                       style={{ background: 'transparent', color: '#4f8ef7', border: '2px solid #4f8ef7' }}
                     >
-                      Commencer
+                      {t("hero.manual.cta")}
                     </div>
                   </motion.div>
                 </Link>
@@ -295,7 +296,7 @@ export default function Home() {
               </a>
             )}
             <Link href="/support" className="text-xs text-[#666] hover:text-[#333] transition-colors hidden sm:inline">
-              Support
+              {t("nav.support")}
             </Link>
             <LanguageSelector />
           </div>

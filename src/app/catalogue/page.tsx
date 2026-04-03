@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Logo from "@/components/Logo";
 import Link from "next/link";
 import { ComponentImage } from "@/components/ComponentSVG";
+import { useLanguage } from "@/lib/i18n";
 
 /* ── Types ── */
 interface ComponentImage {
@@ -46,6 +47,22 @@ const CATEGORIES = [
   { key: "Souris", label: "Souris", icon: "🖱️" },
   { key: "Casque", label: "Casques", icon: "🎧" },
 ];
+
+const CAT_I18N: Record<string, string> = {
+  all: "cat.all",
+  CPU: "cat.cpu",
+  GPU: "cat.gpu",
+  RAM: "cat.ram",
+  Stockage: "cat.storage",
+  "Carte mère": "cat.motherboard",
+  Alimentation: "cat.psu",
+  Boîtier: "cat.case",
+  Refroidissement: "cat.cooling",
+  Moniteur: "cat.monitor",
+  Clavier: "cat.keyboard",
+  Souris: "cat.mouse",
+  Casque: "cat.headset",
+};
 
 const TYPE_COLORS: Record<string, string> = {
   CPU: "bg-blue-50 text-blue-700 border-blue-200",
@@ -153,7 +170,7 @@ function getAllSpecs(component: Component): { label: string; value: string }[] {
 }
 
 /* ── Product Detail Panel ── */
-function ProductDetail({ component, onClose }: { component: Component; onClose: () => void }) {
+function ProductDetail({ component, onClose, t }: { component: Component; onClose: () => void; t: (k: string) => string }) {
   const primaryImage = component.component_images?.find((i) => i.is_primary)?.url || component.component_images?.[0]?.url;
   const allSpecs = getAllSpecs(component);
   const colorClass = TYPE_COLORS[component.type] || "bg-gray-50 text-gray-700 border-gray-200";
@@ -218,7 +235,7 @@ function ProductDetail({ component, onClose }: { component: Component; onClose: 
           {component.price_ch > 0 && (
             <p className="text-2xl font-bold mb-4" style={{ color: "#0A0A0A" }}>
               CHF {component.price_ch.toFixed(0)}
-              <span className="text-sm font-normal text-text-secondary ml-2">prix indicatif</span>
+              <span className="text-sm font-normal text-text-secondary ml-2">{t("cat.indicatif")}</span>
             </p>
           )}
 
@@ -332,7 +349,7 @@ function ProductDetail({ component, onClose }: { component: Component; onClose: 
 }
 
 /* ── Component Card ── */
-function ComponentCard({ component, onClick }: { component: Component; onClick: () => void }) {
+function ComponentCard({ component, onClick, t }: { component: Component; onClick: () => void; t: (k: string) => string }) {
   const primaryImage = component.component_images?.find((i) => i.is_primary)?.url || component.component_images?.[0]?.url;
   const specs = getMainSpecs(component);
   const colorClass = TYPE_COLORS[component.type] || "bg-gray-50 text-gray-700 border-gray-200";
@@ -359,7 +376,7 @@ function ComponentCard({ component, onClick }: { component: Component; onClick: 
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
           <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur text-sm font-medium px-4 py-2 rounded-full shadow-sm">
-            Voir détails
+            {t("cat.see.details")}
           </span>
         </div>
       </div>
@@ -369,7 +386,7 @@ function ComponentCard({ component, onClick }: { component: Component; onClick: 
         {component.price_ch > 0 && (
           <p className="text-base font-bold mb-2" style={{ color: "#0A0A0A" }}>
             CHF {component.price_ch.toFixed(0)}
-            <span className="text-xs font-normal text-text-secondary ml-1">indicatif</span>
+            <span className="text-xs font-normal text-text-secondary ml-1">{t("cat.indicatif")}</span>
           </p>
         )}
         <div className="flex flex-wrap gap-1.5 mt-auto">
@@ -424,6 +441,7 @@ function SpecPill({ label, active, onClick, delay = 0 }: { label: string; active
 
 /* ── Main Page ── */
 export default function CataloguePage() {
+  const { t } = useLanguage();
   const [components, setComponents] = useState<Component[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("all");
@@ -591,7 +609,7 @@ export default function CataloguePage() {
             <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1110.5 3a7.5 7.5 0 016.15 13.65z" />
             </svg>
-            <input type="text" placeholder="Rechercher un composant..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/20 transition-all" />
+            <input type="text" placeholder={t("cat.search")} value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black/20 transition-all" />
           </div>
         </div>
       </section>
@@ -623,7 +641,7 @@ export default function CataloguePage() {
                   }}
                 >
                   <span className="text-sm">{cat.icon}</span>
-                  <span>{cat.label}</span>
+                  <span>{t(CAT_I18N[cat.key] || "cat.all")}</span>
                   {count > 0 && (
                     <span
                       className="text-[11px] px-1.5 py-0.5 rounded-full font-semibold tabular-nums"
@@ -656,7 +674,7 @@ export default function CataloguePage() {
                 color: selectedBrands.length > 0 ? "#4f8ef7" : "#475569",
               }}
             >
-              Marque
+              {t("cat.brand")}
               {selectedBrands.length > 0 && (
                 <span className="text-[11px] bg-[#4f8ef7] text-white rounded-full px-1.5 py-0.5 font-bold">{selectedBrands.length}</span>
               )}
@@ -674,7 +692,7 @@ export default function CataloguePage() {
                 >
                   {selectedBrands.length > 0 && (
                     <button onClick={() => setSelectedBrands([])} className="w-full text-left px-4 py-2 text-xs text-red-500 hover:bg-red-50 font-medium border-b border-border">
-                      Tout effacer
+                      {t("cat.reset")}
                     </button>
                   )}
                   {availableBrands.map(brand => (
@@ -714,7 +732,7 @@ export default function CataloguePage() {
                 color: minPrice > 0 || maxPrice < priceCeiling ? "#4f8ef7" : "#475569",
               }}
             >
-              Prix
+              {t("cat.price")}
               {(minPrice > 0 || maxPrice < priceCeiling) && <span className="text-[11px] bg-[#4f8ef7] text-white rounded-full px-1.5 py-0.5 font-bold">✓</span>}
               <svg className={`w-3 h-3 transition-transform ${showPriceDrop ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
             </button>
@@ -761,7 +779,7 @@ export default function CataloguePage() {
                   {(minPrice > 0 || maxPrice < priceCeiling) && (
                     <button onClick={() => { setMinPrice(0); setMaxPrice(priceCeiling); }}
                       className="mt-3 text-xs text-red-500 hover:underline font-medium"
-                    >Réinitialiser</button>
+                    >{t("cat.reset")}</button>
                   )}
                 </motion.div>
               )}
@@ -781,7 +799,7 @@ export default function CataloguePage() {
                 color: sortBy !== "popularity" ? "#4f8ef7" : "#475569",
               }}
             >
-              {sortBy === "popularity" ? "Trier par" : sortBy === "price_asc" ? "Prix ↑" : "Prix ↓"}
+              {sortBy === "popularity" ? t("cat.sort") : sortBy === "price_asc" ? `${t("cat.price")} ↑` : `${t("cat.price")} ↓`}
               <svg className={`w-3 h-3 transition-transform ${showSortDrop ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
             </button>
             <AnimatePresence>
@@ -795,9 +813,9 @@ export default function CataloguePage() {
                   style={{ transformOrigin: "top" }}
                 >
                   {[
-                    { value: "popularity", label: "Popularité" },
-                    { value: "price_asc", label: "Prix croissant" },
-                    { value: "price_desc", label: "Prix décroissant" },
+                    { value: "popularity", label: t("cat.sort.popularity") },
+                    { value: "price_asc", label: t("cat.sort.price.asc") },
+                    { value: "price_desc", label: t("cat.sort.price.desc") },
                   ].map(opt => (
                     <button key={opt.value} onClick={() => { setSortBy(opt.value as typeof sortBy); setShowSortDrop(false); }}
                       className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors flex items-center justify-between"
@@ -818,7 +836,7 @@ export default function CataloguePage() {
               onClick={() => { setSelectedBrands([]); setMinPrice(0); setMaxPrice(priceCeiling); setSortBy("popularity"); }}
               className="text-xs text-red-500 hover:text-red-600 font-medium transition-colors ml-1"
             >
-              Tout effacer ×
+              {t("cat.reset")} ×
             </button>
           )}
         </div>
@@ -958,7 +976,7 @@ export default function CataloguePage() {
             </p>
             <div key={activeCategory + search} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {filtered.map((component) => (
-                <ComponentCard key={component.id} component={component} onClick={() => setSelectedComponent(component)} />
+                <ComponentCard key={component.id} component={component} onClick={() => setSelectedComponent(component)} t={t} />
               ))}
             </div>
           </>
@@ -968,7 +986,7 @@ export default function CataloguePage() {
       {/* Product Detail Panel */}
       <AnimatePresence>
         {selectedComponent && (
-          <ProductDetail component={selectedComponent} onClose={() => setSelectedComponent(null)} />
+          <ProductDetail component={selectedComponent} onClose={() => setSelectedComponent(null)} t={t} />
         )}
       </AnimatePresence>
     </div>

@@ -31,17 +31,17 @@ const USAGES: Usage[] = ["gaming", "streaming", "montage", "bureautique", "polyv
 const RESOLUTIONS: Resolution[] = ["1080p", "1440p", "4K"];
 const MARKETS: Market[] = ["suisse"];
 
-const GAMING_PROFILES: { key: GamingProfile; label: string; desc: string; icon: string }[] = [
-  { key: "competitive", label: "Gaming compétitif", desc: "FPS, CS2, Valorant — priorité FPS", icon: "🎯" },
-  { key: "aaa", label: "Gaming AAA", desc: "Cyberpunk, Hogwarts, grands titres", icon: "🏆" },
-  { key: "streaming_gaming", label: "Streaming + Gaming", desc: "Jouer et streamer simultanément", icon: "📡" },
-  { key: "gaming_creation", label: "Gaming + Création", desc: "Gaming + montage, design, 3D", icon: "🎨" },
+const GAMING_PROFILES: { key: GamingProfile; labelKey: string; descKey: string; icon: string }[] = [
+  { key: "competitive", labelKey: "step2.profile.competitive", descKey: "step2.profile.competitive.desc", icon: "🎯" },
+  { key: "aaa", labelKey: "step2.profile.aaa", descKey: "step2.profile.aaa.desc", icon: "🏆" },
+  { key: "streaming_gaming", labelKey: "step2.profile.streaming", descKey: "step2.profile.streaming.desc", icon: "📡" },
+  { key: "gaming_creation", labelKey: "step2.profile.creation", descKey: "step2.profile.creation.desc", icon: "🎨" },
 ];
 
-const FREQUENCIES: { key: Frequency; label: string; desc: string }[] = [
-  { key: "casual", label: "Casual", desc: "Weekends uniquement" },
-  { key: "regular", label: "Régulier", desc: "Quelques soirées / semaine" },
-  { key: "intensive", label: "Intensif", desc: "Daily, plusieurs heures" },
+const FREQUENCIES: { key: Frequency; labelKey: string; descKey: string }[] = [
+  { key: "casual", labelKey: "step2.freq.casual", descKey: "step2.freq.casual.desc" },
+  { key: "regular", labelKey: "step2.freq.regular", descKey: "step2.freq.regular.desc" },
+  { key: "intensive", labelKey: "step2.freq.intensive", descKey: "step2.freq.intensive.desc" },
 ];
 const BUDGET_TICKS = [300, 1000, 1500, 2500, 4000];
 const BUDGET_MAX = 4000;
@@ -338,7 +338,7 @@ export default function ConfiguratorForm({ onResult, onBack }: Props) {
 
                   {/* Résolution cible */}
                   <div>
-                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">Résolution cible</label>
+                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">{t("step2.resolution.label")}</label>
                     <div className="flex gap-2">
                       {RESOLUTIONS.map((r) => (
                         <motion.button key={r} whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setResolution(r)} className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors duration-150 ${resolution === r ? "bg-accent text-white border-accent" : "border-border hover:border-border-hover bg-card"}`}>{r}</motion.button>
@@ -348,7 +348,7 @@ export default function ConfiguratorForm({ onResult, onBack }: Props) {
 
                   {/* Usage principal gaming */}
                   <div>
-                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">Usage principal</label>
+                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">{t("step2.usage.label")}</label>
                     <div className="grid grid-cols-2 gap-2">
                       {GAMING_PROFILES.map((p) => {
                         const sel = gamingProfile === p.key;
@@ -356,8 +356,8 @@ export default function ConfiguratorForm({ onResult, onBack }: Props) {
                           <motion.button key={p.key} whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setGamingProfile(p.key)} className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition-colors duration-150 ${sel ? "bg-accent text-white border-accent" : "border-border hover:border-border-hover bg-card"}`}>
                             <span className="text-lg shrink-0 mt-0.5">{p.icon}</span>
                             <div>
-                              <div className={`text-xs font-semibold leading-tight ${sel ? "text-white" : "text-text"}`}>{p.label}</div>
-                              <div className={`text-[10px] leading-tight mt-0.5 ${sel ? "text-white/70" : "text-text-secondary"}`}>{p.desc}</div>
+                              <div className={`text-xs font-semibold leading-tight ${sel ? "text-white" : "text-text"}`}>{t(p.labelKey)}</div>
+                              <div className={`text-[10px] leading-tight mt-0.5 ${sel ? "text-white/70" : "text-text-secondary"}`}>{t(p.descKey)}</div>
                             </div>
                           </motion.button>
                         );
@@ -367,20 +367,20 @@ export default function ConfiguratorForm({ onResult, onBack }: Props) {
 
                   {/* Jeux principaux */}
                   <div>
-                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">Jeux principaux</label>
-                    <input type="text" placeholder="Ex: Fortnite, Cyberpunk 2077, Valorant..." value={favoriteGames} onChange={(e) => setFavoriteGames(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-border bg-card text-text placeholder:text-text-secondary/50 focus:outline-none focus:border-accent transition-colors duration-150 text-sm" />
+                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">{t("step2.games.label")}</label>
+                    <input type="text" placeholder={t("step2.games.placeholder2")} value={favoriteGames} onChange={(e) => setFavoriteGames(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-border bg-card text-text placeholder:text-text-secondary/50 focus:outline-none focus:border-accent transition-colors duration-150 text-sm" />
                   </div>
 
                   {/* Fréquence d'utilisation */}
                   <div>
-                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">Fréquence d'utilisation</label>
+                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">{t("step2.freq.label")}</label>
                     <div className="flex gap-2">
                       {FREQUENCIES.map((f) => {
                         const sel = frequency === f.key;
                         return (
                           <motion.button key={f.key} whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setFrequency(f.key)} className={`flex-1 py-2.5 px-2 rounded-xl border text-center transition-colors duration-150 ${sel ? "bg-accent text-white border-accent" : "border-border hover:border-border-hover bg-card"}`}>
-                            <div className={`text-xs font-semibold ${sel ? "text-white" : "text-text"}`}>{f.label}</div>
-                            <div className={`text-[10px] mt-0.5 ${sel ? "text-white/70" : "text-text-secondary"}`}>{f.desc}</div>
+                            <div className={`text-xs font-semibold ${sel ? "text-white" : "text-text"}`}>{t(f.labelKey)}</div>
+                            <div className={`text-[10px] mt-0.5 ${sel ? "text-white/70" : "text-text-secondary"}`}>{t(f.descKey)}</div>
                           </motion.button>
                         );
                       })}
@@ -389,20 +389,20 @@ export default function ConfiguratorForm({ onResult, onBack }: Props) {
 
                   {/* Périphériques existants */}
                   <div>
-                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">Périphériques existants</label>
+                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">{t("step2.peripherals.label")}</label>
                     <div className="flex flex-col gap-2">
                       {([
-                        { key: "monitor" as const, label: "J'ai déjà un écran" },
-                        { key: "keyboard_mouse" as const, label: "J'ai déjà un clavier-souris" },
-                        { key: "headset" as const, label: "J'ai déjà un casque" },
-                      ] as { key: keyof ExistingPeripherals; label: string }[]).map(({ key, label }) => {
+                        { key: "monitor" as const, labelKey: "step2.peripherals.monitor" },
+                        { key: "keyboard_mouse" as const, labelKey: "step2.peripherals.keyboard" },
+                        { key: "headset" as const, labelKey: "step2.peripherals.headset" },
+                      ] as { key: keyof ExistingPeripherals; labelKey: string }[]).map(({ key, labelKey }) => {
                         const checked = existingPeripherals[key];
                         return (
                           <button key={key} type="button" onClick={() => setExistingPeripherals((prev) => ({ ...prev, [key]: !prev[key] }))} className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors duration-150 ${checked ? "bg-accent/5 border-accent text-accent" : "border-border hover:border-border-hover bg-card"}`}>
                             <div className={`w-4 h-4 rounded flex items-center justify-center border flex-shrink-0 transition-colors ${checked ? "bg-accent border-accent" : "border-border"}`}>
                               {checked && <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                             </div>
-                            <span className="text-sm font-medium text-text">{label}</span>
+                            <span className="text-sm font-medium text-text">{t(labelKey)}</span>
                           </button>
                         );
                       })}
