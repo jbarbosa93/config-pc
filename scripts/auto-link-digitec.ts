@@ -6,10 +6,9 @@
  * Digitec product IDs by searching the Digitec website and verifying the
  * match via name similarity (Jaccard, word-level).
  *
- * NOTE: searchDigitecProductId() is blocked on residential/dev IPs (Akamai
- * bot detection returns 403). Run this script from GitHub Actions or an Azure
- * VM where the search page is accessible. If every search returns null you are
- * likely hitting the bot wall.
+ * Uses searchDigitecProductId() (HTML scraping) which works from GitHub Actions
+ * (Azure IPs bypass Akamai). Digitec exposes no GraphQL search — only
+ * productDetailsLegacy by ID, used in the second step to verify the match.
  *
  * Usage:
  *   npx tsx scripts/auto-link-digitec.ts [options]
@@ -190,9 +189,8 @@ async function main() {
     if (digitecId === null) {
       console.log(' ⚠️  no ID');
       console.warn(
-        '  ↳ searchDigitecProductId returned null. If this keeps happening, ' +
-          'the search page may be blocked by Akamai bot detection on this IP. ' +
-          'Run from GitHub Actions or an Azure VM instead.'
+        '  ↳ searchDigitecProductId returned null. ' +
+          'Run from GitHub Actions (Azure IPs) — Akamai blocks residential IPs on the search page.'
       );
       unmatched.push({ component: comp, reason: 'no_id_from_search' });
       skippedCount++;

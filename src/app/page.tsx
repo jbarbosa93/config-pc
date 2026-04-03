@@ -198,27 +198,28 @@ function Hero({ onStart }: { onStart: () => void }) {
                 </motion.div>
 
                 {/* Manual Option */}
-                <motion.div
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="flex flex-col gap-3 p-5 rounded-2xl cursor-pointer"
-                  style={{ background: 'white', border: '2px solid #4f8ef7' }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">🔧</span>
-                    <span className="font-bold text-[#0A0A0A] text-lg">Config manuelle</span>
-                  </div>
-                  <p className="text-sm text-text-secondary">
-                    Tu choisis chaque composant étape par étape — contrôle total avec vérification de compatibilité.
-                  </p>
-                  <Link
-                    href="/configurateur/manuel"
-                    className="mt-auto w-full py-2.5 rounded-xl text-sm font-semibold text-center transition-opacity hover:opacity-90 block"
-                    style={{ background: 'transparent', color: '#4f8ef7', border: '2px solid #4f8ef7' }}
+                <Link href="/configurateur/manuel" className="block">
+                  <motion.div
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex flex-col gap-3 p-5 rounded-2xl cursor-pointer h-full"
+                    style={{ background: 'white', border: '2px solid #4f8ef7' }}
                   >
-                    Commencer →
-                  </Link>
-                </motion.div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">🔧</span>
+                      <span className="font-bold text-[#0A0A0A] text-lg">Config manuelle</span>
+                    </div>
+                    <p className="text-sm text-text-secondary">
+                      Tu choisis chaque composant étape par étape — contrôle total avec vérification de compatibilité.
+                    </p>
+                    <div
+                      className="mt-auto w-full py-2.5 rounded-xl text-sm font-semibold text-center"
+                      style={{ background: 'transparent', color: '#4f8ef7', border: '2px solid #4f8ef7' }}
+                    >
+                      Commencer
+                    </div>
+                  </motion.div>
+                </Link>
               </div>
             </motion.div>
           )}
@@ -308,7 +309,7 @@ export default function Home() {
           </motion.div>
         ) : started ? (
           <motion.div key="configurator" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.35 }} className="flex-1 flex flex-col items-center px-6 py-16">
-            <ConfiguratorForm onResult={handleResult} />
+            <ConfiguratorForm onResult={handleResult} onBack={() => setStarted(false)} />
           </motion.div>
         ) : (
           <motion.div key="hero" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex flex-col">

@@ -36,11 +36,12 @@ const CATEGORIES = [
   { key: "CPU", label: "Processeurs", icon: "🧠" },
   { key: "GPU", label: "Cartes graphiques", icon: "🎮" },
   { key: "RAM", label: "Mémoire RAM", icon: "📊" },
-  { key: "Stockage", label: "Stockage", icon: "💾" },
-  { key: "Carte mère", label: "Cartes mères", icon: "🔧" },
+  { key: "Stockage", label: "Stockage", icon: "💿" },
+  { key: "Carte mère", label: "Cartes mères", icon: "🖥️" },
   { key: "Alimentation", label: "Alimentations", icon: "⚡" },
-  { key: "Boîtier", label: "Boîtiers", icon: "🖥️" },
+  { key: "Boîtier", label: "Boîtiers", icon: "📦" },
   { key: "Refroidissement", label: "Refroidissement", icon: "❄️" },
+  { key: "Moniteur", label: "Moniteurs", icon: "🖥️" },
   { key: "Clavier", label: "Claviers", icon: "⌨️" },
   { key: "Souris", label: "Souris", icon: "🖱️" },
   { key: "Casque", label: "Casques", icon: "🎧" },
@@ -55,6 +56,7 @@ const TYPE_COLORS: Record<string, string> = {
   Alimentation: "bg-yellow-50 text-yellow-700 border-yellow-200",
   "Boîtier": "bg-gray-50 text-gray-700 border-gray-200",
   Refroidissement: "bg-cyan-50 text-cyan-700 border-cyan-200",
+  Moniteur: "bg-sky-50 text-sky-700 border-sky-200",
   Clavier: "bg-indigo-50 text-indigo-700 border-indigo-200",
   Souris: "bg-pink-50 text-pink-700 border-pink-200",
   Casque: "bg-violet-50 text-violet-700 border-violet-200",
@@ -726,20 +728,35 @@ export default function CataloguePage() {
                   className="absolute top-full left-0 mt-2 bg-white rounded-2xl shadow-xl border border-border z-50 p-4 w-72"
                   style={{ transformOrigin: "top" }}
                 >
-                  <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">Fourchette de prix</p>
-                  <div className="flex justify-between text-sm font-bold mb-2" style={{ color: "#4f8ef7" }}>
-                    <span>CHF {minPrice}</span>
-                    <span>CHF {maxPrice}</span>
-                  </div>
-                  <div className="space-y-2">
-                    <input type="range" min={0} max={priceCeiling} step={50} value={minPrice}
-                      onChange={e => setMinPrice(Math.min(Number(e.target.value), maxPrice - 50))}
-                      className="w-full accent-[#4f8ef7]"
-                    />
-                    <input type="range" min={0} max={priceCeiling} step={50} value={maxPrice}
-                      onChange={e => setMaxPrice(Math.max(Number(e.target.value), minPrice + 50))}
-                      className="w-full accent-[#4f8ef7]"
-                    />
+                  <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">Fourchette de prix (CHF)</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <label className="text-[10px] text-text-secondary mb-1 block">Min</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={maxPrice - 1}
+                        step={10}
+                        value={minPrice || ""}
+                        placeholder="0"
+                        onChange={e => setMinPrice(Math.min(Number(e.target.value) || 0, maxPrice - 1))}
+                        className="w-full px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:border-[#4f8ef7] transition-colors"
+                      />
+                    </div>
+                    <span className="text-text-secondary text-sm mt-4">—</span>
+                    <div className="flex-1">
+                      <label className="text-[10px] text-text-secondary mb-1 block">Max</label>
+                      <input
+                        type="number"
+                        min={minPrice + 1}
+                        max={priceCeiling}
+                        step={10}
+                        value={maxPrice >= priceCeiling ? "" : maxPrice}
+                        placeholder={String(priceCeiling)}
+                        onChange={e => setMaxPrice(e.target.value === "" ? priceCeiling : Math.max(Number(e.target.value) || priceCeiling, minPrice + 1))}
+                        className="w-full px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:border-[#4f8ef7] transition-colors"
+                      />
+                    </div>
                   </div>
                   {(minPrice > 0 || maxPrice < priceCeiling) && (
                     <button onClick={() => { setMinPrice(0); setMaxPrice(priceCeiling); }}

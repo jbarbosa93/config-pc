@@ -128,9 +128,9 @@ function LoadingOverlay({ progress, messageIndex, t }: {
 
 /* ── Main Form ── */
 
-interface Props { onResult: (config: PCConfig) => void; }
+interface Props { onResult: (config: PCConfig) => void; onBack?: () => void; }
 
-export default function ConfiguratorForm({ onResult }: Props) {
+export default function ConfiguratorForm({ onResult, onBack }: Props) {
   const { t } = useLanguage();
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -418,7 +418,13 @@ export default function ConfiguratorForm({ onResult }: Props) {
         {error && <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="mt-6 p-4 border border-border rounded-xl text-sm text-text-secondary">{error}</motion.div>}
 
         <div className="flex justify-between mt-12">
-          <motion.button whileHover={{ x: -3 }} onClick={prevStep} disabled={step === 0} className="text-sm text-text-secondary hover:text-text transition-colors duration-150 disabled:opacity-0">{t("btn.back")}</motion.button>
+          <motion.button
+            whileHover={{ x: -3 }}
+            onClick={step === 0 ? onBack : prevStep}
+            className={`text-sm text-text-secondary hover:text-text transition-colors duration-150 ${step === 0 && !onBack ? "opacity-0 pointer-events-none" : ""}`}
+          >
+            {t("btn.back")}
+          </motion.button>
           {step < 2 ? (
             <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={nextStep} disabled={!canNext} className="px-7 py-2.5 rounded-full bg-accent text-white text-sm font-medium transition-opacity disabled:opacity-20 disabled:cursor-not-allowed">{t("btn.next")}</motion.button>
           ) : (

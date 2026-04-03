@@ -1288,7 +1288,13 @@ function PeripheralCard({ item, color, bg, onInfo }: { item: DBComponent & { com
     <div className="rounded-xl border p-3 transition-all duration-150 hover:border-[#CCC] hover:shadow-sm group flex flex-col" style={{ borderColor: "#E5E5E5", background: bg }}>
       {/* Image */}
       <div className="w-full h-24 rounded-lg bg-white/60 border border-white/80 flex items-center justify-center mb-2.5 overflow-hidden">
-        <ComponentSVG type={item.type} size={56} />
+        <ComponentImage
+          url={item.component_images?.find((i: DBImage) => i.is_primary)?.url || item.component_images?.[0]?.url}
+          alt={item.name}
+          type={item.type}
+          size={56}
+          className="w-full h-full object-contain p-2"
+        />
       </div>
 
       {/* Info */}
