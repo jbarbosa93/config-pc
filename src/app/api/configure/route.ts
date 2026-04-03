@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
-import type { ConfigRequest } from "@/lib/types";
+import type { ConfigRequest, Alternative, AlternativeTier } from "@/lib/types";
 import { getServiceSupabase } from "@/lib/supabase";
 import type { DBComponent } from "@/lib/db-types";
 
@@ -72,6 +72,19 @@ RÈGLES POUR manufacturer_url :
 - Ex: "https://www.amd.com/fr/products/processors/desktops/ryzen/7000-series/amd-ryzen-5-7600.html"
 - Si tu ne connais pas l'URL exacte, donne la page catégorie du fabricant`;
 
+const GAMING_PROFILE_LABELS: Record<string, string> = {
+  competitive: "Gaming compétitif (FPS/CS2/Valorant — priorité aux FPS élevés, latence minimale)",
+  aaa: "Gaming AAA (Cyberpunk, The Witcher, Hogwarts — qualité visuelle max)",
+  streaming_gaming: "Streaming + Gaming simultané (CPU performant pour encodage OBS/Streamlabs)",
+  gaming_creation: "Gaming + Création (Gaming + montage vidéo, design, rendu 3D)",
+};
+
+const FREQUENCY_LABELS: Record<string, string> = {
+  casual: "Casual (weekends uniquement)",
+  regular: "Régulier (plusieurs soirées par semaine)",
+  intensive: "Intensif (daily, plusieurs heures par jour)",
+};
+
 function buildUserPrompt(config: ConfigRequest): string {
   const usageLabels: Record<string, string> = {
     gaming: "Gaming",
@@ -80,21 +93,26 @@ function buildUserPrompt(config: ConfigRequest): string {
     bureautique: "Bureautique / Productivité",
     polyvalent: "Polyvalent (un peu de tout)",
   };
-  const marketLabels: Record<string, string> = {
-    france: "France uniquement",
-    suisse: "Suisse uniquement",
-    both: "France et Suisse",
-  };
+
+  const gamingDetail = config.gamingProfile ? `\n- Profil gaming : ${GAMING_PROFILE_LABELS[config.gamingProfile] || config.gamingProfile}` : "";
+  const freqDetail = config.frequency ? `\n- Fréquence d'utilisation : ${FREQUENCY_LABELS[config.frequency] || config.frequency}` : "";
+
+  const peripherals: string[] = [];
+  if (config.existingPeripherals?.monitor) peripherals.push("écran");
+  if (config.existingPeripherals?.keyboard_mouse) peripherals.push("clavier-souris");
+  if (config.existingPeripherals?.headset) peripherals.push("casque");
+  const peripheralDetail = peripherals.length > 0
+    ? `\n- Périphériques déjà possédés (ne pas inclure dans le budget) : ${peripherals.join(", ")}`
+    : "";
 
   return `Configure un PC optimisé avec ces critères :
-- Usage principal : ${usageLabels[config.usage]}
-- Budget : ${config.budget} CHF
+- Usage principal : ${usageLabels[config.usage]}${gamingDetail}
+- Budget : ${config.budget} CHF${peripheralDetail}
 - Résolution visée : ${config.resolution}
-- Jeux / logiciels favoris : ${config.favoriteGames || "Non spécifié"}
-- Niveau technique : ${config.techLevel}
+- Jeux / logiciels favoris : ${config.favoriteGames || "Non spécifié"}${freqDetail}
 - Marché : Suisse (CHF uniquement)
 
-IMPORTANT : Tous les prix doivent être en CHF (marché suisse, Digitec/Galaxus/Brack). Mets price_fr à 0. Reste dans le budget de ${config.budget} CHF. Inclus tous les composants essentiels (CPU, GPU, RAM, stockage, carte mère, alimentation, boîtier, refroidissement). Génère un nom de config accrocheur et évocateur. Inclus les specs techniques, full_description, image_url et manufacturer_url pour chaque composant.`;
+IMPORTANT : Tous les prix doivent être en CHF (marché suisse, Digitec/Galaxus/Brack). Mets price_fr à 0. Reste dans le budget de ${config.budget} CHF${peripherals.length > 0 ? " en excluant les périphériques déjà possédés" : ""}. Inclus tous les composants essentiels (CPU, GPU, RAM, stockage, carte mère, alimentation, boîtier, refroidissement). Génère un nom de config accrocheur et évocateur. Inclus les specs techniques, full_description, image_url et manufacturer_url pour chaque composant.`;
 }
 
 /** Fetch available components from DB to give Claude real data */
@@ -210,6 +228,52 @@ export async function POST(request: NextRequest) {
           if (match.release_year) comp.specs["Année"] = String(match.release_year);
         }
       }
+    }
+
+    // Pre-build alternatives from DB for each component type so the UI can show
+    // them instantly without a second DB round-trip.
+    if (dbComponents.length > 0 && config.components) {
+      const preloadedAlternatives: Record<string, Alternative[]> = {};
+      const TIER_ORDER: AlternativeTier[] = ["budget", "equilibre", "performance", "overkill"];
+
+      for (const comp of config.components) {
+        const sameType = dbComponents.filter(
+          (db) => db.type === comp.type && db.name.toLowerCase() !== comp.name.toLowerCase()
+        ).sort((a, b) => a.price_ch - b.price_ch);
+
+        if (sameType.length < 2) continue;
+
+        const currentPrice: number = comp.price_ch || 0;
+        const below = sameType.filter((c) => c.price_ch <= currentPrice);
+        const above = sameType.filter((c) => c.price_ch > currentPrice);
+
+        const picks: (DBComponent | null)[] = [
+          below[0] ?? null,
+          below.length >= 2 ? below[Math.floor(below.length / 2)] : (below[0] ?? above[0] ?? null),
+          above[0] ?? (below[below.length - 1] ?? null),
+          above.length >= 2 ? above[above.length - 1] : (above[0] ?? null),
+        ];
+
+        const alts: Alternative[] = TIER_ORDER.reduce<Alternative[]>((acc, tier, i) => {
+          const c = picks[i];
+          if (!c) return acc;
+          acc.push({
+            tier,
+            name: c.name,
+            reason: "",
+            price_fr: 0,
+            price_ch: c.price_ch,
+            search_terms: ([c.name, c.brand] as string[]).filter(Boolean),
+            compatible: true,
+            compatibility_warning: "",
+          });
+          return acc;
+        }, []);
+
+        if (alts.length > 0) preloadedAlternatives[comp.type] = alts;
+      }
+
+      config.preloadedAlternatives = preloadedAlternatives;
     }
 
     return NextResponse.json(config);

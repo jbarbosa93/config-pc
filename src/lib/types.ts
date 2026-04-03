@@ -2,13 +2,23 @@ export type Usage = "gaming" | "streaming" | "montage" | "bureautique" | "polyva
 export type Resolution = "1080p" | "1440p" | "4K";
 export type TechLevel = "debutant" | "intermediaire" | "expert";
 export type Market = "france" | "suisse" | "both";
+export type GamingProfile = "competitive" | "aaa" | "streaming_gaming" | "gaming_creation";
+export type Frequency = "casual" | "regular" | "intensive";
+
+export interface ExistingPeripherals {
+  monitor: boolean;
+  keyboard_mouse: boolean;
+  headset: boolean;
+}
 
 export interface ConfigRequest {
   usage: Usage;
   budget: number;
   resolution: Resolution;
   favoriteGames: string;
-  techLevel: TechLevel;
+  gamingProfile?: GamingProfile;
+  frequency?: Frequency;
+  existingPeripherals?: ExistingPeripherals;
   market: Market;
 }
 
@@ -40,6 +50,8 @@ export interface PCConfig {
   compatibility_notes: string;
   upgrade_path: string;
   alternatives: Component[];
+  /** Pre-computed DB alternatives keyed by component type — used to avoid loading spinner in AlternativesModal */
+  preloadedAlternatives?: Record<string, Alternative[]>;
   market?: Market;
 }
 

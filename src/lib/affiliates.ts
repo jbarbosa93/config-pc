@@ -44,14 +44,6 @@ export function buildToppreiseUrl(name: string): string {
   return `https://www.toppreise.ch/chercher?q=${enc(name)}`;
 }
 
-/** Simulated CHF prices for display (sorted ascending) */
-export function getSimulatedPrices(baseCHF: number): { storeId: string; label: string; price: number }[] {
-  return STORES.map((store, i) => {
-    const variance = ((baseCHF * (i + 7)) % 25) - 8;
-    return { storeId: store.id, label: store.label, price: Math.round(baseCHF + variance) };
-  }).sort((a, b) => a.price - b.price);
-}
-
 /** All store ids */
 export function getAllStoreIds(): string[] {
   return STORES.map((s) => s.id);

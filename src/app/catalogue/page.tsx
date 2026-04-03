@@ -26,6 +26,7 @@ interface Component {
   form_factor: string | null;
   tdp: number | null;
   popularity_score: number;
+  release_year: number | null;
   component_images: ComponentImage[];
 }
 
@@ -201,9 +202,9 @@ function ProductDetail({ component, onClose }: { component: Component; onClose: 
             <span className={`text-xs font-medium px-2.5 py-1 rounded-full border shrink-0 ${colorClass}`}>
               {component.type}
             </span>
-            {component.popularity_score > 0 && (
+            {component.release_year && (
               <span className="text-xs text-text-secondary bg-gray-100 px-2 py-1 rounded-full shrink-0">
-                ★ {component.popularity_score} avis
+                {component.release_year}
               </span>
             )}
           </div>
@@ -350,8 +351,8 @@ function ComponentCard({ component, onClick }: { component: Component; onClick: 
           />
         </div>
         <span className={`absolute top-3 left-3 text-xs font-medium px-2.5 py-1 rounded-full border ${colorClass}`}>{component.type}</span>
-        {component.popularity_score > 0 && (
-          <span className="absolute top-3 right-3 text-xs text-text-secondary bg-white/80 backdrop-blur px-2 py-1 rounded-full">★ {component.popularity_score}</span>
+        {component.release_year && (
+          <span className="absolute top-3 right-3 text-xs text-text-secondary bg-white/80 backdrop-blur px-2 py-1 rounded-full">{component.release_year}</span>
         )}
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">

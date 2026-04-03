@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useLanguage } from "@/lib/i18n";
-import type { Usage, Resolution, TechLevel, Market, ConfigRequest, PCConfig } from "@/lib/types";
+import type { Usage, Resolution, Market, ConfigRequest, PCConfig, GamingProfile, Frequency, ExistingPeripherals } from "@/lib/types";
 
 function Icon({ d }: { d: string }) {
   return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
@@ -29,8 +29,20 @@ const USAGE_PATHS: Record<Usage, string> = {
 
 const USAGES: Usage[] = ["gaming", "streaming", "montage", "bureautique", "polyvalent"];
 const RESOLUTIONS: Resolution[] = ["1080p", "1440p", "4K"];
-const TECH: TechLevel[] = ["debutant", "intermediaire", "expert"];
 const MARKETS: Market[] = ["suisse"];
+
+const GAMING_PROFILES: { key: GamingProfile; label: string; desc: string; icon: string }[] = [
+  { key: "competitive", label: "Gaming compétitif", desc: "FPS, CS2, Valorant — priorité FPS", icon: "🎯" },
+  { key: "aaa", label: "Gaming AAA", desc: "Cyberpunk, Hogwarts, grands titres", icon: "🏆" },
+  { key: "streaming_gaming", label: "Streaming + Gaming", desc: "Jouer et streamer simultanément", icon: "📡" },
+  { key: "gaming_creation", label: "Gaming + Création", desc: "Gaming + montage, design, 3D", icon: "🎨" },
+];
+
+const FREQUENCIES: { key: Frequency; label: string; desc: string }[] = [
+  { key: "casual", label: "Casual", desc: "Weekends uniquement" },
+  { key: "regular", label: "Régulier", desc: "Quelques soirées / semaine" },
+  { key: "intensive", label: "Intensif", desc: "Daily, plusieurs heures" },
+];
 const BUDGET_TICKS = [300, 1000, 1500, 2500, 4000];
 const BUDGET_MAX = 4000;
 const BUDGET_UNLIMITED = 999999;
@@ -131,7 +143,9 @@ export default function ConfiguratorForm({ onResult }: Props) {
   const [budget, setBudget] = useState(1200);
   const [resolution, setResolution] = useState<Resolution>("1080p");
   const [favoriteGames, setFavoriteGames] = useState("");
-  const [techLevel, setTechLevel] = useState<TechLevel>("intermediaire");
+  const [gamingProfile, setGamingProfile] = useState<GamingProfile | null>(null);
+  const [frequency, setFrequency] = useState<Frequency>("regular");
+  const [existingPeripherals, setExistingPeripherals] = useState<ExistingPeripherals>({ monitor: false, keyboard_mouse: false, headset: false });
   const [market] = useState<Market>("suisse");
 
   const phase1Ref = useRef<NodeJS.Timeout | null>(null);
@@ -196,7 +210,7 @@ export default function ConfiguratorForm({ onResult }: Props) {
       const res = await fetch("/api/configure", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usage, budget: budget >= BUDGET_MAX ? BUDGET_UNLIMITED : budget, resolution, favoriteGames, techLevel, market } satisfies ConfigRequest),
+        body: JSON.stringify({ usage, budget: budget >= BUDGET_MAX ? BUDGET_UNLIMITED : budget, resolution, favoriteGames, gamingProfile: gamingProfile ?? undefined, frequency, existingPeripherals, market } satisfies ConfigRequest),
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -241,7 +255,7 @@ export default function ConfiguratorForm({ onResult }: Props) {
           </div>
         </div>
 
-        <div className="min-h-[440px] relative overflow-hidden">
+        <div className="min-h-[480px] relative overflow-hidden">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div key={step} custom={direction} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ type: "spring", stiffness: 300, damping: 30 }}>
               {step === 0 && (
@@ -316,18 +330,83 @@ export default function ConfiguratorForm({ onResult }: Props) {
               )}
 
               {step === 2 && (
-                <div>
-                  <h2 className="text-2xl font-bold mb-1">{t("step2.title")}</h2>
-                  <p className="text-text-secondary text-sm mb-8">{t("step2.desc")}</p>
-                  <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">{t("step2.resolution")}</label>
-                  <div className="flex gap-2 mb-8">
-                    {RESOLUTIONS.map((r) => <motion.button key={r} whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setResolution(r)} className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors duration-150 ${resolution === r ? "bg-accent text-white border-accent" : "border-border hover:border-border-hover bg-card"}`}>{r}</motion.button>)}
+                <div className="space-y-7">
+                  <div>
+                    <h2 className="text-2xl font-bold mb-1">{t("step2.title")}</h2>
+                    <p className="text-text-secondary text-sm">{t("step2.desc")}</p>
                   </div>
-                  <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">{t("step2.games")}</label>
-                  <input type="text" placeholder={t("step2.games.placeholder")} value={favoriteGames} onChange={(e) => setFavoriteGames(e.target.value)} className="w-full mb-8 px-4 py-3 rounded-xl border border-border bg-card text-text placeholder:text-text-secondary/50 focus:outline-none focus:border-accent transition-colors duration-150" />
-                  <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">{t("step2.level")}</label>
-                  <div className="flex gap-2">
-                    {TECH.map((v) => <motion.button key={v} whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setTechLevel(v)} className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors duration-150 ${techLevel === v ? "bg-accent text-white border-accent" : "border-border hover:border-border-hover bg-card"}`}>{t(`level.${v}`)}</motion.button>)}
+
+                  {/* Résolution cible */}
+                  <div>
+                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">Résolution cible</label>
+                    <div className="flex gap-2">
+                      {RESOLUTIONS.map((r) => (
+                        <motion.button key={r} whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setResolution(r)} className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-colors duration-150 ${resolution === r ? "bg-accent text-white border-accent" : "border-border hover:border-border-hover bg-card"}`}>{r}</motion.button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Usage principal gaming */}
+                  <div>
+                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">Usage principal</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {GAMING_PROFILES.map((p) => {
+                        const sel = gamingProfile === p.key;
+                        return (
+                          <motion.button key={p.key} whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setGamingProfile(p.key)} className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition-colors duration-150 ${sel ? "bg-accent text-white border-accent" : "border-border hover:border-border-hover bg-card"}`}>
+                            <span className="text-lg shrink-0 mt-0.5">{p.icon}</span>
+                            <div>
+                              <div className={`text-xs font-semibold leading-tight ${sel ? "text-white" : "text-text"}`}>{p.label}</div>
+                              <div className={`text-[10px] leading-tight mt-0.5 ${sel ? "text-white/70" : "text-text-secondary"}`}>{p.desc}</div>
+                            </div>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Jeux principaux */}
+                  <div>
+                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">Jeux principaux</label>
+                    <input type="text" placeholder="Ex: Fortnite, Cyberpunk 2077, Valorant..." value={favoriteGames} onChange={(e) => setFavoriteGames(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-border bg-card text-text placeholder:text-text-secondary/50 focus:outline-none focus:border-accent transition-colors duration-150 text-sm" />
+                  </div>
+
+                  {/* Fréquence d'utilisation */}
+                  <div>
+                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">Fréquence d'utilisation</label>
+                    <div className="flex gap-2">
+                      {FREQUENCIES.map((f) => {
+                        const sel = frequency === f.key;
+                        return (
+                          <motion.button key={f.key} whileHover={{ y: -1 }} whileTap={{ scale: 0.97 }} onClick={() => setFrequency(f.key)} className={`flex-1 py-2.5 px-2 rounded-xl border text-center transition-colors duration-150 ${sel ? "bg-accent text-white border-accent" : "border-border hover:border-border-hover bg-card"}`}>
+                            <div className={`text-xs font-semibold ${sel ? "text-white" : "text-text"}`}>{f.label}</div>
+                            <div className={`text-[10px] mt-0.5 ${sel ? "text-white/70" : "text-text-secondary"}`}>{f.desc}</div>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Périphériques existants */}
+                  <div>
+                    <label className="block text-xs text-text-secondary uppercase tracking-wider mb-3">Périphériques existants</label>
+                    <div className="flex flex-col gap-2">
+                      {([
+                        { key: "monitor" as const, label: "J'ai déjà un écran" },
+                        { key: "keyboard_mouse" as const, label: "J'ai déjà un clavier-souris" },
+                        { key: "headset" as const, label: "J'ai déjà un casque" },
+                      ] as { key: keyof ExistingPeripherals; label: string }[]).map(({ key, label }) => {
+                        const checked = existingPeripherals[key];
+                        return (
+                          <button key={key} type="button" onClick={() => setExistingPeripherals((prev) => ({ ...prev, [key]: !prev[key] }))} className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors duration-150 ${checked ? "bg-accent/5 border-accent text-accent" : "border-border hover:border-border-hover bg-card"}`}>
+                            <div className={`w-4 h-4 rounded flex items-center justify-center border flex-shrink-0 transition-colors ${checked ? "bg-accent border-accent" : "border-border"}`}>
+                              {checked && <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </div>
+                            <span className="text-sm font-medium text-text">{label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}

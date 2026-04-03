@@ -7,7 +7,7 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import { useCart } from "@/lib/cart";
 import { ComponentImage } from "@/components/ComponentSVG";
-import { buildSearchUrl, getSimulatedPrices } from "@/lib/affiliates";
+import { buildSearchUrl } from "@/lib/affiliates";
 import type { Component } from "@/lib/types";
 import {
   checkCPUMotherboard,
@@ -304,10 +304,13 @@ function DBInfoModal({ comp, onClose }: { comp: DBCompWithImages; onClose: () =>
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const prices = getSimulatedPrices(comp.price_ch).map(sim => ({
-    ...sim,
-    label: STORE_LABELS_MANUAL[sim.storeId] || sim.label,
-  }));
+  // Only link to stores — no simulated prices
+  const STORES_MANUAL = [
+    { storeId: "digitec", label: STORE_LABELS_MANUAL["digitec"] || "Digitec" },
+    { storeId: "galaxus", label: STORE_LABELS_MANUAL["galaxus"] || "Galaxus" },
+    { storeId: "brack", label: STORE_LABELS_MANUAL["brack"] || "Brack.ch" },
+    { storeId: "interdiscount", label: STORE_LABELS_MANUAL["interdiscount"] || "Interdiscount" },
+  ];
 
   const specs = comp.specs ? Object.entries(comp.specs).slice(0, 12) : [];
 
@@ -385,11 +388,11 @@ function DBInfoModal({ comp, onClose }: { comp: DBCompWithImages; onClose: () =>
             </div>
           )}
 
-          {/* Store prices */}
+          {/* Store links */}
           <div className="px-6 py-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-[#888] mb-3">Acheter en Suisse</p>
             <div className="flex flex-col gap-2">
-              {prices.map((p, idx) => (
+              {STORES_MANUAL.map((p, idx) => (
                 <a
                   key={p.storeId}
                   href={buildSearchUrl(p.storeId, comp.name)}
@@ -403,8 +406,7 @@ function DBInfoModal({ comp, onClose }: { comp: DBCompWithImages; onClose: () =>
                 >
                   <span className="text-sm font-semibold text-[#0A0A0A]">{p.label}</span>
                   <div className="flex items-center gap-2">
-                    {idx === 0 && <span className="text-[10px] px-2 py-0.5 rounded-full font-bold text-green-700 bg-green-100">↓ moins cher</span>}
-                    <span className="text-sm font-bold" style={{ color: '#4f8ef7' }}>CHF {p.price.toFixed(0)}</span>
+                    <span className="text-xs text-[#4f8ef7]">Rechercher →</span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4f8ef7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
                     </svg>

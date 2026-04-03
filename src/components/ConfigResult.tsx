@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { useLanguage } from "@/lib/i18n";
 import type { PCConfig, Component, Alternative } from "@/lib/types";
-import { buildSearchUrl, getSimulatedPrices, buildToppreiseUrl } from "@/lib/affiliates";
+import { buildSearchUrl, buildToppreiseUrl } from "@/lib/affiliates";
 import { jsPDF } from "jspdf";
 import { useCart } from "@/lib/cart";
 import { ComponentSVG as SharedComponentSVG, ComponentImage } from "@/components/ComponentSVG";
@@ -342,9 +342,8 @@ function AnimatedPrice({ value, suffix }: { value: number; suffix: string }) {
 
 function MerchantTable({ component, t }: { component: Component; t: (k: string) => string }) {
   type MerchantPrice = { storeId: string; label: string; price: number; isReal: boolean };
-  const [prices, setPrices] = useState<MerchantPrice[]>(() =>
-    getSimulatedPrices(component.price_ch).map((p) => ({ ...p, isReal: false }))
-  );
+  const [prices, setPrices] = useState<MerchantPrice[]>([]);
+  const [loadingPrices, setLoadingPrices] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -353,18 +352,35 @@ function MerchantTable({ component, t }: { component: Component; t: (k: string) 
       .then((data) => {
         if (cancelled) return;
         const dbPrices: DBPrice[] = data?.component_prices || [];
-        if (dbPrices.length > 0) {
-          const real: MerchantPrice[] = dbPrices
-            .sort((a, b) => a.price - b.price)
-            .map((p) => ({ storeId: p.site, label: STORE_LABELS[p.site] || p.site, price: p.price, isReal: true }));
-          setPrices(real);
-        }
+        const real: MerchantPrice[] = dbPrices
+          .filter((p) => p.price > 0)
+          .sort((a, b) => a.price - b.price)
+          .map((p) => ({ storeId: p.site, label: STORE_LABELS[p.site] || p.site, price: p.price, isReal: true }));
+        if (!cancelled) setPrices(real);
       })
-      .catch(() => {/* keep simulated */});
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoadingPrices(false); });
     return () => { cancelled = true; };
   }, [component.name]);
 
   const best = prices[0];
+
+  if (loadingPrices) {
+    return (
+      <div className="mt-3 rounded-lg border border-border bg-bg p-3 flex items-center gap-2 text-xs text-text-secondary">
+        <div className="w-3 h-3 rounded-full border border-text-secondary border-t-transparent animate-spin" />
+        Chargement des prix…
+      </div>
+    );
+  }
+
+  if (prices.length === 0) {
+    return (
+      <div className="mt-3 rounded-lg border border-border bg-bg p-3 text-xs text-text-secondary">
+        Prix non disponible — <a href={buildSearchUrl("digitec", component.name)} target="_blank" rel="noopener noreferrer" className="underline hover:text-text">chercher sur Digitec</a>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-3 rounded-lg border border-border bg-bg overflow-hidden">
@@ -378,10 +394,10 @@ function MerchantTable({ component, t }: { component: Component; t: (k: string) 
         >
           <span className="flex items-center gap-1.5">
             {best.label}
-            {best.isReal && <span className="text-[10px] px-1 py-0.5 rounded bg-green-200 text-green-800 font-medium">Prix réel</span>}
+            {best.isReal && best.price > 0 && <span className="text-[10px] px-1 py-0.5 rounded bg-green-200 text-green-800 font-medium">Prix réel</span>}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="tabular-nums font-bold text-sm">{best.price} CHF</span>
+            {best.price > 0 && <span className="tabular-nums font-bold text-sm">{best.price} CHF</span>}
             <span>Acheter →</span>
           </span>
         </a>
@@ -390,16 +406,11 @@ function MerchantTable({ component, t }: { component: Component; t: (k: string) 
         <a key={p.storeId} href={buildSearchUrl(p.storeId, component.name)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between px-3 py-2 text-xs border-b border-border last:border-b-0 hover:bg-card transition-colors duration-150">
           <span className="font-medium text-text-secondary">{p.label}</span>
           <span className="flex items-center gap-2">
-            <span className={`tabular-nums ${p.isReal ? "text-text font-semibold" : "text-text-secondary"}`}>{p.price} CHF</span>
+            {p.price > 0 && <span className={`tabular-nums ${p.isReal ? "text-text font-semibold" : "text-text-secondary"}`}>{p.price} CHF</span>}
             <span className="text-[10px] text-text-secondary">{t("compare.see")} &rarr;</span>
           </span>
         </a>
       ))}
-      {!prices[0]?.isReal && (
-        <p className="px-3 py-1.5 text-[10px] text-text-secondary italic bg-card/30">
-          {t("compare.note.dev")}
-        </p>
-      )}
     </div>
   );
 }
@@ -419,11 +430,12 @@ interface DBComponent {
   component_prices: DBPrice[];
 }
 
-function ImageCarousel({ name, type, tall = false }: { images: DBImage[]; name: string; type: string; tall?: boolean }) {
+function ImageCarousel({ images, name, type, tall = false }: { images: DBImage[]; name: string; type: string; tall?: boolean }) {
   const h = tall ? "h-[300px]" : "h-[220px]";
+  const primaryUrl = images?.find((i) => i.is_primary)?.url ?? images?.[0]?.url;
   return (
     <div className={`w-full ${h} rounded-xl bg-[#F8F8F8] border flex items-center justify-center`} style={{ borderColor: "#E5E5E5" }}>
-      <ComponentSVG type={type} size={tall ? 160 : 110} />
+      <ComponentImage url={primaryUrl} alt={name} type={type} size={tall ? 160 : 110} className="w-full h-full object-contain p-4" />
     </div>
   );
 }
@@ -518,25 +530,20 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
 
   const dbPrices: DBPrice[] = dbData?.component_prices || [];
   const hasPricesInDB = dbPrices.length > 0;
-  const simulatedPrices = getSimulatedPrices(displayPrice);
+  // Real DB prices only — no simulated data
+  const allMerchantPrices = dbPrices
+    .filter((p) => p.price > 0)
+    .sort((a, b) => a.price - b.price)
+    .map((p) => ({
+      storeId: p.site,
+      label: STORE_LABELS[p.site] || p.site,
+      price: p.price,
+      isReal: true,
+      inStock: p.in_stock,
+    }));
 
-  // Always build search URLs — never use stale product IDs from DB
-  const bestStoreId = hasPricesInDB
-    ? (dbPrices.sort((a, b) => a.price - b.price)[0]?.site || "galaxus")
-    : (simulatedPrices[0]?.storeId || "galaxus");
+  const bestStoreId = allMerchantPrices[0]?.storeId || "galaxus";
   const bestMerchantUrl = buildSearchUrl(bestStoreId, component.name);
-
-  // Merge DB prices with simulated — always show all 4 Swiss stores
-  const allMerchantPrices = simulatedPrices.map((sim) => {
-    const dbMatch = dbPrices.find((d) => d.site === sim.storeId);
-    return {
-      storeId: sim.storeId,
-      label: STORE_LABELS[sim.storeId] || sim.label,
-      price: dbMatch ? dbMatch.price : sim.price,
-      isReal: !!dbMatch,
-      inStock: dbMatch ? dbMatch.in_stock : true,
-    };
-  }).sort((a, b) => a.price - b.price);
   const bestMerchantPrice = allMerchantPrices[0]?.price;
 
   // Compatibility score (heuristic based on having matching specs)
@@ -762,7 +769,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                         </div>
                         <div className="flex items-center gap-3">
                           {isLowest && <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">↓ le moins cher</span>}
-                          <span className={`tabular-nums font-semibold ${isLowest ? "text-green-700 text-base" : "text-[#0A0A0A]"}`}>{p.price} CHF</span>
+                          {p.price > 0 && <span className={`tabular-nums font-semibold ${isLowest ? "text-green-700 text-base" : "text-[#0A0A0A]"}`}>{p.price} CHF</span>}
                           <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 rounded-lg font-medium text-white transition-opacity hover:opacity-80" style={{ background: "#4f8ef7" }}>Acheter</a>
                         </div>
                       </motion.div>
@@ -941,15 +948,17 @@ function SpecDelta({ specKey, currentVal, altVal }: { specKey: string; currentVa
     : <span className="text-[10px] font-bold text-red-500">↓</span>;
 }
 
-function AlternativesModal({ component, allComponents, usage, budget, onSelect, onClose }: { component: Component; allComponents: Component[]; usage: string; budget: number; onSelect: (a: Alternative) => void; onClose: () => void }) {
+function AlternativesModal({ component, allComponents, usage, budget, preloadedAlts, onSelect, onClose }: { component: Component; allComponents: Component[]; usage: string; budget: number; preloadedAlts?: Alternative[]; onSelect: (a: Alternative) => void; onClose: () => void }) {
   const { t } = useLanguage();
-  const [alternatives, setAlternatives] = useState<(Alternative & { specs?: Record<string, string>; images?: DBImage[] })[]>([]);
-  const [currentSpecs, setCurrentSpecs] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
+  const [alternatives, setAlternatives] = useState<(Alternative & { specs?: Record<string, string>; images?: DBImage[] })[]>(preloadedAlts ?? []);
+  const [currentSpecs, setCurrentSpecs] = useState<Record<string, string>>(component.specs ?? {});
+  const [loading, setLoading] = useState(!preloadedAlts || preloadedAlts.length === 0);
   const [error, setError] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // If preloaded alternatives exist, skip fetching
+    if (preloadedAlts && preloadedAlts.length > 0) return;
     let cancelled = false;
     (async () => {
       try {
@@ -990,7 +999,7 @@ function AlternativesModal({ component, allComponents, usage, budget, onSelect, 
       } catch { if (!cancelled) setError(t("alt.error")); } finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [component, allComponents, usage, budget, t]);
+  }, [component, allComponents, usage, budget, preloadedAlts, t]);
 
   const handleOutside = useCallback((e: MouseEvent) => { if (modalRef.current && !modalRef.current.contains(e.target as Node)) onClose(); }, [onClose]);
   useEffect(() => { document.addEventListener("mousedown", handleOutside); return () => document.removeEventListener("mousedown", handleOutside); }, [handleOutside]);
@@ -1763,7 +1772,7 @@ export default function ConfigResult({ config, onReset }: Props) {
 
       {/* Modals */}
       <AnimatePresence>
-        {swapIndex !== null && <AlternativesModal component={components[swapIndex]} allComponents={components} usage={config.config_name} budget={config.total_estimated} onSelect={(alt) => handleSelectAlternative(swapIndex, alt)} onClose={() => setSwapIndex(null)} />}
+        {swapIndex !== null && <AlternativesModal component={components[swapIndex]} allComponents={components} usage={config.config_name} budget={config.total_estimated} preloadedAlts={config.preloadedAlternatives?.[components[swapIndex].type]} onSelect={(alt) => handleSelectAlternative(swapIndex, alt)} onClose={() => setSwapIndex(null)} />}
       </AnimatePresence>
       <AnimatePresence>
         {infoIndex !== null && <InfoModal component={components[infoIndex]} allComponents={components} onClose={() => setInfoIndex(null)} />}
