@@ -141,7 +141,7 @@ function Hero({ onStart }: { onStart: () => void }) {
     <div className="relative flex-1 flex flex-col">
       <Particles />
       {/* Content */}
-      <div className="relative z-10 flex flex-col items-center justify-center px-6 min-h-screen">
+      <div className="relative z-10 flex flex-col items-center px-6 pt-16 sm:pt-24 pb-16">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8 px-4 py-1.5 rounded-full border border-border text-text-secondary text-sm">
           {t("hero.badge")}
         </motion.div>
@@ -250,8 +250,7 @@ function Hero({ onStart }: { onStart: () => void }) {
         <div className="max-w-4xl mx-auto">
           <motion.h2
             initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
             className="text-2xl sm:text-3xl font-bold text-center mb-12"
           >
@@ -266,9 +265,8 @@ function Hero({ onStart }: { onStart: () => void }) {
               <motion.div
                 key={item.step}
                 initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: i * 0.1 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }}
                 className="flex flex-col items-center text-center gap-4"
               >
                 <div className="w-14 h-14 rounded-2xl bg-white border border-border flex items-center justify-center text-2xl shadow-sm">
