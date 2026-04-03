@@ -716,7 +716,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                 addRow("Format", dbData?.form_factor);
                 addRow("TDP", tdp ? `${tdp} W` : null);
                 addRow("Année de sortie", dbData?.release_year);
-                if (specs) { for (const [key, value] of Object.entries(specs)) addRow(key, value); }
+                if (specs) { for (const [key, value] of Object.entries(specs)) addRow(SPEC_TRANSLATIONS[key] || key.replace(/_/g, ' '), value); }
                 addRow("Score de popularité", dbData?.popularity_score ? `${dbData.popularity_score}/100` : null);
                 if (dbData?.available_ch !== null && dbData?.available_ch !== undefined) addRow("Dispo Suisse", dbData.available_ch ? "Oui" : "Non");
                 if (displayPrice && displayPrice > 0) addRow("Prix indicatif", `${displayPrice} CHF`);

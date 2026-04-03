@@ -598,7 +598,7 @@ export default function CataloguePage() {
 
       {/* Category pills — premium style */}
       <div className="sticky top-16 z-40 bg-white/90 backdrop-blur-md border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 py-3 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+        <div className="max-w-7xl mx-auto px-4 py-3 overflow-x-auto" style={{ scrollbarWidth: "none", maskImage: "linear-gradient(to right, transparent 0%, black 40px, black calc(100% - 40px), transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 40px, black calc(100% - 40px), transparent 100%)" }}>
           <div className="flex gap-2 min-w-max">
             {CATEGORIES.map((cat, i) => {
               const isActive = activeCategory === cat.key;

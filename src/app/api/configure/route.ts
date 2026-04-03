@@ -134,6 +134,22 @@ async function getDBComponents(budget: number): Promise<DBComponent[]> {
   }
 }
 
+/** Fetch ALL active components for building swap alternatives — no budget cap */
+async function getAllComponentsForAlternatives(): Promise<DBComponent[]> {
+  try {
+    const supabase = getServiceSupabase();
+    if (!supabase) return [];
+    const { data } = await supabase
+      .from("components")
+      .select("*, component_images(url, is_primary)")
+      .eq("active", true)
+      .order("popularity_score", { ascending: false });
+    return (data as DBComponent[]) || [];
+  } catch {
+    return [];
+  }
+}
+
 /** Format DB components as context for Claude */
 function formatDBContext(dbComponents: DBComponent[]): string {
   if (dbComponents.length === 0) return "";
@@ -160,7 +176,10 @@ export async function POST(request: NextRequest) {
     const body: ConfigRequest = await request.json();
 
     // Fetch components from our DB to enrich Claude's context
-    const dbComponents = await getDBComponents(body.budget);
+    const [dbComponents, allDbComponents] = await Promise.all([
+      getDBComponents(body.budget),
+      getAllComponentsForAlternatives(),
+    ]);
     const dbContext = formatDBContext(dbComponents);
 
     const message = await client.messages.create({
@@ -232,16 +251,22 @@ export async function POST(request: NextRequest) {
 
     // Pre-build alternatives from DB for each component type so the UI can show
     // them instantly without a second DB round-trip.
-    if (dbComponents.length > 0 && config.components) {
+    // Use allDbComponents (no budget cap) so every type has alternatives regardless of price.
+    if (config.components) {
       const preloadedAlternatives: Record<string, Alternative[]> = {};
       const TIER_ORDER: AlternativeTier[] = ["budget", "equilibre", "performance", "overkill"];
+      // Build a name-indexed lookup for enriching alternatives by name
+      const dbByName = new Map<string, DBComponent & { component_images?: { url: string; is_primary: boolean }[] }>();
+      for (const c of allDbComponents) {
+        dbByName.set(c.name.toLowerCase(), c as DBComponent & { component_images?: { url: string; is_primary: boolean }[] });
+      }
 
       for (const comp of config.components) {
-        const sameType = dbComponents.filter(
+        const sameType = allDbComponents.filter(
           (db) => db.type === comp.type && db.name.toLowerCase() !== comp.name.toLowerCase()
         ).sort((a, b) => a.price_ch - b.price_ch);
 
-        if (sameType.length < 2) continue;
+        if (sameType.length < 1) continue;
 
         const currentPrice: number = comp.price_ch || 0;
         const below = sameType.filter((c) => c.price_ch <= currentPrice);
@@ -258,31 +283,37 @@ export async function POST(request: NextRequest) {
           const c = picks[i];
           if (!c) return acc;
 
-          // Merge individual DB fields + specs JSON (same logic as assignTiers in ConfigResult)
+          // DB lookup by name for full specs + images (including primary image)
+          const dbRecord = dbByName.get(c.name.toLowerCase()) ?? c as DBComponent & { component_images?: { url: string; is_primary: boolean }[] };
+          const found = dbByName.has(c.name.toLowerCase());
+
+          // Merge individual DB fields + specs JSON
           const mergedSpecs: Record<string, string> = {};
-          if (c.socket) mergedSpecs["Socket"] = c.socket;
-          if (c.chipset) mergedSpecs["Chipset"] = c.chipset;
-          if (c.form_factor) mergedSpecs["Format"] = c.form_factor;
-          if (c.tdp) mergedSpecs["TDP"] = `${c.tdp}W`;
-          if (c.specs) {
-            for (const [k, v] of Object.entries(c.specs)) {
-              if (v !== null && v !== undefined) mergedSpecs[k] = String(v);
+          if (!found) {
+            mergedSpecs["Disponibilité"] = "Non disponible";
+          } else {
+            if (dbRecord.socket) mergedSpecs["Socket"] = dbRecord.socket;
+            if (dbRecord.chipset) mergedSpecs["Chipset"] = dbRecord.chipset;
+            if (dbRecord.form_factor) mergedSpecs["Format"] = dbRecord.form_factor;
+            if (dbRecord.tdp) mergedSpecs["TDP"] = `${dbRecord.tdp}W`;
+            if (dbRecord.specs) {
+              for (const [k, v] of Object.entries(dbRecord.specs)) {
+                if (v !== null && v !== undefined) mergedSpecs[k] = String(v);
+              }
             }
           }
-
-          const dbC = c as DBComponent & { component_images?: { url: string; is_primary: boolean }[] };
 
           acc.push({
             tier,
             name: c.name,
-            reason: c.description || "",
+            reason: dbRecord.description || "",
             price_fr: 0,
             price_ch: c.price_ch,
             search_terms: ([c.name, c.brand] as string[]).filter(Boolean),
             compatible: true,
             compatibility_warning: "",
             specs: mergedSpecs,
-            images: dbC.component_images || [],
+            images: dbRecord.component_images || [],
           });
           return acc;
         }, []);
