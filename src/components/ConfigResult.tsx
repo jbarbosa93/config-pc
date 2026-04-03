@@ -340,77 +340,30 @@ function AnimatedPrice({ value, suffix }: { value: number; suffix: string }) {
 
 /* ── Merchant price table with "Voir plus" ── */
 
-function MerchantTable({ component, t }: { component: Component; t: (k: string) => string }) {
-  type MerchantPrice = { storeId: string; label: string; price: number; isReal: boolean };
-  const [prices, setPrices] = useState<MerchantPrice[]>([]);
-  const [loadingPrices, setLoadingPrices] = useState(true);
+const MERCHANT_STORES = [
+  { storeId: "digitec", label: "Digitec" },
+  { storeId: "galaxus", label: "Galaxus" },
+  { storeId: "brack", label: "Brack.ch" },
+  { storeId: "interdiscount", label: "Interdiscount" },
+];
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`/api/components/search?name=${encodeURIComponent(component.name)}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled) return;
-        const dbPrices: DBPrice[] = data?.component_prices || [];
-        const real: MerchantPrice[] = dbPrices
-          .filter((p) => p.price > 0)
-          .sort((a, b) => a.price - b.price)
-          .map((p) => ({ storeId: p.site, label: STORE_LABELS[p.site] || p.site, price: p.price, isReal: true }));
-        if (!cancelled) setPrices(real);
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoadingPrices(false); });
-    return () => { cancelled = true; };
-  }, [component.name]);
-
-  const best = prices[0];
-
-  if (loadingPrices) {
-    return (
-      <div className="mt-3 rounded-lg border border-border bg-bg p-3 flex items-center gap-2 text-xs text-text-secondary">
-        <div className="w-3 h-3 rounded-full border border-text-secondary border-t-transparent animate-spin" />
-        Chargement des prix…
-      </div>
-    );
-  }
-
-  if (prices.length === 0) {
-    return (
-      <div className="mt-3 rounded-lg border border-border bg-bg p-3 text-xs text-text-secondary">
-        Prix non disponible — <a href={buildSearchUrl("digitec", component.name)} target="_blank" rel="noopener noreferrer" className="underline hover:text-text">chercher sur Digitec</a>
-      </div>
-    );
-  }
-
+function MerchantTable({ component }: { component: Component }) {
   return (
     <div className="mt-3 rounded-lg border border-border bg-bg overflow-hidden">
-      {/* Best price CTA */}
-      {best && (
+      {MERCHANT_STORES.map((p, i) => (
         <a
-          href={buildSearchUrl(best.storeId, component.name)}
+          key={p.storeId}
+          href={buildSearchUrl(p.storeId, component.name)}
           target="_blank" rel="noopener noreferrer"
-          className="flex items-center justify-between px-3 py-2.5 text-xs font-semibold bg-green-50 border-b border-green-100 hover:bg-green-100 transition-colors duration-150"
-          style={{ color: "#16A34A" }}
+          className={`flex items-center justify-between px-3 py-2.5 text-xs hover:bg-card transition-colors duration-150 ${i > 0 ? "border-t border-border" : ""}`}
         >
-          <span className="flex items-center gap-1.5">
-            {best.label}
-            {best.isReal && best.price > 0 && <span className="text-[10px] px-1 py-0.5 rounded bg-green-200 text-green-800 font-medium">Prix réel</span>}
-          </span>
-          <span className="flex items-center gap-1.5">
-            {best.price > 0 && <span className="tabular-nums font-bold text-sm">{best.price} CHF</span>}
-            <span>Acheter →</span>
-          </span>
-        </a>
-      )}
-      {prices.slice(1).map((p) => (
-        <a key={p.storeId} href={buildSearchUrl(p.storeId, component.name)} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between px-3 py-2 text-xs border-b border-border last:border-b-0 hover:bg-card transition-colors duration-150">
-          <span className="font-medium text-text-secondary">{p.label}</span>
-          <span className="flex items-center gap-2">
-            {p.price > 0 && <span className={`tabular-nums ${p.isReal ? "text-text font-semibold" : "text-text-secondary"}`}>{p.price} CHF</span>}
-            <span className="text-[10px] text-text-secondary">{t("compare.see")} &rarr;</span>
-          </span>
+          <span className="font-medium text-text">{p.label}</span>
+          <span className="text-xs font-semibold text-[#4f8ef7]">Voir →</span>
         </a>
       ))}
+      <p className="px-3 py-2 text-[10px] text-[#AAA] border-t border-border">
+        Prix indicatif — vérifiez sur le site du marchand
+      </p>
     </div>
   );
 }
@@ -440,11 +393,6 @@ function ImageCarousel({ images, name, type, tall = false }: { images: DBImage[]
   );
 }
 
-/* Store label mapping — Swiss merchants only */
-const STORE_LABELS: Record<string, string> = {
-  digitec: "Digitec", galaxus: "Galaxus", brack: "Brack.ch",
-  interdiscount: "Interdiscount",
-};
 
 /* ── Accordion wrapper ── */
 
@@ -527,24 +475,6 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
   const brand = dbData?.brand || component.name.split(" ")[0];
   const displayPrice = dbData?.price_ch || component.price_ch;
   const tdp = dbData?.tdp || null;
-
-  const dbPrices: DBPrice[] = dbData?.component_prices || [];
-  const hasPricesInDB = dbPrices.length > 0;
-  // Real DB prices only — no simulated data
-  const allMerchantPrices = dbPrices
-    .filter((p) => p.price > 0)
-    .sort((a, b) => a.price - b.price)
-    .map((p) => ({
-      storeId: p.site,
-      label: STORE_LABELS[p.site] || p.site,
-      price: p.price,
-      isReal: true,
-      inStock: p.in_stock,
-    }));
-
-  const bestStoreId = allMerchantPrices[0]?.storeId || "galaxus";
-  const bestMerchantUrl = buildSearchUrl(bestStoreId, component.name);
-  const bestMerchantPrice = allMerchantPrices[0]?.price;
 
   // Compatibility score (heuristic based on having matching specs)
   const compatScore = Math.min(100, 75 + (dbData?.socket ? 5 : 0) + (dbData?.form_factor ? 5 : 0) + (dbData?.chipset ? 5 : 0) + (Object.keys(specs).length > 3 ? 10 : 0));
@@ -700,12 +630,12 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                   {/* CTA buttons */}
                   <div className="flex flex-col gap-2">
                     <a
-                      href={bestMerchantUrl}
+                      href={buildSearchUrl("galaxus", component.name)}
                       target="_blank" rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-opacity animate-pulse-slow"
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-opacity"
                       style={{ background: "#4f8ef7" }}
                     >
-                      Voir l&apos;offre →
+                      Voir sur Galaxus →
                     </a>
                     {mfUrl !== "#" && (
                       <a href={mfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-[#555] hover:text-[#0A0A0A] transition-all" style={{ border: "1px solid #E5E5E5" }}>
@@ -739,52 +669,33 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                 </div>
               )}
 
-              {/* ── Price comparison — always all 4 Swiss stores ── */}
-              <Accordion title="Comparer les prix" defaultOpen>
+              {/* ── Marchands suisses ── */}
+              <Accordion title="Acheter en Suisse" defaultOpen>
                 <div>
-                  {allMerchantPrices.map((p, i) => {
-                    const isLowest = p.price === bestMerchantPrice;
-                    const href = buildSearchUrl(p.storeId, component.name);
-                    return (
-                      <motion.div
-                        key={p.storeId}
-                        initial={{ opacity: 0, x: 10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.15 + i * 0.08 }}
-                        className={`flex items-center justify-between px-4 py-3 text-sm ${i > 0 ? "border-t" : ""}`}
-                        style={{ borderColor: "#F0F0F0", background: isLowest ? "#F0FFF4" : "white" }}
+                  {MERCHANT_STORES.map((p, i) => (
+                    <motion.div
+                      key={p.storeId}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.15 + i * 0.08 }}
+                      className={`flex items-center justify-between px-4 py-3 text-sm ${i > 0 ? "border-t" : ""}`}
+                      style={{ borderColor: "#F0F0F0" }}
+                    >
+                      <span className="font-medium text-[#0A0A0A]">{p.label}</span>
+                      <a
+                        href={buildSearchUrl(p.storeId, component.name)}
+                        target="_blank" rel="noopener noreferrer"
+                        className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white transition-opacity hover:opacity-80"
+                        style={{ background: "#4f8ef7" }}
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: isLowest ? "#22C55E" : "#CBD5E1" }}>{p.label[0]}</span>
-                          <span className="font-medium">{p.label}</span>
-                          {!p.isReal && (
-                            <span className="relative group cursor-help">
-                              <span className="text-[11px] text-[#AAA] select-none">ⓘ</span>
-                              <span className="absolute left-5 top-0 z-10 hidden group-hover:block w-48 text-[11px] bg-[#333] text-white rounded-lg px-3 py-2 shadow-lg pointer-events-none">
-                                Prix estimé — cliquez pour voir le prix en temps réel
-                              </span>
-                            </span>
-                          )}
-                          {!p.inStock && <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded-full">Indisponible</span>}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {isLowest && <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">↓ le moins cher</span>}
-                          {p.price > 0 && <span className={`tabular-nums font-semibold ${isLowest ? "text-green-700 text-base" : "text-[#0A0A0A]"}`}>{p.price} CHF</span>}
-                          <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 rounded-lg font-medium text-white transition-opacity hover:opacity-80" style={{ background: "#4f8ef7" }}>Acheter</a>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
+                        Voir →
+                      </a>
+                    </motion.div>
+                  ))}
                 </div>
-                <a
-                  href={buildToppreiseUrl(component.name)}
-                  target="_blank" rel="noopener noreferrer"
-                  className="mx-4 mb-4 mt-2 flex items-center justify-center gap-2.5 w-[calc(100%-2rem)] py-3 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-all"
-                  style={{ background: "#FF6B00" }}
-                >
-                  <span className="px-1.5 py-0.5 rounded bg-white/20 text-white font-bold text-[10px] tracking-tight">TP</span>
-                  Comparer les prix sur TopPreise →
-                </a>
+                <p className="px-4 py-3 text-xs text-[#AAA] border-t" style={{ borderColor: "#F0F0F0" }}>
+                  Prix indicatif — vérifiez sur le site du marchand
+                </p>
               </Accordion>
 
               {/* ── Specs table ── */}
@@ -841,12 +752,12 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
               {inCart ? "✓ Dans le panier" : "Ajouter à ma config"}
             </motion.button>
             <a
-              href={bestMerchantUrl}
+              href={buildSearchUrl("galaxus", component.name)}
               target="_blank" rel="noopener noreferrer"
-              className="flex-1 min-w-[120px] py-3 rounded-xl text-sm font-semibold text-center hover:opacity-90 transition-opacity text-white"
-              style={{ background: "#22C55E" }}
+              className="flex-1 min-w-[120px] py-3 rounded-xl text-sm font-semibold text-center hover:opacity-90 transition-opacity"
+              style={{ border: "1px solid #E5E5E5", color: "#555" }}
             >
-              Voir l&apos;offre →
+              Voir sur Galaxus →
             </a>
             <button type="button" onClick={onClose} className="px-5 py-3 rounded-xl text-sm font-medium text-[#666] hover:text-[#333] transition-colors" style={{ border: "1px solid #E5E5E5" }}>
               Fermer
@@ -1284,7 +1195,7 @@ function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }:
       </div>
 
       {/* Merchant price table */}
-      <MerchantTable component={component} t={t} />
+      <MerchantTable component={component} />
 
       {/* Compare on TopPreise */}
       <a href={buildToppreiseUrl(component.name)} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 w-full text-xs py-2.5 rounded-lg bg-[#0A0A0A] text-white hover:bg-[#333] transition-all duration-150 font-medium">

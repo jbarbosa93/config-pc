@@ -392,28 +392,21 @@ function DBInfoModal({ comp, onClose }: { comp: DBCompWithImages; onClose: () =>
           <div className="px-6 py-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-[#888] mb-3">Acheter en Suisse</p>
             <div className="flex flex-col gap-2">
-              {STORES_MANUAL.map((p, idx) => (
+              {STORES_MANUAL.map((p) => (
                 <a
                   key={p.storeId}
                   href={buildSearchUrl(p.storeId, comp.name)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-between px-4 py-3 rounded-xl transition-colors hover:opacity-90"
-                  style={{
-                    background: idx === 0 ? '#EEF3FE' : '#F5F7FF',
-                    border: idx === 0 ? '1px solid #4f8ef7' : '1px solid #E5E5E5',
-                  }}
+                  style={{ background: '#F5F7FF', border: '1px solid #E5E5E5' }}
                 >
                   <span className="text-sm font-semibold text-[#0A0A0A]">{p.label}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-[#4f8ef7]">Rechercher →</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4f8ef7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/>
-                    </svg>
-                  </div>
+                  <span className="text-xs font-semibold text-[#4f8ef7]">Voir →</span>
                 </a>
               ))}
             </div>
+            <p className="mt-3 text-xs text-[#AAA]">Prix indicatif — vérifiez sur le site du marchand</p>
           </div>
         </div>
 
