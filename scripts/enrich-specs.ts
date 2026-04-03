@@ -300,7 +300,7 @@ async function enrichComponent(component: DBComponent, missing: string[]): Promi
   // Also mirror into dedicated columns if applicable
   const dedicated = DEDICATED_COLUMNS[component.type] ?? [];
   for (const col of dedicated) {
-    if (newSpecs[col] != null && (component as Record<string, unknown>)[col] == null) {
+    if (newSpecs[col] != null && (component as unknown as Record<string, unknown>)[col] == null) {
       updatePayload[col] = newSpecs[col];
     }
   }
