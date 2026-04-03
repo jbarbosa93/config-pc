@@ -12,11 +12,142 @@ interface ComponentWithRelations extends DBComponent {
   component_prices?: { id: string; site: string; price: number; currency: string; url: string; in_stock: boolean }[];
 }
 
+interface Order {
+  id: string;
+  stripe_session_id: string;
+  customer_email: string | null;
+  amount_total: number | null;
+  currency: string;
+  status: string;
+  items: { description: string; quantity: number; amount_total: number }[];
+  metadata: Record<string, string>;
+  created_at: string;
+}
+
 function api(path: string, token: string, opts?: RequestInit) {
   return fetch(`/api/admin/${path}`, {
     ...opts,
     headers: { authorization: `Bearer ${token}`, ...opts?.headers },
   });
+}
+
+/* ── Orders Tab ── */
+function OrdersTab({ token }: { token: string }) {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (dateFrom) params.set("from", dateFrom);
+    if (dateTo) params.set("to", dateTo);
+    const res = await api(`orders?${params}`, token);
+    if (res.ok) setOrders(await res.json());
+    setLoading(false);
+  }, [token, statusFilter, dateFrom, dateTo]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const totalRevenue = orders.reduce((sum, o) => sum + (o.amount_total ?? 0), 0) / 100;
+
+  const STATUS_COLORS: Record<string, string> = {
+    completed: "bg-green-100 text-green-700",
+    pending: "bg-yellow-100 text-yellow-700",
+    expired: "bg-gray-100 text-gray-500",
+    failed: "bg-red-100 text-red-600",
+  };
+
+  return (
+    <div>
+      {/* Stats bar */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        {[
+          { label: "Commandes", value: orders.length },
+          { label: "Complétées", value: orders.filter(o => o.status === "completed").length },
+          { label: "Revenu total (CHF)", value: `${totalRevenue.toFixed(2)}` },
+        ].map(s => (
+          <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+            <p className="text-2xl font-bold">{s.value}</p>
+            <p className="text-xs text-gray-500 mt-1">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <select
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+          className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-black"
+        >
+          <option value="all">Tous les statuts</option>
+          <option value="completed">Complétée</option>
+          <option value="pending">En attente</option>
+          <option value="expired">Expirée</option>
+        </select>
+        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+          className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-black" />
+        <span className="self-center text-gray-400 text-sm">→</span>
+        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+          className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-black" />
+        <button onClick={load} className="px-3 py-1.5 text-sm bg-black text-white rounded-lg font-medium">
+          Filtrer
+        </button>
+        {(statusFilter !== "all" || dateFrom || dateTo) && (
+          <button onClick={() => { setStatusFilter("all"); setDateFrom(""); setDateTo(""); }}
+            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50">
+            Réinitialiser
+          </button>
+        )}
+      </div>
+
+      {/* Orders list */}
+      {loading ? (
+        <div className="text-center py-16 text-gray-400 text-sm">Chargement...</div>
+      ) : orders.length === 0 ? (
+        <div className="text-center py-16 text-gray-400 text-sm">Aucune commande trouvée.</div>
+      ) : (
+        <div className="grid gap-3">
+          {orders.map(order => (
+            <div key={order.id} className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[order.status] || "bg-gray-100 text-gray-500"}`}>
+                      {order.status}
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      {new Date(order.created_at).toLocaleDateString("fr-CH", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium truncate">{order.customer_email || "—"}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Réf : {order.stripe_session_id?.slice(-12).toUpperCase()}</p>
+                  {Array.isArray(order.items) && order.items.length > 0 && (
+                    <div className="mt-2 space-y-0.5">
+                      {order.items.map((item, i) => (
+                        <p key={i} className="text-xs text-gray-500">
+                          × {item.quantity} {item.description} — CHF {((item.amount_total ?? 0) / 100).toFixed(2)}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-lg font-bold">
+                    {order.amount_total != null ? `CHF ${(order.amount_total / 100).toFixed(2)}` : "—"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function AdminPanel() {
@@ -26,6 +157,7 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<ComponentWithRelations | null>(null);
   const [filter, setFilter] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"components" | "orders">("components");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,17 +202,36 @@ export default function AdminPanel() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <h1 className="text-lg font-bold">Admin ConfigPC.ch</h1>
+          <div className="flex items-center gap-6">
+            <h1 className="text-lg font-bold">Admin ConfigPC.ch</h1>
+            <div className="flex gap-1">
+              {(["components", "orders"] as const).map(tab => (
+                <button key={tab} onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === tab ? "bg-black text-white" : "text-gray-500 hover:bg-gray-100"}`}>
+                  {tab === "components" ? "Composants" : "Commandes"}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500">{components.length} composants</span>
-            <button onClick={() => setEditing({} as ComponentWithRelations)} className="px-4 py-2 bg-black text-white text-sm rounded-lg font-medium">
-              + Ajouter
-            </button>
+            {activeTab === "components" && (
+              <>
+                <span className="text-sm text-gray-500">{components.length} composants</span>
+                <button onClick={() => setEditing({} as ComponentWithRelations)} className="px-4 py-2 bg-black text-white text-sm rounded-lg font-medium">
+                  + Ajouter
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
 
       <div className="max-w-6xl mx-auto px-6 py-6">
+        {/* Orders Tab */}
+        {activeTab === "orders" && <OrdersTab token={token} />}
+
+        {/* Components Tab */}
+        {activeTab === "components" && <>
         {/* Filters */}
         <div className="flex gap-2 mb-6 flex-wrap">
           <button onClick={() => setFilter("")} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${!filter ? "bg-black text-white" : "bg-white border border-gray-200"}`}>
@@ -136,6 +287,7 @@ export default function AdminPanel() {
             <p className="text-center text-gray-400 py-12">Aucun composant{filter ? ` de type ${filter}` : ""}. Clique sur &quot;+ Ajouter&quot; pour commencer.</p>
           )}
         </div>
+        </>}
       </div>
 
       {/* Edit/Create Modal */}

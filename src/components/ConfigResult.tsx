@@ -1491,6 +1491,68 @@ function PeripheralsSection({ onPeripheralInfo }: { onPeripheralInfo: (comp: Com
   );
 }
 
+/* ── Share Config Button ── */
+
+function ShareConfigButton({ config }: { config: PCConfig }) {
+  const [state, setState] = useState<"idle" | "loading" | "copied" | "error">("idle");
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+
+  async function handleShare() {
+    if (shareUrl) {
+      await navigator.clipboard.writeText(shareUrl);
+      setState("copied");
+      setTimeout(() => setState("idle"), 2000);
+      return;
+    }
+    setState("loading");
+    try {
+      const res = await fetch("/api/configs/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config }),
+      });
+      if (!res.ok) throw new Error();
+      const { url } = await res.json();
+      setShareUrl(url);
+      await navigator.clipboard.writeText(url);
+      setState("copied");
+      setTimeout(() => setState("idle"), 2000);
+    } catch {
+      setState("error");
+      setTimeout(() => setState("idle"), 2000);
+    }
+  }
+
+  const label =
+    state === "loading" ? "Génération du lien..." :
+    state === "copied" ? "Lien copié ✓" :
+    state === "error" ? "Erreur — réessayer" :
+    shareUrl ? "Copier le lien" :
+    "Partager ma config";
+
+  return (
+    <motion.button
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
+      onClick={handleShare}
+      disabled={state === "loading"}
+      className="px-6 py-2.5 rounded-full border text-sm font-medium transition-all duration-150 disabled:opacity-60"
+      style={{
+        borderColor: state === "copied" ? "#22C55E" : "#4f8ef7",
+        color: state === "copied" ? "#22C55E" : "#4f8ef7",
+        background: state === "copied" ? "#f0fdf4" : "#eff6ff",
+      }}
+    >
+      {state === "loading" ? (
+        <span className="flex items-center gap-2">
+          <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin inline-block" />
+          Génération...
+        </span>
+      ) : label}
+    </motion.button>
+  );
+}
+
 /* ── Main ── */
 
 interface Props { config: PCConfig; onReset: () => void; }
@@ -1731,6 +1793,7 @@ export default function ConfigResult({ config, onReset }: Props) {
         )}
 
         <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={handleSave} className="px-6 py-2.5 rounded-full border border-border text-sm font-medium text-text-secondary hover:text-text hover:border-border-hover transition-all duration-150">{t("result.save")}</motion.button>
+        <ShareConfigButton config={{ ...config, components }} />
         <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={onReset} className="px-6 py-2.5 rounded-full border border-border text-sm font-medium text-text-secondary hover:text-text hover:border-border-hover transition-all duration-150">{t("result.newConfig")}</motion.button>
       </motion.div>
 

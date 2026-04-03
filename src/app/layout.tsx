@@ -10,15 +10,32 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "config-pc.ch — Ta config PC parfaite en 30 secondes",
+  title: {
+    default: "config-pc.ch — Ta config PC parfaite en 30 secondes",
+    template: "%s | config-pc.ch",
+  },
   description:
-    "Configurateur PC intelligent propulsé par Claude AI. Recommandations optimisées pour la Suisse. Catalogue de 400+ composants.",
+    "Configurateur PC intelligent propulsé par Claude AI. Recommandations sur-mesure pour la Suisse. 2800+ composants, meilleurs prix CHF.",
+  metadataBase: new URL("https://config-pc.ch"),
   openGraph: {
+    type: "website",
+    locale: "fr_CH",
+    siteName: "config-pc.ch",
     title: "config-pc.ch — Ta config PC parfaite en 30 secondes",
     description:
-      "Configurateur PC intelligent propulsé par Claude AI. Recommandations optimisées pour la Suisse.",
+      "Configurateur PC intelligent propulsé par Claude AI. Recommandations sur-mesure pour la Suisse.",
+    url: "https://config-pc.ch",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "config-pc.ch" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "config-pc.ch — Ta config PC parfaite en 30 secondes",
+    description: "Configurateur PC intelligent propulsé par Claude AI. Recommandations sur-mesure pour la Suisse.",
+    images: ["/og-image.png"],
   },
   icons: { icon: "/icon.svg" },
+  robots: { index: true, follow: true },
+  alternates: { canonical: "https://config-pc.ch" },
 };
 
 export default function RootLayout({

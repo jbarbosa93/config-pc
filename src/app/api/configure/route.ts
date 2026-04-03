@@ -171,7 +171,48 @@ function formatDBContext(dbComponents: DBComponent[]): string {
   return ctx;
 }
 
+/* ── Rate limiting (in-memory, 10 req/IP/hour) ── */
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetIn: number } {
+  const now = Date.now();
+  const windowMs = 60 * 60 * 1000; // 1 hour
+  const limit = 10;
+
+  const entry = rateLimitStore.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitStore.set(ip, { count: 1, resetAt: now + windowMs });
+    return { allowed: true, remaining: limit - 1, resetIn: windowMs };
+  }
+  if (entry.count >= limit) {
+    return { allowed: false, remaining: 0, resetIn: entry.resetAt - now };
+  }
+  entry.count++;
+  return { allowed: true, remaining: limit - entry.count, resetIn: entry.resetAt - now };
+}
+
 export async function POST(request: NextRequest) {
+  // Rate limit check
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+  const rl = checkRateLimit(ip);
+  if (!rl.allowed) {
+    const minutesLeft = Math.ceil(rl.resetIn / 60000);
+    return NextResponse.json(
+      { error: `Trop de requêtes. Réessayez dans ${minutesLeft} minute${minutesLeft > 1 ? "s" : ""}.` },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil(rl.resetIn / 1000)),
+          "X-RateLimit-Limit": "10",
+          "X-RateLimit-Remaining": "0",
+        },
+      }
+    );
+  }
+
   try {
     const body: ConfigRequest = await request.json();
 
