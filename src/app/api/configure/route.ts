@@ -257,15 +257,32 @@ export async function POST(request: NextRequest) {
         const alts: Alternative[] = TIER_ORDER.reduce<Alternative[]>((acc, tier, i) => {
           const c = picks[i];
           if (!c) return acc;
+
+          // Merge individual DB fields + specs JSON (same logic as assignTiers in ConfigResult)
+          const mergedSpecs: Record<string, string> = {};
+          if (c.socket) mergedSpecs["Socket"] = c.socket;
+          if (c.chipset) mergedSpecs["Chipset"] = c.chipset;
+          if (c.form_factor) mergedSpecs["Format"] = c.form_factor;
+          if (c.tdp) mergedSpecs["TDP"] = `${c.tdp}W`;
+          if (c.specs) {
+            for (const [k, v] of Object.entries(c.specs)) {
+              if (v !== null && v !== undefined) mergedSpecs[k] = String(v);
+            }
+          }
+
+          const dbC = c as DBComponent & { component_images?: { url: string; is_primary: boolean }[] };
+
           acc.push({
             tier,
             name: c.name,
-            reason: "",
+            reason: c.description || "",
             price_fr: 0,
             price_ch: c.price_ch,
             search_terms: ([c.name, c.brand] as string[]).filter(Boolean),
             compatible: true,
             compatibility_warning: "",
+            specs: mergedSpecs,
+            images: dbC.component_images || [],
           });
           return acc;
         }, []);

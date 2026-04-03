@@ -787,6 +787,54 @@ function getKeySpecs(type: string, specs: Record<string, string>): string[] {
   return Object.keys(specs).slice(0, 3);
 }
 
+/* ── Spec key → French label dictionary ── */
+const SPEC_TRANSLATIONS: Record<string, string> = {
+  // CPU
+  cores: "Cœurs", threads: "Threads",
+  base_clock: "Fréquence de base", boost_clock: "Fréquence boost",
+  l3_cache_mb: "Cache L3 (MB)", l2_cache_mb: "Cache L2 (MB)",
+  architecture: "Architecture", igpu: "GPU intégré",
+  // GPU
+  vram_gb: "VRAM (Go)", core_clock: "Fréquence cœur",
+  memory_type: "Type mémoire", perf_score: "Score perf.",
+  // RAM
+  ddr_gen: "Génération DDR", frequency_mhz: "Fréquence (MHz)",
+  total_gb: "Capacité (Go)", num_modules: "Nb modules",
+  cas_latency: "Latence CAS", first_word_latency: "First Word Latency",
+  // Storage
+  capacity: "Capacité", interface: "Interface",
+  read_speed: "Lecture (MB/s)", write_speed: "Écriture (MB/s)",
+  // PSU
+  wattage: "Puissance (W)", efficiency: "Certification 80+",
+  modular: "Modulaire", psu_type: "Type PSU",
+  // Case
+  case_type: "Type boîtier", side_panel: "Panneau latéral",
+  volume: "Volume (L)", color: "Couleur",
+  // Cooler
+  cooler_type: "Type refroidissement", fan_rpm: "Vitesse ventilateur",
+  noise_level: "Niveau sonore (dB)", radiator_size: "Taille radiateur",
+  // Keyboard
+  switch_type: "Type de switch", backlit: "Rétroéclairage",
+  tenkeyless: "Tenkeyless", connection: "Connexion", style: "Style",
+  // Mouse
+  tracking: "Type capteur", max_dpi: "DPI maximum",
+  hand_orientation: "Main", weight_g: "Poids (g)",
+  // Headset
+  headphone_type: "Type casque", frequency_response: "Réponse fréquence",
+  microphone: "Microphone", wireless: "Sans fil", enclosure: "Type enceinte",
+  // Monitor
+  resolution: "Résolution", panel_type: "Type dalle",
+  refresh_rate: "Taux rafraîchissement", response_time: "Temps de réponse",
+  size_inches: "Taille (pouces)", hdr: "HDR",
+  // Common DB columns (already capitalised by assignTiers / configure route)
+  Socket: "Socket", Chipset: "Chipset", Format: "Format",
+  TDP: "TDP", "Année": "Année",
+};
+
+function translateSpecKey(key: string): string {
+  return SPEC_TRANSLATIONS[key] ?? key.replace(/_/g, " ");
+}
+
 function assignTiers(items: DBComponent[], currentPrice: number): Alternative[] {
   const sorted = [...items]
     .filter((c) => c.name !== undefined)
@@ -861,7 +909,7 @@ function SpecDelta({ specKey, currentVal, altVal }: { specKey: string; currentVa
 
 function AlternativesModal({ component, allComponents, usage, budget, preloadedAlts, onSelect, onClose }: { component: Component; allComponents: Component[]; usage: string; budget: number; preloadedAlts?: Alternative[]; onSelect: (a: Alternative) => void; onClose: () => void }) {
   const { t } = useLanguage();
-  const [alternatives, setAlternatives] = useState<(Alternative & { specs?: Record<string, string>; images?: DBImage[] })[]>(preloadedAlts ?? []);
+  const [alternatives, setAlternatives] = useState<Alternative[]>(preloadedAlts ?? []);
   const [currentSpecs, setCurrentSpecs] = useState<Record<string, string>>(component.specs ?? {});
   const [loading, setLoading] = useState(!preloadedAlts || preloadedAlts.length === 0);
   const [error, setError] = useState<string | null>(null);
@@ -923,7 +971,7 @@ function AlternativesModal({ component, allComponents, usage, budget, preloadedA
   // Collect ALL spec keys from current + all alternatives for full comparison
   const allSpecKeys = Array.from(new Set([
     ...Object.keys(currentSpecs),
-    ...alternatives.flatMap((a) => Object.keys((a as Alternative & { specs?: Record<string, string> }).specs || {})),
+    ...alternatives.flatMap((a) => Object.keys(a.specs || {})),
   ]));
 
   return (
@@ -949,7 +997,7 @@ function AlternativesModal({ component, allComponents, usage, budget, preloadedA
             <div className="flex flex-wrap gap-1.5">
               {Object.entries(currentSpecs).map(([k, v]) => (
                 <span key={k} className="text-[10px] px-2 py-0.5 rounded-md bg-white/70 border border-blue-200 text-[#4f8ef7] font-medium">
-                  {k}: {v}
+                  {translateSpecKey(k)}: {v}
                 </span>
               ))}
             </div>
@@ -964,11 +1012,10 @@ function AlternativesModal({ component, allComponents, usage, budget, preloadedA
             {alternatives.map((alt, i) => {
               const priceDiff = alt.price_ch - component.price_ch;
               const priceDiffStr = priceDiff === 0 ? "= prix" : priceDiff > 0 ? `+${priceDiff} CHF` : `${priceDiff} CHF`;
-              const altWithExtras = alt as Alternative & { specs?: Record<string, string>; images?: DBImage[] };
-              const altSpecs = altWithExtras.specs || {};
+              const altSpecs = alt.specs || {};
               // Union of all spec keys for this alternative + current
               const specKeys = Array.from(new Set([...allSpecKeys, ...Object.keys(altSpecs)]));
-              const primaryImg = altWithExtras.images?.find((img) => img.is_primary) || altWithExtras.images?.[0];
+              const primaryImg = alt.images?.find((img) => img.is_primary) || alt.images?.[0];
               const isBestValue = i === bestValueIndex;
               return (
                 <motion.div key={alt.name} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, type: "spring", stiffness: 300, damping: 25 }} className="rounded-xl border border-border hover:border-border-hover transition-colors duration-150 p-4 bg-card">
@@ -1014,7 +1061,7 @@ function AlternativesModal({ component, allComponents, usage, budget, preloadedA
                             if (!curV && !altV) return null;
                             return (
                               <tr key={k} style={{ background: si % 2 === 0 ? "#FFFFFF" : "#FAFAFA", borderTop: "1px solid #F0F0F0" }}>
-                                <td className="px-3 py-1.5 text-text-secondary font-medium">{k}</td>
+                                <td className="px-3 py-1.5 text-text-secondary font-medium">{translateSpecKey(k)}</td>
                                 <td className={`px-2 py-1.5 text-center tabular-nums ${curV != null ? "text-text-secondary" : "text-[#CCC] italic"}`}>{curV != null ? String(curV) : "N/A"}</td>
                                 <td className={`px-2 py-1.5 text-center tabular-nums font-medium ${altV != null ? "text-text" : "text-[#CCC] italic"}`}>{altV != null ? String(altV) : "N/A"}</td>
                                 <td className="px-2 py-1.5 text-center">

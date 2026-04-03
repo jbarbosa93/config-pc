@@ -66,6 +66,10 @@ export interface Alternative {
   search_terms: string[];
   compatible: boolean;
   compatibility_warning: string;
+  /** Merged specs from DB — populated when preloaded from /api/configure */
+  specs?: Record<string, string>;
+  /** Component images — populated when preloaded from /api/configure */
+  images?: Array<{ url: string; is_primary: boolean }>;
 }
 
 export interface AlternativesRequest {
