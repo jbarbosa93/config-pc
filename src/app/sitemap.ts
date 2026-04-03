@@ -30,6 +30,30 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.5,
     },
     {
+      url: `${base}/blog`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${base}/blog/meilleur-pc-gaming-1000-chf-suisse`,
+      lastModified: new Date("2025-03-15"),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${base}/blog/config-pc-bureautique-suisse`,
+      lastModified: new Date("2025-03-10"),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${base}/blog/comparatif-composants-digitec-galaxus`,
+      lastModified: new Date("2025-03-05"),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
       url: `${base}/mentions-legales`,
       lastModified: now,
       changeFrequency: "yearly",

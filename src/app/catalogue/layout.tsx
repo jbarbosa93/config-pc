@@ -2,13 +2,21 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Catalogue",
+  title: "Catalogue composants PC Suisse — 2160 produits",
   description:
-    "Catalogue de 2800+ composants PC et périphériques gaming — processeurs, cartes graphiques, RAM, stockage, moniteurs. Meilleurs prix CHF en Suisse.",
+    "Catalogue de 2160+ composants PC disponibles en Suisse — processeurs, cartes graphiques, RAM, stockage, boîtiers. Comparez les prix CHF chez Digitec, Galaxus et Brack.",
+  keywords: [
+    "catalogue composants pc suisse",
+    "composants pc chf",
+    "prix pc digitec",
+    "prix pc galaxus",
+    "processeur suisse prix",
+    "carte graphique suisse",
+  ],
   openGraph: {
-    title: "Catalogue composants PC — config-pc.ch",
+    title: "Catalogue composants PC Suisse — 2160 produits | config-pc.ch",
     description:
-      "2800+ composants PC et périphériques gaming. Filtrez par catégorie, marque et prix. Meilleurs prix CHF.",
+      "2160+ composants PC disponibles en Suisse. Filtrez par catégorie, marque et prix CHF. Digitec, Galaxus, Brack.",
     url: "https://config-pc.ch/catalogue",
   },
   alternates: { canonical: "https://config-pc.ch/catalogue" },

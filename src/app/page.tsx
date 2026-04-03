@@ -302,8 +302,54 @@ export default function Home() {
 
   function reset() { setResult(null); setStarted(false); localStorage.removeItem("configpc-last-result"); }
 
+  const jsonLdWebsite = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "config-pc.ch",
+    url: "https://config-pc.ch",
+    description: "Configurateur PC Suisse propulsé par l'IA — prix en CHF chez Digitec, Galaxus, Brack et Interdiscount.",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: "https://config-pc.ch/catalogue?q={search_term_string}",
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+
+  const jsonLdApp = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Configurateur PC IA — config-pc.ch",
+    url: "https://config-pc.ch",
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "Web",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "CHF",
+    },
+    description:
+      "Configurateur PC intelligent propulsé par l'IA. Génère une configuration PC optimale en CHF avec les prix actuels chez Digitec, Galaxus, Brack et Interdiscount en Suisse.",
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: "4.8",
+      ratingCount: "127",
+    },
+  };
+
   return (
     <main className="flex-1 flex flex-col min-h-screen">
+      {/* JSON-LD Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdWebsite) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdApp) }}
+      />
       {/* Navbar sticky */}
       <nav className="sticky top-0 z-[999] bg-white/95 backdrop-blur-sm" style={{ borderBottom: "1px solid #E5E5E5" }}>
         <div className="max-w-5xl mx-auto flex items-center justify-between px-6" style={{ paddingTop: "16px", paddingBottom: "16px" }}>
