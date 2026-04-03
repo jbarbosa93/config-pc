@@ -133,6 +133,7 @@ interface Props { onResult: (config: PCConfig) => void; onBack?: () => void; }
 export default function ConfiguratorForm({ onResult, onBack }: Props) {
   const { t } = useLanguage();
   const [step, setStep] = useState(0);
+  const [displayStep, setDisplayStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -154,8 +155,8 @@ export default function ConfiguratorForm({ onResult, onBack }: Props) {
   const totalSteps = 3;
   const canNext = (step === 0 && usage !== null) || (step === 1 && budget >= 300) || step === 2;
 
-  function nextStep() { setDirection(1); setStep((s) => s + 1); }
-  function prevStep() { setDirection(-1); setStep((s) => s - 1); }
+  function nextStep() { setDirection(1); setStep((s) => s + 1); setTimeout(() => setDisplayStep((s) => s + 1), 180); }
+  function prevStep() { setDirection(-1); setStep((s) => s - 1); setTimeout(() => setDisplayStep((s) => s - 1), 180); }
 
   const clearTimers = useCallback(() => {
     if (phase1Ref.current) clearInterval(phase1Ref.current);
@@ -225,6 +226,9 @@ export default function ConfiguratorForm({ onResult, onBack }: Props) {
       // Wait 600ms then show results
       await new Promise((r) => setTimeout(r, 600));
       confetti({ particleCount: 80, spread: 70, origin: { y: 0.7 }, colors: ["#0A0A0A", "#666666", "#E5E5E5"] });
+      setTimeout(() => {
+        document.querySelectorAll('canvas[style*="position: fixed"]').forEach((c) => c.remove());
+      }, 3000);
       setTimeout(() => { setLoading(false); onResult(data); }, 400);
     } catch {
       clearTimers();
@@ -243,7 +247,7 @@ export default function ConfiguratorForm({ onResult, onBack }: Props) {
         {/* Progress */}
         <div className="mb-14">
           <div className="flex justify-between items-center mb-3">
-            <span className="text-xs text-text-secondary">{t("step.label")} {step + 1} {t("step.of")} {totalSteps}</span>
+            <span className="text-xs text-text-secondary">{t("step.label")} {displayStep + 1} {t("step.of")} {totalSteps}</span>
             <div className="flex gap-1.5">
               {Array.from({ length: totalSteps }).map((_, i) => (
                 <motion.div key={i} className="h-1.5 rounded-full" initial={false} animate={{ width: i === step ? 24 : 8, backgroundColor: i <= step ? "#0A0A0A" : "#E5E5E5" }} transition={{ type: "spring", stiffness: 300, damping: 25 }} />
@@ -308,7 +312,7 @@ export default function ConfiguratorForm({ onResult, onBack }: Props) {
                           className={`absolute ${v === 300 ? "left-0" : v === 4000 ? "right-0" : "-translate-x-1/2"} ${budget >= v ? "text-text font-medium" : ""}`}
                           style={v !== 300 && v !== 4000 ? { left: `${((v - 300) / (4000 - 300)) * 100}%` } : undefined}
                         >
-                          {v === 4000 ? "∞" : v}
+                          {v === 4000 ? "max" : v}
                         </span>
                       ))}
                     </div>
@@ -417,7 +421,7 @@ export default function ConfiguratorForm({ onResult, onBack }: Props) {
 
         {error && <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="mt-6 p-4 border border-border rounded-xl text-sm text-text-secondary">{error}</motion.div>}
 
-        <div className="flex justify-between mt-12">
+        <div className="flex justify-between items-center mt-12 sticky bottom-0 sm:relative sm:bottom-auto bg-bg sm:bg-transparent -mx-6 px-6 py-4 sm:mx-0 sm:px-0 sm:py-0 border-t border-border sm:border-t-0 z-20">
           <motion.button
             whileHover={{ x: -3 }}
             onClick={step === 0 ? onBack : prevStep}

@@ -290,6 +290,42 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Socket compatibility check: ensure CPU and Carte mère share the same socket
+    if (config.components) {
+      const cpu = config.components.find((c: { type: string; specs?: Record<string, string> }) => c.type === "CPU");
+      const mobo = config.components.find((c: { type: string; specs?: Record<string, string> }) => c.type === "Carte mère");
+      if (cpu && mobo) {
+        const cpuSocket: string | undefined = cpu.specs?.Socket || cpu.specs?.socket;
+        const moboSocket: string | undefined = mobo.specs?.Socket || mobo.specs?.socket;
+        if (cpuSocket && moboSocket && cpuSocket !== moboSocket) {
+          // Find a compatible mobo from DB that matches CPU socket and is within budget
+          const compatibleMobo = allDbComponents.find(
+            (db) => db.type === "Carte mère" && db.socket === cpuSocket && db.price_ch > 0
+          );
+          if (compatibleMobo) {
+            const moboIdx = config.components.indexOf(mobo);
+            const dbImages = (compatibleMobo as DBComponent & { component_images?: { url: string; is_primary: boolean }[] }).component_images;
+            const primaryImg = dbImages?.find((img) => img.is_primary);
+            config.components[moboIdx] = {
+              ...mobo,
+              name: compatibleMobo.name,
+              price_ch: compatibleMobo.price_ch,
+              price_fr: 0,
+              image_url: primaryImg?.url || mobo.image_url,
+              manufacturer_url: compatibleMobo.manufacturer_url || mobo.manufacturer_url,
+              specs: {
+                ...(compatibleMobo.specs || {}),
+                Socket: compatibleMobo.socket || cpuSocket,
+                ...(compatibleMobo.chipset ? { Chipset: compatibleMobo.chipset } : {}),
+                ...(compatibleMobo.form_factor ? { Format: compatibleMobo.form_factor } : {}),
+              },
+              compatibility_note: `Socket auto-corrigé : ${moboSocket} → ${cpuSocket}`,
+            };
+          }
+        }
+      }
+    }
+
     // Pre-build alternatives from DB for each component type so the UI can show
     // them instantly without a second DB round-trip.
     // Use allDbComponents (no budget cap) so every type has alternatives regardless of price.

@@ -1392,6 +1392,7 @@ function PeripheralsSection({ onPeripheralInfo }: { onPeripheralInfo: (comp: Com
   const [peripherals, setPeripherals] = useState<Record<string, (DBComponent & { component_images?: DBImage[] })[]>>({});
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const hasItems = !loaded || Object.values(peripherals).some((items) => items.length > 0);
 
   useEffect(() => {
     if (!expanded || loaded) return;
@@ -1409,8 +1410,13 @@ function PeripheralsSection({ onPeripheralInfo }: { onPeripheralInfo: (comp: Com
       setPeripherals(map);
       setLoaded(true);
       setLoading(false);
+      // If no items loaded at all, collapse the section
+      const hasAny = results.some((r) => r.items.length > 0);
+      if (!hasAny) setExpanded(false);
     });
   }, [expanded, loaded]);
+
+  if (!hasItems) return null;
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="mb-10">

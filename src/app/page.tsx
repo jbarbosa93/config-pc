@@ -141,7 +141,7 @@ function Hero({ onStart }: { onStart: () => void }) {
     <div className="relative flex-1 flex flex-col">
       <Particles />
       {/* Content */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
+      <div className="relative z-10 flex flex-col items-center justify-center px-6 min-h-screen">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8 px-4 py-1.5 rounded-full border border-border text-text-secondary text-sm">
           {t("hero.badge")}
         </motion.div>
@@ -244,6 +244,46 @@ function Hero({ onStart }: { onStart: () => void }) {
           )}
         </AnimatePresence>
       </div>
+
+      {/* "Comment ça marche" — below fold */}
+      <div className="relative z-10 w-full px-6 py-20 border-t border-border bg-white/50 backdrop-blur-sm">
+        <div className="max-w-4xl mx-auto">
+          <motion.h2
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
+            className="text-2xl sm:text-3xl font-bold text-center mb-12"
+          >
+            {t("howto.title")}
+          </motion.h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+            {([
+              { step: "1", icon: "🤖", titleKey: "howto.step1.title", descKey: "howto.step1.desc" },
+              { step: "2", icon: "⚡", titleKey: "howto.step2.title", descKey: "howto.step2.desc" },
+              { step: "3", icon: "🛒", titleKey: "howto.step3.title", descKey: "howto.step3.desc" },
+            ] as { step: string; icon: string; titleKey: string; descKey: string }[]).map((item, i) => (
+              <motion.div
+                key={item.step}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.1 }}
+                className="flex flex-col items-center text-center gap-4"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-white border border-border flex items-center justify-center text-2xl shadow-sm">
+                  {item.icon}
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">{t("howto.step.label")} {item.step}</div>
+                  <div className="font-bold text-base mb-1">{t(item.titleKey)}</div>
+                  <div className="text-sm text-text-secondary">{t(item.descKey)}</div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -255,19 +295,6 @@ export default function Home() {
   const { count: cartCount } = useCart();
   const [result, setResult] = useState<PCConfig | null>(null);
   const [started, setStarted] = useState(false);
-
-  // Restore config from localStorage on mount (for "back to configurator" flow)
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("configpc-last-result");
-      if (saved) {
-        const parsed = JSON.parse(saved) as PCConfig;
-        if (parsed?.config_name && parsed?.components?.length) {
-          setResult(parsed);
-        }
-      }
-    } catch { /* ignore */ }
-  }, []);
 
   // Save config to localStorage when generated
   function handleResult(config: PCConfig) {
