@@ -8,6 +8,7 @@ import ConfigResult from "@/components/ConfigResult";
 import Logo from "@/components/Logo";
 import LanguageSelector from "@/components/LanguageSelector";
 import { useLanguage } from "@/lib/i18n";
+import { useMarket } from "@/lib/market";
 import { useCart } from "@/lib/cart";
 import type { PCConfig } from "@/lib/types";
 
@@ -125,6 +126,7 @@ function CatalogueCTA() {
 
 function Hero({ onStart }: { onStart: () => void }) {
   const { t } = useLanguage();
+  const market = useMarket();
   const [titleDone, setTitleDone] = useState(false);
   const hasPlayedRef = useRef(false);
   const handleTitleDone = useCallback(() => {
@@ -235,7 +237,7 @@ function Hero({ onStart }: { onStart: () => void }) {
         <AnimatePresence>
           {titleDone && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="mt-12 flex items-center gap-6 text-xs text-text-secondary">
-              <span>{t("hero.stat.1")}</span>
+              <span>{t(market === "fr" ? "hero.stat.fr" : "hero.stat.ch")}</span>
               <span className="w-px h-3 bg-border" />
               <span>{t("hero.stat.2")}</span>
               <span className="w-px h-3 bg-border" />
@@ -290,9 +292,12 @@ function Hero({ onStart }: { onStart: () => void }) {
 
 export default function Home() {
   const { t } = useLanguage();
+  const market = useMarket();
   const { count: cartCount } = useCart();
   const [result, setResult] = useState<PCConfig | null>(null);
   const [started, setStarted] = useState(false);
+
+  const isFrance = market === "fr";
 
   // Save config to localStorage when generated
   function handleResult(config: PCConfig) {
@@ -302,17 +307,22 @@ export default function Home() {
 
   function reset() { setResult(null); setStarted(false); localStorage.removeItem("configpc-last-result"); }
 
+  const siteUrl = isFrance ? "https://configpc-france.fr" : "https://config-pc.ch";
+  const siteName = isFrance ? "configpc-france.fr" : "config-pc.ch";
+
   const jsonLdWebsite = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "config-pc.ch",
-    url: "https://config-pc.ch",
-    description: "Configurateur PC Suisse propulsé par l'IA — prix en CHF chez Digitec, Galaxus, Brack et Interdiscount.",
+    name: siteName,
+    url: siteUrl,
+    description: isFrance
+      ? "Configurateur PC France propulsé par l'IA — prix en EUR chez LDLC, Amazon.fr, Materiel.net et Cdiscount."
+      : "Configurateur PC Suisse propulsé par l'IA — prix en CHF chez Digitec, Galaxus, Brack et Interdiscount.",
     potentialAction: {
       "@type": "SearchAction",
       target: {
         "@type": "EntryPoint",
-        urlTemplate: "https://config-pc.ch/catalogue?q={search_term_string}",
+        urlTemplate: `${siteUrl}/catalogue?q={search_term_string}`,
       },
       "query-input": "required name=search_term_string",
     },
@@ -321,17 +331,18 @@ export default function Home() {
   const jsonLdApp = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "Configurateur PC IA — config-pc.ch",
-    url: "https://config-pc.ch",
+    name: isFrance ? `Configurateur PC IA — ${siteName}` : `Configurateur PC IA — ${siteName}`,
+    url: siteUrl,
     applicationCategory: "UtilitiesApplication",
     operatingSystem: "Web",
     offers: {
       "@type": "Offer",
       price: "0",
-      priceCurrency: "CHF",
+      priceCurrency: isFrance ? "EUR" : "CHF",
     },
-    description:
-      "Configurateur PC intelligent propulsé par l'IA. Génère une configuration PC optimale en CHF avec les prix actuels chez Digitec, Galaxus, Brack et Interdiscount en Suisse.",
+    description: isFrance
+      ? "Configurateur PC intelligent propulsé par l'IA. Génère une configuration PC optimale en EUR avec les prix actuels chez LDLC, Amazon.fr, Materiel.net et Cdiscount en France."
+      : "Configurateur PC intelligent propulsé par l'IA. Génère une configuration PC optimale en CHF avec les prix actuels chez Digitec, Galaxus, Brack et Interdiscount en Suisse.",
     aggregateRating: {
       "@type": "AggregateRating",
       ratingValue: "4.8",

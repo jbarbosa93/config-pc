@@ -1,10 +1,15 @@
 import type { MetadataRoute } from "next";
+import { headers } from "next/headers";
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const base = "https://config-pc.ch";
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const headersList = await headers();
+  const market = headersList.get("x-market") ?? "ch";
+  const isFrance = market === "fr";
+
+  const base = isFrance ? "https://configpc-france.fr" : "https://config-pc.ch";
   const now = new Date();
 
-  return [
+  const common: MetadataRoute.Sitemap = [
     {
       url: base,
       lastModified: now,
@@ -30,6 +35,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.5,
     },
     {
+      url: `${base}/mentions-legales`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.2,
+    },
+    {
+      url: `${base}/politique-confidentialite`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.2,
+    },
+  ];
+
+  // Blog articles — Switzerland only (FR domain uses same content for now)
+  const blog: MetadataRoute.Sitemap = [
+    {
       url: `${base}/blog`,
       lastModified: now,
       changeFrequency: "weekly",
@@ -53,17 +74,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.7,
     },
-    {
-      url: `${base}/mentions-legales`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.2,
-    },
-    {
-      url: `${base}/politique-confidentialite`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.2,
-    },
   ];
+
+  return [...common, ...blog];
 }

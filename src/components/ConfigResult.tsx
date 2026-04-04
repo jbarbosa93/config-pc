@@ -966,6 +966,8 @@ function SpecDelta({ specKey, currentVal, altVal }: { specKey: string; currentVa
 
 function AlternativesModal({ component, allComponents, usage, budget, preloadedAlts, onSelect, onClose }: { component: Component; allComponents: Component[]; usage: string; budget: number; preloadedAlts?: Alternative[]; onSelect: (a: Alternative) => void; onClose: () => void }) {
   const { t } = useLanguage();
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
   const [alternatives, setAlternatives] = useState<Alternative[]>(preloadedAlts ?? []);
   const [currentSpecs, setCurrentSpecs] = useState<Record<string, string>>(component.specs ?? {});
   const [loading, setLoading] = useState(!preloadedAlts || preloadedAlts.length === 0);
@@ -1047,7 +1049,7 @@ function AlternativesModal({ component, allComponents, usage, budget, preloadedA
         <div className="px-5 py-4 border-b border-border" style={{ background: "linear-gradient(135deg, #EFF6FF 0%, #F0F7FF 100%)" }}>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-[10px] px-2 py-0.5 rounded-full font-bold text-white" style={{ background: "#4f8ef7" }}>{t("alt.current")}</span>
-            <span className="text-xs font-bold text-[#4f8ef7] tabular-nums">{component.price_ch} CHF</span>
+            <span className="text-xs font-bold text-[#4f8ef7] tabular-nums">{component.price_ch} {currency}</span>
           </div>
           <p className="font-semibold text-sm leading-tight mb-2">{component.name}</p>
           {Object.keys(currentSpecs).length > 0 && (
@@ -1068,7 +1070,7 @@ function AlternativesModal({ component, allComponents, usage, budget, preloadedA
           <div className="p-4 flex flex-col gap-3">
             {alternatives.map((alt, i) => {
               const priceDiff = alt.price_ch - component.price_ch;
-              const priceDiffStr = priceDiff === 0 ? "= prix" : priceDiff > 0 ? `+${priceDiff} CHF` : `${priceDiff} CHF`;
+              const priceDiffStr = priceDiff === 0 ? "= prix" : priceDiff > 0 ? `+${priceDiff} ${currency}` : `${priceDiff} ${currency}`;
               const altSpecs = alt.specs || {};
               // Union of all spec keys for this alternative + current
               const specKeys = Array.from(new Set([...allSpecKeys, ...Object.keys(altSpecs)]));
@@ -1093,7 +1095,7 @@ function AlternativesModal({ component, allComponents, usage, budget, preloadedA
                       </div>
                       <p className="font-semibold text-sm leading-tight">{alt.name}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs font-bold tabular-nums" style={{ color: "#4f8ef7" }}>{alt.price_ch} CHF</span>
+                        <span className="text-xs font-bold tabular-nums" style={{ color: "#4f8ef7" }}>{alt.price_ch} {currency}</span>
                         <span className={`text-[11px] font-medium tabular-nums ${priceDiff < 0 ? "text-green-600" : priceDiff > 0 ? "text-red-500" : "text-text-secondary"}`}>{priceDiffStr}</span>
                       </div>
                     </div>
@@ -1343,6 +1345,8 @@ function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }:
 /* ── Expandable Price Row ── */
 
 function PriceRow({ component, changed, t, onInfo }: { component: Component; index: number; changed: boolean; t: (k: string) => string; onInfo: () => void }) {
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
   return (
     <tr className="border-b border-border/50 hover:bg-card/50 transition-colors duration-150">
       <td className="py-3">
@@ -1352,7 +1356,7 @@ function PriceRow({ component, changed, t, onInfo }: { component: Component; ind
       </td>
       <td className="text-right py-3 flex items-center justify-end gap-3">
         <button type="button" onClick={onInfo} className="text-[10px] px-2 py-0.5 rounded border border-border text-text-secondary hover:text-[#4f8ef7] hover:border-[#4f8ef7] transition-all font-medium">Infos &rarr;</button>
-        <span className="tabular-nums font-medium">{component.price_ch > 0 ? `${component.price_ch} CHF` : <span className="text-[#999] italic text-xs">Prix à confirmer</span>}</span>
+        <span className="tabular-nums font-medium">{component.price_ch > 0 ? `${component.price_ch} ${currency}` : <span className="text-[#999] italic text-xs">{t("info.priceToConfirm")}</span>}</span>
       </td>
     </tr>
   );
@@ -1394,6 +1398,8 @@ function getPeripheralSpecs(type: string, specs: Record<string, string>): [strin
 
 function PeripheralCard({ item, color, bg, onInfo }: { item: DBComponent & { component_images?: DBImage[] }; color: string; bg: string; onInfo: () => void }) {
   const { addItem, items } = useCart();
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
   const inCart = items.some((i) => i.name === item.name);
   const specs = item.specs || {};
 
@@ -1437,7 +1443,7 @@ function PeripheralCard({ item, color, bg, onInfo }: { item: DBComponent & { com
         {item.price_ch > 0 ? (
           <>
             <span className="text-lg font-bold" style={{ color: "#4f8ef7" }}>{item.price_ch}</span>
-            <span className="text-xs font-medium text-[#4f8ef7]">CHF</span>
+            <span className="text-xs font-medium text-[#4f8ef7]">{currency}</span>
           </>
         ) : (
           <span className="text-[10px] text-[#999] italic">Prix à confirmer</span>
@@ -1689,7 +1695,7 @@ export default function ConfigResult({ config, onReset }: Props) {
     // Total
     doc.setFontSize(14);
     doc.setTextColor(blue);
-    doc.text(`Total: ${totalCH} CHF`, 20, y);
+    doc.text(`Total: ${totalCH} ${currency}`, 20, y);
     y += 12;
 
     // Separator
@@ -1713,7 +1719,7 @@ export default function ConfigResult({ config, onReset }: Props) {
 
       // Price
       doc.setTextColor(blue);
-      doc.text(`${c.price_ch} CHF`, 170, y, { align: "right" });
+      doc.text(`${c.price_ch} ${currency}`, 170, y, { align: "right" });
 
       y += 5;
 
