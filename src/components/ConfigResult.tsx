@@ -451,6 +451,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
   const [dbData, setDbData] = useState<DBComponent | null>(null);
   const [loading, setLoading] = useState(true);
   const { addItem, items: cartItems } = useCart();
+  const { t } = useLanguage();
   const inCart = cartItems.some((i) => i.name === component.name);
   const manufacturerUrl = getManufacturerUrl(component.name, component.manufacturer_url);
 
@@ -610,21 +611,21 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                   {/* Compatibility */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[11px] text-[#888] uppercase tracking-wide font-medium">Compatibilité</span>
+                      <span className="text-[11px] text-[#888] uppercase tracking-wide font-medium">{t("info.compatibility")}</span>
                     </div>
                     <CompatibilityScore score={compatScore} />
                   </div>
 
                   {/* Price box */}
                   <div className="rounded-xl p-4" style={{ background: "linear-gradient(135deg, #F0F7FF 0%, #EBF3FF 100%)", border: "1px solid #D0E4FF" }}>
-                    <p className="text-[11px] text-[#888] uppercase tracking-wide font-medium mb-1">Prix estimé</p>
+                    <p className="text-[11px] text-[#888] uppercase tracking-wide font-medium mb-1">{t("info.priceEstimated")}</p>
                     {displayPrice > 0 ? (
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-3xl font-black" style={{ color: "#4f8ef7" }}><AnimatedPrice value={displayPrice} suffix="" /></span>
                         <span className="text-lg font-bold text-[#4f8ef7]">CHF</span>
                       </div>
                     ) : (
-                      <span className="text-base font-medium text-[#999] italic">Prix à confirmer</span>
+                      <span className="text-base font-medium text-[#999] italic">{t("info.priceToConfirm")}</span>
                     )}
                   </div>
 
@@ -636,11 +637,11 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                       className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-opacity"
                       style={{ background: "#4f8ef7" }}
                     >
-                      Voir sur Galaxus →
+                      {t("info.seeOnGalaxus")}
                     </a>
                     {mfUrl !== "#" && (
                       <a href={mfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-[#555] hover:text-[#0A0A0A] transition-all" style={{ border: "1px solid #E5E5E5" }}>
-                        Site fabricant →
+                        {t("info.manufacturerSite")}
                       </a>
                     )}
                   </div>
@@ -657,7 +658,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                 <div className="rounded-xl p-4" style={{ background: "#F8FAFF", border: "1px solid #E0ECFF" }}>
                   <h2 className="text-sm font-bold text-[#4f8ef7] mb-3 flex items-center gap-2">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#4f8ef7" strokeWidth="1.5"/><path d="M8 5v4M8 11h.01" stroke="#4f8ef7" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                    Pourquoi ce composant ?
+                    {t("info.whyComponent")}
                   </h2>
                   <ul className="flex flex-col gap-2">
                     {whyPoints.slice(0, 3).map((point, i) => (
@@ -671,7 +672,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
               )}
 
               {/* ── Marchands suisses ── */}
-              <Accordion title="Acheter en Suisse" defaultOpen>
+              <Accordion title={t("info.buyInSwitzerland")} defaultOpen>
                 <div>
                   {MERCHANT_STORES.map((p, i) => (
                     <motion.div
@@ -689,13 +690,13 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                         className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white transition-opacity hover:opacity-80"
                         style={{ background: "#4f8ef7" }}
                       >
-                        Voir →
+                        {t("result.voir")}
                       </a>
                     </motion.div>
                   ))}
                 </div>
                 <p className="px-4 py-3 text-xs text-[#AAA] border-t" style={{ borderColor: "#F0F0F0" }}>
-                  Prix indicatif — vérifiez sur le site du marchand
+                  {t("result.merchantNote")}
                 </p>
               </Accordion>
 
@@ -706,24 +707,24 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                 function addRow(label: string, value: string | number | null | undefined) {
                   if (value === null || value === undefined || value === "" || added.has(label.toLowerCase())) return;
                   const str = String(value);
-                  if (str === "0" && (label.toLowerCase().includes("prix") || label.toLowerCase().includes("price"))) return;
+                  if (str === "0" && (label.toLowerCase().includes("prix") || label.toLowerCase().includes("price") || label.toLowerCase().includes("preis") || label.toLowerCase().includes("prezzo") || label.toLowerCase().includes("preco") || label.toLowerCase().includes("precio"))) return;
                   added.add(label.toLowerCase());
                   allRows.push({ label, value: str });
                 }
-                addRow("Marque", dbData?.brand);
-                addRow("Catégorie", component.type);
+                addRow(t("info.brand"), dbData?.brand);
+                addRow(t("info.category"), component.type);
                 addRow("Socket", dbData?.socket);
                 addRow("Chipset", dbData?.chipset);
-                addRow("Format", dbData?.form_factor);
+                addRow(t("spec.form_factor"), dbData?.form_factor);
                 addRow("TDP", tdp ? `${tdp} W` : null);
-                addRow("Année de sortie", dbData?.release_year);
-                if (specs) { for (const [key, value] of Object.entries(specs)) addRow(SPEC_TRANSLATIONS[key] || key.replace(/_/g, ' '), value); }
-                addRow("Score de popularité", dbData?.popularity_score ? `${dbData.popularity_score}/100` : null);
-                if (dbData?.available_ch !== null && dbData?.available_ch !== undefined) addRow("Dispo Suisse", dbData.available_ch ? "Oui" : "Non");
-                if (displayPrice && displayPrice > 0) addRow("Prix indicatif", `${displayPrice} CHF`);
+                addRow(t("info.releaseYear"), dbData?.release_year);
+                if (specs) { for (const [key, value] of Object.entries(specs)) addRow(translateSpecKey(key, t), formatSpecValue(String(value), t)); }
+                addRow(t("info.popularityScore"), dbData?.popularity_score ? `${dbData.popularity_score}/100` : null);
+                if (dbData?.available_ch !== null && dbData?.available_ch !== undefined) addRow(t("info.availableCh"), dbData.available_ch ? t("spec.true") : t("spec.false"));
+                if (displayPrice && displayPrice > 0) addRow(t("info.indicativePrice"), `${displayPrice} CHF`);
 
                 return allRows.length > 0 ? (
-                  <Accordion title="Fiche technique" defaultOpen>
+                  <Accordion title={t("info.technicalSheet")} defaultOpen>
                     <div>
                       {allRows.map((row, i) => (
                         <motion.div key={row.label} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.04 * i, duration: 0.18 }} className={`flex items-start justify-between px-4 py-3 text-sm ${i > 0 ? "border-t" : ""}`} style={{ borderColor: "#F0F0F0", background: i % 2 === 0 ? "white" : "#FAFAFA" }}>
@@ -750,7 +751,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
               className={`flex-1 min-w-[140px] py-3 rounded-xl text-sm font-semibold transition-all ${inCart ? "bg-green-100 text-green-700 border border-green-200" : "text-white"}`}
               style={inCart ? {} : { background: "#4f8ef7" }}
             >
-              {inCart ? "✓ Dans le panier" : "Ajouter à ma config"}
+              {inCart ? `✓ ${t("result.inCart")}` : t("info.addToConfig")}
             </motion.button>
             <a
               href={buildSearchUrl("galaxus", component.name)}
@@ -758,10 +759,10 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
               className="flex-1 min-w-[120px] py-3 rounded-xl text-sm font-semibold text-center hover:opacity-90 transition-opacity"
               style={{ border: "1px solid #E5E5E5", color: "#555" }}
             >
-              Voir sur Galaxus →
+              {t("info.seeOnGalaxus")}
             </a>
             <button type="button" onClick={onClose} className="px-5 py-3 rounded-xl text-sm font-medium text-[#666] hover:text-[#333] transition-colors" style={{ border: "1px solid #E5E5E5" }}>
-              Fermer
+              {t("info.close")}
             </button>
           </div>
         )}

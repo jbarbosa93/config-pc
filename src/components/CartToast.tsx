@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/lib/cart";
+import { useLanguage } from "@/lib/i18n";
 
 export default function CartToast() {
   const { lastAdded } = useCart();
+  const { t } = useLanguage();
   const [visible, setVisible] = useState(false);
   const [current, setCurrent] = useState<typeof lastAdded>(null);
 
@@ -38,7 +40,7 @@ export default function CartToast() {
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-white leading-tight truncate">{current.name}</p>
               <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                Ajouté au panier · CHF {current.price_ch.toFixed(0)}
+                {t("cart.added")} · CHF {current.price_ch.toFixed(0)}
               </p>
             </div>
             <a
@@ -46,7 +48,7 @@ export default function CartToast() {
               className="text-[11px] font-semibold px-3 py-1.5 rounded-lg shrink-0 transition-opacity hover:opacity-90"
               style={{ background: '#4f8ef7', color: 'white' }}
             >
-              Voir →
+              {t("result.voir")}
             </a>
           </motion.div>
         )}

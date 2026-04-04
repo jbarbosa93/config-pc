@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import { useCart } from "@/lib/cart";
+import { useLanguage } from "@/lib/i18n";
 import { ComponentImage } from "@/components/ComponentSVG";
 import { buildSearchUrl } from "@/lib/affiliates";
 import type { Component } from "@/lib/types";
@@ -295,6 +296,7 @@ const STORE_LABELS_MANUAL: Record<string, string> = {
 
 function DBInfoModal({ comp, onClose }: { comp: DBCompWithImages; onClose: () => void }) {
   const { addItem, items: cartItems } = useCart();
+  const { t } = useLanguage();
   const inCart = cartItems.some(i => i.name === comp.name);
   const imageUrl = comp.component_images?.find(i => i.is_primary)?.url || comp.component_images?.[0]?.url;
 
@@ -376,7 +378,7 @@ function DBInfoModal({ comp, onClose }: { comp: DBCompWithImages; onClose: () =>
           {/* Specs */}
           {specs.length > 0 && (
             <div className="px-6 py-5" style={{ borderBottom: '1px solid #E5E5E5' }}>
-              <p className="text-xs font-semibold uppercase tracking-wider text-[#888] mb-3">Caractéristiques</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#888] mb-3">{t("info.characteristics")}</p>
               <div className="grid grid-cols-2 gap-2">
                 {specs.map(([key, val]) => (
                   <div key={key} className="flex flex-col gap-0.5 p-2.5 rounded-lg" style={{ background: '#F5F7FF' }}>
@@ -390,7 +392,7 @@ function DBInfoModal({ comp, onClose }: { comp: DBCompWithImages; onClose: () =>
 
           {/* Store links */}
           <div className="px-6 py-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#888] mb-3">Acheter en Suisse</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#888] mb-3">{t("info.buyInSwitzerland")}</p>
             <div className="flex flex-col gap-2">
               {STORES_MANUAL.map((p) => (
                 <a
@@ -402,11 +404,11 @@ function DBInfoModal({ comp, onClose }: { comp: DBCompWithImages; onClose: () =>
                   style={{ background: '#F5F7FF', border: '1px solid #E5E5E5' }}
                 >
                   <span className="text-sm font-semibold text-[#0A0A0A]">{p.label}</span>
-                  <span className="text-xs font-semibold text-[#4f8ef7]">Voir →</span>
+                  <span className="text-xs font-semibold text-[#4f8ef7]">{t("result.voir")}</span>
                 </a>
               ))}
             </div>
-            <p className="mt-3 text-xs text-[#AAA]">Prix indicatif — vérifiez sur le site du marchand</p>
+            <p className="mt-3 text-xs text-[#AAA]">{t("result.merchantNote")}</p>
           </div>
         </div>
 
@@ -420,14 +422,14 @@ function DBInfoModal({ comp, onClose }: { comp: DBCompWithImages; onClose: () =>
             className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity"
             style={{ background: inCart ? '#E5E5E5' : '#4f8ef7', color: inCart ? '#999' : 'white' }}
           >
-            {inCart ? '✓ Dans le panier' : '+ Ajouter au panier'}
+            {inCart ? `✓ ${t("result.inCart")}` : `+ ${t("result.addToCart")}`}
           </motion.button>
           <button
             onClick={onClose}
             className="py-3 px-4 rounded-xl text-sm font-medium text-[#666] hover:text-[#333] transition-colors"
             style={{ border: '1px solid #E5E5E5' }}
           >
-            Fermer
+            {t("info.close")}
           </button>
         </div>
       </div>
@@ -592,6 +594,7 @@ function CompatSummaryRow({ icon, label, result }: CompatRow) {
 }
 
 function CompatSummary({ build }: { build: Build }) {
+  const { t } = useLanguage();
   const { mobo, cpu, ram, gpu, psu, cooler, case: pcCase } = build as {
     mobo?: DBCompWithImages; cpu?: DBCompWithImages; ram?: DBCompWithImages;
     gpu?: DBCompWithImages; psu?: DBCompWithImages; cooler?: DBCompWithImages;
@@ -632,7 +635,7 @@ function CompatSummary({ build }: { build: Build }) {
 
   return (
     <div className="rounded-xl p-4" style={{ border: '1px solid #E5E5E5', background: '#FAFAFA' }}>
-      <p className="text-xs font-semibold uppercase tracking-wider text-[#666] mb-2">Compatibilité</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-[#666] mb-2">{t("info.compatibility")}</p>
       <div>
         {rows.map(row => (
           <CompatSummaryRow key={row.label} {...row} />
@@ -757,6 +760,7 @@ function Sidebar({
 
 function RecapSection({ build, onReset }: { build: Build; onReset: () => void }) {
   const { addItem } = useCart();
+  const { t } = useLanguage();
   const router = useRouter();
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -928,7 +932,7 @@ function RecapSection({ build, onReset }: { build: Build; onReset: () => void })
           className="flex-1 py-3 px-6 rounded-xl font-semibold text-white transition-opacity hover:opacity-90"
           style={{ background: '#4f8ef7' }}
         >
-          🛒 Ajouter tout au panier
+          🛒 {t("result.addAllToCart")}
         </button>
         <button
           onClick={optimizeWithAI}
@@ -959,6 +963,7 @@ function RecapSection({ build, onReset }: { build: Build; onReset: () => void })
 
 function ManualConfiguratorInner() {
   const { count: cartCount } = useCart();
+  const { t } = useLanguage();
   const searchParams = useSearchParams();
   // ?step=N jumps to step N (1-based, clamped)
   const initialStep = Math.min(Math.max((parseInt(searchParams.get("step") || "1") - 1), 0), 7);
@@ -1218,7 +1223,7 @@ function ManualConfiguratorInner() {
                       className="mt-4 px-4 py-2 rounded-lg text-sm font-medium"
                       style={{ background: '#4f8ef7', color: 'white' }}
                     >
-                      Voir tous les composants
+                      {t("cat.all")}
                     </button>
                   )}
                 </motion.div>
