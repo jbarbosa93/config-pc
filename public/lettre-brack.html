@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Partnerschaftsanfrage — Brack.ch | config-pc.ch</title>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 11pt;
+      line-height: 1.65;
+      color: #1a1a1a;
+      background: #f0f0f0;
+    }
+
+    /* ── A4 Page wrapper (screen) ── */
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 20mm auto;
+      padding: 20mm 22mm 20mm 25mm;
+      background: #ffffff;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.15);
+      position: relative;
+    }
+
+    /* ── Header / Letterhead ── */
+    .letterhead {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 8mm;
+      border-bottom: 2px solid #131929;
+      margin-bottom: 8mm;
+    }
+
+    .logo-block {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-text {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 20pt;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #131929;
+      line-height: 1;
+    }
+
+    .logo-text .ch {
+      color: #5B8FE8;
+    }
+
+    .sender-details {
+      text-align: right;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 8.5pt;
+      color: #555;
+      line-height: 1.6;
+    }
+
+    .sender-details strong {
+      color: #131929;
+      font-size: 9pt;
+    }
+
+    /* ── Recipient address window ── */
+    .address-window {
+      margin-top: 6mm;
+      margin-bottom: 10mm;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10pt;
+      line-height: 1.5;
+    }
+
+    .address-window .sender-line {
+      font-size: 7.5pt;
+      color: #888;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 1.5mm;
+      margin-bottom: 2mm;
+      letter-spacing: 0.3px;
+    }
+
+    /* ── Date & Place ── */
+    .date-line {
+      text-align: right;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10pt;
+      color: #333;
+      margin-bottom: 10mm;
+    }
+
+    /* ── Subject ── */
+    .subject {
+      font-family: Arial, Helvetica, sans-serif;
+      font-weight: 700;
+      font-size: 11pt;
+      color: #131929;
+      margin-bottom: 6mm;
+    }
+
+    /* ── Salutation ── */
+    .salutation {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11pt;
+      margin-bottom: 5mm;
+    }
+
+    /* ── Body paragraphs ── */
+    .body p {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.7;
+      color: #1a1a1a;
+      margin-bottom: 4.5mm;
+      text-align: justify;
+    }
+
+    .body p strong {
+      color: #131929;
+    }
+
+    /* ── Highlight box ── */
+    .highlight-box {
+      background: #f5f8ff;
+      border-left: 3px solid #5B8FE8;
+      padding: 4mm 5mm;
+      margin: 5mm 0;
+      border-radius: 2px;
+    }
+
+    .highlight-box p {
+      margin-bottom: 2mm !important;
+    }
+
+    .highlight-box p:last-child {
+      margin-bottom: 0 !important;
+    }
+
+    /* ── Closing ── */
+    .closing {
+      margin-top: 8mm;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10.5pt;
+    }
+
+    .closing p {
+      margin-bottom: 1mm;
+    }
+
+    .signature-name {
+      margin-top: 10mm;
+      font-weight: 700;
+      font-size: 11pt;
+      color: #131929;
+    }
+
+    .signature-title {
+      font-size: 9.5pt;
+      color: #555;
+    }
+
+    /* ── Footer with QR ── */
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 14mm;
+      padding-top: 5mm;
+      border-top: 1px solid #ddd;
+    }
+
+    .footer-info {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 8pt;
+      color: #888;
+      line-height: 1.7;
+    }
+
+    .footer-info strong {
+      color: #333;
+    }
+
+    .qr-block {
+      text-align: center;
+    }
+
+    .qr-block img {
+      width: 22mm;
+      height: 22mm;
+      display: block;
+    }
+
+    .qr-block span {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 7pt;
+      color: #aaa;
+      display: block;
+      margin-top: 1mm;
+    }
+
+    /* ── Print styles ── */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+
+      html, body {
+        background: white;
+        width: 210mm;
+        height: 297mm;
+      }
+
+      .page {
+        margin: 0;
+        padding: 18mm 20mm 18mm 25mm;
+        box-shadow: none;
+        width: 210mm;
+        min-height: 297mm;
+        page-break-after: always;
+      }
+
+      .highlight-box {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        background: #f5f8ff !important;
+        border-left: 3px solid #5B8FE8 !important;
+      }
+
+      .letterhead {
+        border-bottom: 2px solid #131929 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+
+    /* ── Screen only: print button ── */
+    @media screen {
+      .print-btn {
+        display: block;
+        width: 210mm;
+        margin: 0 auto 6mm;
+        text-align: center;
+      }
+
+      .print-btn button {
+        padding: 8px 24px;
+        background: #131929;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        font-family: Arial, sans-serif;
+      }
+
+      .print-btn button:hover {
+        background: #5B8FE8;
+      }
+    }
+
+    @media print {
+      .print-btn { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="print-btn">
+  <button onclick="window.print()">🖨 Drucken / Imprimer</button>
+</div>
+
+<div class="page">
+
+  <!-- LETTERHEAD -->
+  <div class="letterhead">
+    <!-- Logo inline SVG -->
+    <div class="logo-block">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="chipGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#7B9EE8"/>
+            <stop offset="100%" stop-color="#6B7AE8"/>
+          </linearGradient>
+        </defs>
+        <rect x="7" y="7" width="26" height="26" rx="5" fill="#131929"/>
+        <rect x="13" y="3" width="3" height="5" rx="1.5" fill="#6B9EE8"/>
+        <rect x="20" y="3" width="3" height="5" rx="1.5" fill="#6B9EE8"/>
+        <rect x="27" y="3" width="3" height="5" rx="1.5" fill="#6B9EE8"/>
+        <rect x="13" y="32" width="3" height="5" rx="1.5" fill="#6B9EE8"/>
+        <rect x="20" y="32" width="3" height="5" rx="1.5" fill="#6B9EE8"/>
+        <rect x="27" y="32" width="3" height="5" rx="1.5" fill="#6B9EE8"/>
+        <rect x="3" y="13" width="5" height="3" rx="1.5" fill="#6B9EE8"/>
+        <rect x="3" y="20" width="5" height="3" rx="1.5" fill="#6B9EE8"/>
+        <rect x="3" y="27" width="5" height="3" rx="1.5" fill="#6B9EE8"/>
+        <rect x="32" y="13" width="5" height="3" rx="1.5" fill="#6B9EE8"/>
+        <rect x="32" y="20" width="5" height="3" rx="1.5" fill="#6B9EE8"/>
+        <rect x="32" y="27" width="5" height="3" rx="1.5" fill="#6B9EE8"/>
+        <rect x="11" y="11" width="18" height="18" rx="4" fill="url(#chipGrad)"/>
+        <rect x="15" y="15" width="10" height="10" rx="2.5" fill="white"/>
+        <rect x="18" y="18" width="4" height="4" rx="1" fill="#131929"/>
+      </svg>
+      <span class="logo-text">config-pc<span class="ch">.ch</span></span>
+    </div>
+
+    <div class="sender-details">
+      <strong>config-pc.ch</strong><br/>
+      Monthey, Valais<br/>
+      contact@config-pc.ch<br/>
+      https://config-pc.ch
+    </div>
+  </div>
+
+  <!-- RECIPIENT ADDRESS -->
+  <div class="address-window">
+    <div class="sender-line">config-pc.ch · Monthey · VS</div>
+    <strong>Brack.ch AG</strong><br/>
+    Industriestrasse 17<br/>
+    5506 Mägenwil
+  </div>
+
+  <!-- DATE -->
+  <div class="date-line">Monthey, 3. April 2026</div>
+
+  <!-- SUBJECT -->
+  <div class="subject">
+    Partnerschaftsanfrage — Affiliate-Kooperation mit config-pc.ch
+  </div>
+
+  <!-- SALUTATION -->
+  <div class="salutation">Sehr geehrte Damen und Herren,</div>
+
+  <!-- BODY -->
+  <div class="body">
+    <p>
+      mein Name ist João Barbosa, und ich bin der Gründer von <strong>config-pc.ch</strong> —
+      einem KI-gestützten PC-Konfigurator, der Nutzerinnen und Nutzern in der Schweiz innerhalb
+      von 30 Sekunden eine optimale PC-Konfiguration mit aktuellen CHF-Preisen empfiehlt.
+      Unsere Plattform berücksichtigt dabei stets die Verfügbarkeit und Preise bei den führenden
+      Schweizer Händlern — darunter <strong>Brack.ch</strong>.
+    </p>
+
+    <p>
+      Seit der Lancierung von config-pc.ch wächst unsere Community stetig. Nutzer suchen aktiv
+      nach empfohlenen Konfigurationen und werden direkt zu den entsprechenden Produktseiten
+      weitergeleitet. Wir möchten diese Besucherströme strukturierter gestalten und gleichzeitig
+      für <strong>Brack.ch</strong> messbaren Mehrwert schaffen.
+    </p>
+
+    <div class="highlight-box">
+      <p><strong>Was wir Ihnen anbieten:</strong></p>
+      <p>&#8594; Direkte Verlinkung zu Produktseiten auf Brack.ch innerhalb unserer empfohlenen Konfigurationen</p>
+      <p>&#8594; Prominente Platzierung von Brack.ch als bevorzugter Händler für ausgewählte Kategorien</p>
+      <p>&#8594; Transparente Tracking-Links zur Messung der generierten Verkäufe (UTM / Affiliate)</p>
+      <p>&#8594; Monatliche Berichte über generierte Klicks und Conversions</p>
+    </div>
+
+    <p>
+      Unsere Zielgruppe sind technikaffine Schweizerinnen und Schweizer im Alter von 18 bis
+      40 Jahren, die aktiv nach PC-Hardware suchen und eine hohe Kaufbereitschaft mitbringen.
+      Unsere Empfehlungen basieren auf KI-Analyse und echten CHF-Preisdaten — die Conversion-Rate
+      unserer Weiterleitungen liegt erfahrungsgemäss deutlich über dem Branchendurchschnitt.
+    </p>
+
+    <p>
+      Ich würde mich sehr freuen, die Möglichkeiten einer Zusammenarbeit mit Ihrem Team zu
+      besprechen. Gerne stehe ich für ein kurzes Gespräch per Telefon oder Videokonferenz zur
+      Verfügung — selbstverständlich zu einem Zeitpunkt, der Ihnen passt.
+    </p>
+
+    <p>
+      Bitte zögern Sie nicht, mich direkt unter <strong>contact@config-pc.ch</strong> zu
+      kontaktieren oder unsere Plattform unter <strong>https://config-pc.ch</strong> zu besuchen,
+      um sich ein Bild von unserem Angebot zu machen.
+    </p>
+  </div>
+
+  <!-- CLOSING -->
+  <div class="closing">
+    <p>Ich danke Ihnen herzlich für Ihre Zeit und freue mich auf Ihre Rückmeldung.</p>
+    <p>Freundliche Grüsse</p>
+    <div class="signature-name">João Barbosa</div>
+    <div class="signature-title">Gründer &amp; Entwickler — config-pc.ch</div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-info">
+      <strong>config-pc.ch</strong> · KI-gestützter PC-Konfigurator für die Schweiz<br/>
+      contact@config-pc.ch · https://config-pc.ch<br/>
+      Monthey, Kanton Wallis · Schweiz
+    </div>
+    <div class="qr-block">
+      <img
+        src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://config-pc.ch"
+        alt="QR Code config-pc.ch"
+        width="88"
+        height="88"
+      />
+      <span>config-pc.ch</span>
+    </div>
+  </div>
+
+</div><!-- /.page -->
+
+</body>
+</html>
