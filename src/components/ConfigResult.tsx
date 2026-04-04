@@ -348,6 +348,7 @@ const MERCHANT_STORES = [
 ];
 
 function MerchantTable({ component }: { component: Component }) {
+  const { t } = useLanguage();
   return (
     <div className="mt-3 rounded-lg border border-border bg-bg overflow-hidden">
       {MERCHANT_STORES.map((p, i) => (
@@ -358,11 +359,11 @@ function MerchantTable({ component }: { component: Component }) {
           className={`flex items-center justify-between px-3 py-2.5 text-xs hover:bg-card transition-colors duration-150 ${i > 0 ? "border-t border-border" : ""}`}
         >
           <span className="font-medium text-text">{p.label}</span>
-          <span className="text-xs font-semibold text-[#4f8ef7]">Voir →</span>
+          <span className="text-xs font-semibold text-[#4f8ef7]">{t("result.voir")}</span>
         </a>
       ))}
       <p className="px-3 py-2 text-[10px] text-[#AAA] border-t border-border">
-        Prix indicatif — vérifiez sur le site du marchand
+        {t("result.merchantNote")}
       </p>
     </div>
   );
@@ -794,22 +795,30 @@ const SPEC_TRANSLATIONS: Record<string, string> = {
   base_clock: "Fréquence de base", boost_clock: "Fréquence boost",
   l3_cache_mb: "Cache L3 (MB)", l2_cache_mb: "Cache L2 (MB)",
   architecture: "Architecture", igpu: "GPU intégré",
+  clock: "Fréquence (GHz)",
   // GPU
   vram_gb: "VRAM (Go)", core_clock: "Fréquence cœur",
   memory_type: "Type mémoire", perf_score: "Score perf.",
+  "integrated graphics": "GPU intégré", integrated_graphics: "GPU intégré",
+  outputs: "Sorties", length_mm: "Longueur (mm)", "length mm": "Longueur (mm)",
   // RAM
   ddr_gen: "Génération DDR", frequency_mhz: "Fréquence (MHz)",
   total_gb: "Capacité (Go)", num_modules: "Nb modules",
   cas_latency: "Latence CAS", first_word_latency: "First Word Latency",
   // Storage
-  capacity: "Capacité", interface: "Interface",
+  capacity: "Capacité", capacity_gb: "Capacité (Go)", "capacity gb": "Capacité (Go)",
+  interface: "Interface",
   read_speed: "Lecture (MB/s)", write_speed: "Écriture (MB/s)",
+  read_speed_mbs: "Lecture (MB/s)", "read speed mbs": "Lecture (MB/s)",
+  write_speed_mbs: "Écriture (MB/s)", "write speed mbs": "Écriture (MB/s)",
+  drive_type: "Type de lecteur", "drive type": "Type de lecteur",
   // PSU
   wattage: "Puissance (W)", efficiency: "Certification 80+",
   modular: "Modulaire", psu_type: "Type PSU",
-  // Case
+  // Case / Mobo form factor
   case_type: "Type boîtier", side_panel: "Panneau latéral",
   volume: "Volume (L)", color: "Couleur",
+  form_factor: "Format", "form factor": "Format",
   // Cooler
   cooler_type: "Type refroidissement", fan_rpm: "Vitesse ventilateur",
   noise_level: "Niveau sonore (dB)", radiator_size: "Taille radiateur",
@@ -831,8 +840,39 @@ const SPEC_TRANSLATIONS: Record<string, string> = {
   TDP: "TDP", "Année": "Année",
 };
 
-function translateSpecKey(key: string): string {
-  return SPEC_TRANSLATIONS[key] ?? key.replace(/_/g, " ");
+/** Normalize a spec key to canonical snake_case for i18n lookup */
+function normalizeSpecKey(key: string): string {
+  return key.toLowerCase().replace(/[\s\-]+/g, "_").replace(/[^a-z0-9_]/g, "").replace(/_+/g, "_");
+}
+
+/** Deduplicate spec entries where two keys map to the same label */
+function deduplicateSpecKeys(keys: string[], t: (k: string) => string): string[] {
+  const seen = new Set<string>();
+  return keys.filter((k) => {
+    const label = translateSpecKey(k, t);
+    if (seen.has(label)) return false;
+    seen.add(label);
+    return true;
+  });
+}
+
+/** Format a spec value — translate booleans */
+function formatSpecValue(v: string, t: (k: string) => string): string {
+  if (v === "false") return t("spec.false");
+  if (v === "true") return t("spec.true");
+  return v;
+}
+
+function translateSpecKey(key: string, t?: (k: string) => string): string {
+  // 1. Try language-aware spec.* i18n key
+  if (t) {
+    const i18nKey = `spec.${normalizeSpecKey(key)}`;
+    const translated = t(i18nKey);
+    if (translated !== i18nKey) return translated;
+  }
+  // 2. Fall back to SPEC_TRANSLATIONS dict (French)
+  const normalized = normalizeSpecKey(key);
+  return SPEC_TRANSLATIONS[key] ?? SPEC_TRANSLATIONS[normalized] ?? key.replace(/_/g, " ");
 }
 
 function assignTiers(items: DBComponent[], currentPrice: number): Alternative[] {
@@ -995,9 +1035,9 @@ function AlternativesModal({ component, allComponents, usage, budget, preloadedA
           <p className="font-semibold text-sm leading-tight mb-2">{component.name}</p>
           {Object.keys(currentSpecs).length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {Object.entries(currentSpecs).map(([k, v]) => (
+              {deduplicateSpecKeys(Object.keys(currentSpecs), t).map((k) => (
                 <span key={k} className="text-[10px] px-2 py-0.5 rounded-md bg-white/70 border border-blue-200 text-[#4f8ef7] font-medium">
-                  {translateSpecKey(k)}: {v}
+                  {translateSpecKey(k, t)}: {formatSpecValue(String(currentSpecs[k]), t)}
                 </span>
               ))}
             </div>
@@ -1042,38 +1082,54 @@ function AlternativesModal({ component, allComponents, usage, budget, preloadedA
                     </div>
                   </div>
 
-                  {/* Spec comparison table — ALL specs */}
-                  {specKeys.length > 0 && (
-                    <div className="rounded-lg overflow-hidden border border-border mb-3">
-                      <table className="w-full text-[11px]">
-                        <thead>
-                          <tr style={{ background: "#F8F8F8" }}>
-                            <th className="text-left px-3 py-1.5 font-medium text-text-secondary">Spec</th>
-                            <th className="text-center px-2 py-1.5 font-medium text-text-secondary">Actuel</th>
-                            <th className="text-center px-2 py-1.5 font-medium text-text-secondary">Alternative</th>
-                            <th className="text-center px-2 py-1.5 font-medium text-text-secondary w-8"></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {specKeys.map((k, si) => {
-                            const curV = currentSpecs[k];
-                            const altV = altSpecs[k];
-                            if (!curV && !altV) return null;
-                            return (
-                              <tr key={k} style={{ background: si % 2 === 0 ? "#FFFFFF" : "#FAFAFA", borderTop: "1px solid #F0F0F0" }}>
-                                <td className="px-3 py-1.5 text-text-secondary font-medium">{translateSpecKey(k)}</td>
-                                <td className={`px-2 py-1.5 text-center tabular-nums ${curV != null ? "text-text-secondary" : "text-[#CCC] italic"}`}>{curV != null ? String(curV) : "N/A"}</td>
-                                <td className={`px-2 py-1.5 text-center tabular-nums font-medium ${altV != null ? "text-text" : "text-[#CCC] italic"}`}>{altV != null ? String(altV) : "N/A"}</td>
-                                <td className="px-2 py-1.5 text-center">
-                                  <SpecDelta specKey={k} currentVal={curV} altVal={altV} />
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                  {/* Spec comparison table — ALL specs, deduplicated */}
+                  {(() => {
+                    // Normalize alt specs keys to match currentSpecs format
+                    const normalizedCurrent: Record<string, string> = {};
+                    for (const [k, v] of Object.entries(currentSpecs)) {
+                      normalizedCurrent[normalizeSpecKey(k)] = v;
+                      normalizedCurrent[k] = v; // keep original too
+                    }
+                    const normalizedAlt: Record<string, string> = {};
+                    for (const [k, v] of Object.entries(altSpecs)) {
+                      normalizedAlt[normalizeSpecKey(k)] = v;
+                      normalizedAlt[k] = v;
+                    }
+                    const deduped = deduplicateSpecKeys(specKeys, t);
+                    if (deduped.length === 0) return null;
+                    return (
+                      <div className="rounded-lg overflow-hidden border border-border mb-3">
+                        <table className="w-full text-[11px]">
+                          <thead>
+                            <tr style={{ background: "#F8F8F8" }}>
+                              <th className="text-left px-3 py-1.5 font-medium text-text-secondary">{t("alt.spec")}</th>
+                              <th className="text-center px-2 py-1.5 font-medium text-text-secondary">{t("alt.current")}</th>
+                              <th className="text-center px-2 py-1.5 font-medium text-text-secondary">{t("alt.alternative")}</th>
+                              <th className="text-center px-2 py-1.5 font-medium text-text-secondary w-8"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {deduped.map((k, si) => {
+                              const nk = normalizeSpecKey(k);
+                              const curV = normalizedCurrent[k] ?? normalizedCurrent[nk];
+                              const altV = normalizedAlt[k] ?? normalizedAlt[nk];
+                              if (!curV && !altV) return null;
+                              return (
+                                <tr key={k} style={{ background: si % 2 === 0 ? "#FFFFFF" : "#FAFAFA", borderTop: "1px solid #F0F0F0" }}>
+                                  <td className="px-3 py-1.5 text-text-secondary font-medium">{translateSpecKey(k, t)}</td>
+                                  <td className={`px-2 py-1.5 text-center tabular-nums ${curV != null ? "text-text-secondary" : "text-[#CCC] italic"}`}>{curV != null ? formatSpecValue(String(curV), t) : "—"}</td>
+                                  <td className={`px-2 py-1.5 text-center tabular-nums font-medium ${altV != null ? "text-text" : "text-[#CCC] italic"}`}>{altV != null ? formatSpecValue(String(altV), t) : "—"}</td>
+                                  <td className="px-2 py-1.5 text-center">
+                                    <SpecDelta specKey={k} currentVal={curV} altVal={altV} />
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
 
                   {alt.reason && <p className="text-xs text-text-secondary mb-3 leading-relaxed">{alt.reason}</p>}
                   {!alt.compatible && alt.compatibility_warning && (
@@ -1187,17 +1243,17 @@ function PerformanceSection({ components }: { components: Component[] }) {
 
 /* ── Change button label per component type ── */
 
-function getChangeLabel(type: string): string {
-  const t = type.toLowerCase();
-  if (t.includes("cpu") || t.includes("processeur")) return "Changer le processeur";
-  if (t.includes("gpu") || t.includes("graphi")) return "Changer la carte graphique";
-  if (t.includes("ram") || t.includes("mémoire") || t.includes("memoire")) return "Changer la RAM";
-  if (t.includes("stockage") || t.includes("ssd") || t.includes("nvme")) return "Changer le stockage";
-  if (t.includes("carte") && t.includes("mère") || t.includes("mere")) return "Changer la carte mère";
-  if (t.includes("alimentation")) return "Changer l'alimentation";
-  if (t.includes("boîtier") || t.includes("boitier")) return "Changer le boîtier";
-  if (t.includes("refroidissement") || t.includes("cooler")) return "Changer le refroidissement";
-  return "Changer";
+function getChangeLabel(type: string, t: (k: string) => string): string {
+  const tp = type.toLowerCase();
+  if (tp.includes("cpu") || tp.includes("processeur")) return t("change.cpu");
+  if (tp.includes("gpu") || tp.includes("graphi")) return t("change.gpu");
+  if (tp.includes("ram") || tp.includes("mémoire") || tp.includes("memoire")) return t("change.ram");
+  if (tp.includes("stockage") || tp.includes("ssd") || tp.includes("nvme")) return t("change.storage");
+  if ((tp.includes("carte") && (tp.includes("mère") || tp.includes("mere")))) return t("change.mobo");
+  if (tp.includes("alimentation")) return t("change.psu");
+  if (tp.includes("boîtier") || tp.includes("boitier")) return t("change.case");
+  if (tp.includes("refroidissement") || tp.includes("cooler")) return t("change.cooling");
+  return t("change");
 }
 
 /* ── Component Card ── */
@@ -1247,7 +1303,7 @@ function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }:
       {/* Compare on TopPreise */}
       <a href={buildToppreiseUrl(component.name)} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 w-full text-xs py-2.5 rounded-lg bg-[#0A0A0A] text-white hover:bg-[#333] transition-all duration-150 font-medium">
         <span className="px-1.5 py-0.5 rounded bg-[#FF6B00] text-white font-bold text-[10px] tracking-tight">TP</span>
-        Comparer sur TopPreise
+        {t("result.compareToppreise")}
       </a>
 
       <div className="flex gap-2 mt-3">
@@ -1256,9 +1312,9 @@ function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }:
           onClick={() => !inCart && addItem(component)}
           className={`flex-1 text-center text-xs py-2 rounded-lg font-medium transition-all duration-150 ${inCart ? "bg-green-100 text-green-700 border border-green-200" : "border border-border text-text-secondary hover:bg-accent hover:text-white hover:border-accent"}`}
         >
-          {inCart ? "✓ Dans le panier" : "＋ Ajouter au panier"}
+          {inCart ? `✓ ${t("result.inCart")}` : `＋ ${t("result.addToCart")}`}
         </motion.button>
-        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={onSwap} className="text-xs py-2 px-3 rounded-lg border border-border text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150 font-medium">{getChangeLabel(component.type)}</motion.button>
+        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={onSwap} className="text-xs py-2 px-3 rounded-lg border border-border text-text-secondary hover:bg-accent hover:text-white hover:border-accent transition-all duration-150 font-medium">{getChangeLabel(component.type, t)}</motion.button>
         {isSwapped && <motion.button initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} whileTap={{ scale: 0.97 }} onClick={onRevert} className="text-xs py-2 px-3 rounded-lg border border-border text-text-secondary hover:border-border-hover hover:text-text transition-all duration-150 font-medium">{t("restore")}</motion.button>}
       </div>
     </motion.div>
@@ -1502,6 +1558,7 @@ function PeripheralsSection({ onPeripheralInfo }: { onPeripheralInfo: (comp: Com
 function ShareConfigButton({ config }: { config: PCConfig }) {
   const [state, setState] = useState<"idle" | "loading" | "copied" | "error">("idle");
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const { t } = useLanguage();
 
   async function handleShare() {
     if (shareUrl) {
@@ -1530,11 +1587,10 @@ function ShareConfigButton({ config }: { config: PCConfig }) {
   }
 
   const label =
-    state === "loading" ? "Génération du lien..." :
-    state === "copied" ? "Lien copié ✓" :
-    state === "error" ? "Erreur — réessayer" :
-    shareUrl ? "Copier le lien" :
-    "Partager ma config";
+    state === "loading" ? "..." :
+    state === "copied" ? "✓" :
+    state === "error" ? "!" :
+    t("result.shareConfig");
 
   return (
     <motion.button
@@ -1783,7 +1839,7 @@ export default function ConfigResult({ config, onReset }: Props) {
             <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
             <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.96-1.56L23 6H6"/>
           </svg>
-          Tout ajouter au panier
+          {t("result.addAllToCart")}
         </motion.button>
 
         {/* Go to cart if items */}
