@@ -255,6 +255,9 @@ const translations: Record<Lang, Record<string, string>> = {
     "info.popularityScore": "Score de popularité",
     "info.indicativePrice": "Prix indicatif",
     "cart.added": "Ajouté au panier",
+    "info.buyInFrance": "Acheter en France",
+    "hero.stat.ch": "Suisse",
+    "hero.stat.fr": "France",
   },
   en: {
     "hero.badge": "Powered by Claude AI",
@@ -497,6 +500,9 @@ const translations: Record<Lang, Record<string, string>> = {
     "info.popularityScore": "Popularity score",
     "info.indicativePrice": "Indicative price",
     "cart.added": "Added to cart",
+    "info.buyInFrance": "Buy in France",
+    "hero.stat.ch": "Switzerland",
+    "hero.stat.fr": "France",
   },
   de: {
     "hero.badge": "Powered by Claude AI",
@@ -739,6 +745,9 @@ const translations: Record<Lang, Record<string, string>> = {
     "info.popularityScore": "Beliebtheitswert",
     "info.indicativePrice": "Richtpreis",
     "cart.added": "In den Warenkorb gelegt",
+    "info.buyInFrance": "In Frankreich kaufen",
+    "hero.stat.ch": "Schweiz",
+    "hero.stat.fr": "Frankreich",
   },
   it: {
     "hero.badge": "Powered by Claude AI",
@@ -981,6 +990,9 @@ const translations: Record<Lang, Record<string, string>> = {
     "info.popularityScore": "Punteggio popolarità",
     "info.indicativePrice": "Prezzo indicativo",
     "cart.added": "Aggiunto al carrello",
+    "info.buyInFrance": "Acquistare in Francia",
+    "hero.stat.ch": "Svizzera",
+    "hero.stat.fr": "Francia",
   },
   pt: {
     "hero.badge": "Powered by Claude AI",
@@ -1223,6 +1235,9 @@ const translations: Record<Lang, Record<string, string>> = {
     "info.popularityScore": "Pontuação de popularidade",
     "info.indicativePrice": "Preço indicativo",
     "cart.added": "Adicionado ao carrinho",
+    "info.buyInFrance": "Comprar em França",
+    "hero.stat.ch": "Suíça",
+    "hero.stat.fr": "França",
   },
   es: {
     "hero.badge": "Powered by Claude AI",
@@ -1465,6 +1480,9 @@ const translations: Record<Lang, Record<string, string>> = {
     "info.popularityScore": "Puntuación de popularidad",
     "info.indicativePrice": "Precio indicativo",
     "cart.added": "Añadido al carrito",
+    "info.buyInFrance": "Comprar en Francia",
+    "hero.stat.ch": "Suiza",
+    "hero.stat.fr": "Francia",
   },
 };
 

@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 import { useLanguage } from "@/lib/i18n";
+import { useMarket, type Market } from "@/lib/market";
 import type { PCConfig, Component, Alternative } from "@/lib/types";
-import { buildSearchUrl, buildToppreiseUrl } from "@/lib/affiliates";
+import { buildSearchUrl, buildToppreiseUrl, getStoresForMarket, getCurrencyForMarket } from "@/lib/affiliates";
 import { jsPDF } from "jspdf";
 import { useCart } from "@/lib/cart";
 import { ComponentSVG as SharedComponentSVG, ComponentImage } from "@/components/ComponentSVG";
@@ -340,21 +341,16 @@ function AnimatedPrice({ value, suffix }: { value: number; suffix: string }) {
 
 /* ── Merchant price table with "Voir plus" ── */
 
-const MERCHANT_STORES = [
-  { storeId: "digitec", label: "Digitec" },
-  { storeId: "galaxus", label: "Galaxus" },
-  { storeId: "brack", label: "Brack.ch" },
-  { storeId: "interdiscount", label: "Interdiscount" },
-];
-
 function MerchantTable({ component }: { component: Component }) {
   const { t } = useLanguage();
+  const market = useMarket();
+  const stores = getStoresForMarket(market);
   return (
     <div className="mt-3 rounded-lg border border-border bg-bg overflow-hidden">
-      {MERCHANT_STORES.map((p, i) => (
+      {stores.map((p, i) => (
         <a
           key={p.storeId}
-          href={buildSearchUrl(p.storeId, component.name)}
+          href={buildSearchUrl(p.storeId, component.name, market)}
           target="_blank" rel="noopener noreferrer"
           className={`flex items-center justify-between px-3 py-2.5 text-xs hover:bg-card transition-colors duration-150 ${i > 0 ? "border-t border-border" : ""}`}
         >
@@ -452,6 +448,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
   const [loading, setLoading] = useState(true);
   const { addItem, items: cartItems } = useCart();
   const { t } = useLanguage();
+  const market = useMarket();
   const inCart = cartItems.some((i) => i.name === component.name);
   const manufacturerUrl = getManufacturerUrl(component.name, component.manufacturer_url);
 
@@ -622,7 +619,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                     {displayPrice > 0 ? (
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-3xl font-black" style={{ color: "#4f8ef7" }}><AnimatedPrice value={displayPrice} suffix="" /></span>
-                        <span className="text-lg font-bold text-[#4f8ef7]">CHF</span>
+                        <span className="text-lg font-bold text-[#4f8ef7]">{getCurrencyForMarket(market)}</span>
                       </div>
                     ) : (
                       <span className="text-base font-medium text-[#999] italic">{t("info.priceToConfirm")}</span>
@@ -631,14 +628,21 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
 
                   {/* CTA buttons */}
                   <div className="flex flex-col gap-2">
-                    <a
-                      href={buildSearchUrl("galaxus", component.name)}
-                      target="_blank" rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-opacity"
-                      style={{ background: "#4f8ef7" }}
-                    >
-                      {t("info.seeOnGalaxus")}
-                    </a>
+                    {(() => {
+                      const stores = getStoresForMarket(market);
+                      const primaryStore = stores[0];
+                      const primaryLabel = market === "fr" ? "LDLC" : "Galaxus";
+                      return (
+                        <a
+                          href={buildSearchUrl(primaryStore.storeId, component.name, market)}
+                          target="_blank" rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-opacity"
+                          style={{ background: "#4f8ef7" }}
+                        >
+                          {market === "fr" ? `Voir sur ${primaryLabel} →` : t("info.seeOnGalaxus")}
+                        </a>
+                      );
+                    })()}
                     {mfUrl !== "#" && (
                       <a href={mfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-[#555] hover:text-[#0A0A0A] transition-all" style={{ border: "1px solid #E5E5E5" }}>
                         {t("info.manufacturerSite")}
@@ -671,34 +675,40 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                 </div>
               )}
 
-              {/* ── Marchands suisses ── */}
-              <Accordion title={t("info.buyInSwitzerland")} defaultOpen>
-                <div>
-                  {MERCHANT_STORES.map((p, i) => (
-                    <motion.div
-                      key={p.storeId}
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.15 + i * 0.08 }}
-                      className={`flex items-center justify-between px-4 py-3 text-sm ${i > 0 ? "border-t" : ""}`}
-                      style={{ borderColor: "#F0F0F0" }}
-                    >
-                      <span className="font-medium text-[#0A0A0A]">{p.label}</span>
-                      <a
-                        href={buildSearchUrl(p.storeId, component.name)}
-                        target="_blank" rel="noopener noreferrer"
-                        className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white transition-opacity hover:opacity-80"
-                        style={{ background: "#4f8ef7" }}
-                      >
-                        {t("result.voir")}
-                      </a>
-                    </motion.div>
-                  ))}
-                </div>
-                <p className="px-4 py-3 text-xs text-[#AAA] border-t" style={{ borderColor: "#F0F0F0" }}>
-                  {t("result.merchantNote")}
-                </p>
-              </Accordion>
+              {/* ── Marchands (Suisse ou France) ── */}
+              {(() => {
+                const stores = getStoresForMarket(market);
+                const accordionTitle = market === "fr" ? t("info.buyInFrance") : t("info.buyInSwitzerland");
+                return (
+                  <Accordion title={accordionTitle} defaultOpen>
+                    <div>
+                      {stores.map((p, i) => (
+                        <motion.div
+                          key={p.storeId}
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.15 + i * 0.08 }}
+                          className={`flex items-center justify-between px-4 py-3 text-sm ${i > 0 ? "border-t" : ""}`}
+                          style={{ borderColor: "#F0F0F0" }}
+                        >
+                          <span className="font-medium text-[#0A0A0A]">{p.label}</span>
+                          <a
+                            href={buildSearchUrl(p.storeId, component.name, market)}
+                            target="_blank" rel="noopener noreferrer"
+                            className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white transition-opacity hover:opacity-80"
+                            style={{ background: "#4f8ef7" }}
+                          >
+                            {t("result.voir")}
+                          </a>
+                        </motion.div>
+                      ))}
+                    </div>
+                    <p className="px-4 py-3 text-xs text-[#AAA] border-t" style={{ borderColor: "#F0F0F0" }}>
+                      {t("result.merchantNote")}
+                    </p>
+                  </Accordion>
+                );
+              })()}
 
               {/* ── Specs table ── */}
               {(() => {
@@ -721,7 +731,7 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
                 if (specs) { for (const [key, value] of Object.entries(specs)) addRow(translateSpecKey(key, t), formatSpecValue(String(value), t)); }
                 addRow(t("info.popularityScore"), dbData?.popularity_score ? `${dbData.popularity_score}/100` : null);
                 if (dbData?.available_ch !== null && dbData?.available_ch !== undefined) addRow(t("info.availableCh"), dbData.available_ch ? t("spec.true") : t("spec.false"));
-                if (displayPrice && displayPrice > 0) addRow(t("info.indicativePrice"), `${displayPrice} CHF`);
+                if (displayPrice && displayPrice > 0) addRow(t("info.indicativePrice"), `${displayPrice} ${getCurrencyForMarket(market)}`);
 
                 return allRows.length > 0 ? (
                   <Accordion title={t("info.technicalSheet")} defaultOpen>
@@ -753,14 +763,20 @@ function InfoModal({ component, allComponents, onClose }: { component: Component
             >
               {inCart ? `✓ ${t("result.inCart")}` : t("info.addToConfig")}
             </motion.button>
-            <a
-              href={buildSearchUrl("galaxus", component.name)}
-              target="_blank" rel="noopener noreferrer"
-              className="flex-1 min-w-[120px] py-3 rounded-xl text-sm font-semibold text-center hover:opacity-90 transition-opacity"
-              style={{ border: "1px solid #E5E5E5", color: "#555" }}
-            >
-              {t("info.seeOnGalaxus")}
-            </a>
+            {(() => {
+              const stores = getStoresForMarket(market);
+              const primary = stores[0];
+              return (
+                <a
+                  href={buildSearchUrl(primary.storeId, component.name, market)}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex-1 min-w-[120px] py-3 rounded-xl text-sm font-semibold text-center hover:opacity-90 transition-opacity"
+                  style={{ border: "1px solid #E5E5E5", color: "#555" }}
+                >
+                  {market === "fr" ? `Voir sur ${primary.label} →` : t("info.seeOnGalaxus")}
+                </a>
+              );
+            })()}
             <button type="button" onClick={onClose} className="px-5 py-3 rounded-xl text-sm font-medium text-[#666] hover:text-[#333] transition-colors" style={{ border: "1px solid #E5E5E5" }}>
               {t("info.close")}
             </button>
@@ -1261,6 +1277,8 @@ function getChangeLabel(type: string, t: (k: string) => string): string {
 
 function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }: { component: Component; original: Component | null; index: number; onSwap: () => void; onRevert: () => void; onInfo: () => void }) {
   const { t } = useLanguage();
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
   const { addItem, items } = useCart();
   const isEssential = component.priority === "essentiel";
   const isSwapped = original !== null && original.name !== component.name;
@@ -1291,10 +1309,10 @@ function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }:
         {component.price_ch > 0 ? (
           <>
             <span className="text-3xl font-extrabold" style={{ color: "#4f8ef7" }}>{component.price_ch}</span>
-            <span className="text-base font-semibold text-[#4f8ef7]">CHF</span>
+            <span className="text-base font-semibold text-[#4f8ef7]">{currency}</span>
           </>
         ) : (
-          <span className="text-sm font-medium text-[#999] italic">Prix à confirmer</span>
+          <span className="text-sm font-medium text-[#999] italic">{t("info.priceToConfirm")}</span>
         )}
       </div>
 
@@ -1622,6 +1640,8 @@ interface Props { config: PCConfig; onReset: () => void; }
 
 export default function ConfigResult({ config, onReset }: Props) {
   const { t } = useLanguage();
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
   const [components, setComponents] = useState<Component[]>(config.components);
   const [originals] = useState<Component[]>(config.components);
   const [swapIndex, setSwapIndex] = useState<number | null>(null);
@@ -1779,7 +1799,7 @@ export default function ConfigResult({ config, onReset }: Props) {
           </div>
           <div className="shrink-0 text-right">
             <div className="text-xs text-text-secondary mb-1 uppercase tracking-wide">Total config</div>
-            <div className="text-3xl font-bold" style={{ color: "#4f8ef7" }}><AnimatedPrice value={totalCH} suffix=" CHF" /></div>
+            <div className="text-3xl font-bold" style={{ color: "#4f8ef7" }}><AnimatedPrice value={totalCH} suffix={` ${currency}`} /></div>
           </div>
         </div>
       </motion.div>
@@ -1810,7 +1830,7 @@ export default function ConfigResult({ config, onReset }: Props) {
           <thead>
             <tr className="border-b border-border text-text-secondary">
               <th className="text-left py-2 font-medium">{t("result.component")}</th>
-              <th className="text-right py-2 font-medium">Prix CHF</th>
+              <th className="text-right py-2 font-medium">Prix {currency}</th>
             </tr>
           </thead>
           <tbody>
@@ -1819,7 +1839,7 @@ export default function ConfigResult({ config, onReset }: Props) {
           <tfoot>
             <tr className="font-bold">
               <td className="pt-4">{t("result.total")}</td>
-              <td className="text-right pt-4 font-bold" style={{ color: "#4f8ef7" }}>{totalCH} CHF</td>
+              <td className="text-right pt-4 font-bold" style={{ color: "#4f8ef7" }}>{totalCH} {currency}</td>
             </tr>
           </tfoot>
         </table>
