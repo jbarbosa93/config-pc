@@ -57,6 +57,7 @@ export async function generateMetadata(): Promise<Metadata> {
       icons: { icon: "/icon.svg" },
       robots: { index: true, follow: true },
       alternates: { canonical: "https://configpc-france.fr" },
+      verification: { google: "EhD0S1fmrk2OgCEBNOnI2MjfZws_hBJ-YDGr_totVow" },
     };
   }
 
