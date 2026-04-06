@@ -6,6 +6,8 @@ import Logo from "@/components/Logo";
 import Link from "next/link";
 import { ComponentImage } from "@/components/ComponentSVG";
 import { useLanguage } from "@/lib/i18n";
+import { useMarket } from "@/lib/market";
+import { getCurrencyForMarket } from "@/lib/affiliates";
 
 /* ── Types ── */
 interface ComponentImage {
@@ -21,6 +23,7 @@ interface Component {
   brand: string;
   specs: Record<string, string>;
   price_ch: number;
+  price_fr: number;
   description: string;
   socket: string | null;
   chipset: string | null;
@@ -174,6 +177,9 @@ function ProductDetail({ component, onClose, t }: { component: Component; onClos
   const primaryImage = component.component_images?.find((i) => i.is_primary)?.url || component.component_images?.[0]?.url;
   const allSpecs = getAllSpecs(component);
   const colorClass = TYPE_COLORS[component.type] || "bg-gray-50 text-gray-700 border-gray-200";
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
+  const displayPrice = market === "fr" ? component.price_fr : component.price_ch;
 
   return (
     <>
@@ -232,9 +238,9 @@ function ProductDetail({ component, onClose, t }: { component: Component; onClos
             {component.brand}
           </p>
           <h2 className="text-xl font-bold mb-2">{component.name}</h2>
-          {component.price_ch > 0 && (
+          {displayPrice > 0 && (
             <p className="text-2xl font-bold mb-4" style={{ color: "#0A0A0A" }}>
-              CHF {component.price_ch.toFixed(0)}
+              {currency} {displayPrice.toFixed(0)}
               <span className="text-sm font-normal text-text-secondary ml-2">{t("cat.indicatif")}</span>
             </p>
           )}
@@ -353,6 +359,9 @@ function ComponentCard({ component, onClick, t }: { component: Component; onClic
   const primaryImage = component.component_images?.find((i) => i.is_primary)?.url || component.component_images?.[0]?.url;
   const specs = getMainSpecs(component);
   const colorClass = TYPE_COLORS[component.type] || "bg-gray-50 text-gray-700 border-gray-200";
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
+  const displayPrice = market === "fr" ? component.price_fr : component.price_ch;
 
   return (
     <div
@@ -383,9 +392,9 @@ function ComponentCard({ component, onClick, t }: { component: Component; onClic
       <div className="flex flex-col flex-1 p-4">
         <p className="text-xs text-text-secondary font-medium uppercase tracking-wider mb-1">{component.brand}</p>
         <h3 className="font-semibold text-sm leading-snug mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">{component.name}</h3>
-        {component.price_ch > 0 && (
+        {displayPrice > 0 && (
           <p className="text-base font-bold mb-2" style={{ color: "#0A0A0A" }}>
-            CHF {component.price_ch.toFixed(0)}
+            {currency} {displayPrice.toFixed(0)}
             <span className="text-xs font-normal text-text-secondary ml-1">{t("cat.indicatif")}</span>
           </p>
         )}

@@ -8,7 +8,8 @@ import Logo from "@/components/Logo";
 import { useCart } from "@/lib/cart";
 import { useLanguage } from "@/lib/i18n";
 import { ComponentImage } from "@/components/ComponentSVG";
-import { buildSearchUrl } from "@/lib/affiliates";
+import { buildSearchUrl, getCurrencyForMarket } from "@/lib/affiliates";
+import { useMarket } from "@/lib/market";
 import type { Component } from "@/lib/types";
 import {
   checkCPUMotherboard,
@@ -297,6 +298,8 @@ const STORE_LABELS_MANUAL: Record<string, string> = {
 function DBInfoModal({ comp, onClose }: { comp: DBCompWithImages; onClose: () => void }) {
   const { addItem, items: cartItems } = useCart();
   const { t } = useLanguage();
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
   const inCart = cartItems.some(i => i.name === comp.name);
   const imageUrl = comp.component_images?.find(i => i.is_primary)?.url || comp.component_images?.[0]?.url;
 
@@ -371,7 +374,7 @@ function DBInfoModal({ comp, onClose }: { comp: DBCompWithImages; onClose: () =>
             <div className="flex-1 min-w-0">
               <h2 className="text-lg font-bold text-[#0A0A0A] leading-snug mb-1">{comp.name}</h2>
               <p className="text-sm text-[#666] leading-relaxed line-clamp-3">{comp.description || `Composant ${comp.type} de la marque ${comp.brand}.`}</p>
-              <p className="mt-2 text-2xl font-extrabold" style={{ color: '#4f8ef7' }}>CHF {comp.price_ch.toFixed(0)}</p>
+              <p className="mt-2 text-2xl font-extrabold" style={{ color: '#4f8ef7' }}>{currency} {(market === "fr" ? comp.price_fr : comp.price_ch).toFixed(0)}</p>
             </div>
           </div>
 
@@ -456,6 +459,8 @@ function CompCard({
 }) {
   const compat = getCompatResult(comp, stepId, build);
   const specs = getKeySpecs(comp);
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
 
   const borderColor = isSelected ? '#4f8ef7' :
     compat.status === 'incompatible' ? '#FECACA' :
@@ -505,7 +510,7 @@ function CompCard({
       {/* Price + compat */}
       <div className="flex items-center justify-between gap-2 mt-auto">
         <span className="text-lg font-bold" style={{ color: '#4f8ef7' }}>
-          CHF {comp.price_ch.toFixed(0)}
+          {currency} {(market === "fr" ? comp.price_fr : comp.price_ch).toFixed(0)}
         </span>
         <div className="flex items-center gap-2">
           <button
@@ -595,6 +600,8 @@ function CompatSummaryRow({ icon, label, result }: CompatRow) {
 
 function CompatSummary({ build }: { build: Build }) {
   const { t } = useLanguage();
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
   const { mobo, cpu, ram, gpu, psu, cooler, case: pcCase } = build as {
     mobo?: DBCompWithImages; cpu?: DBCompWithImages; ram?: DBCompWithImages;
     gpu?: DBCompWithImages; psu?: DBCompWithImages; cooler?: DBCompWithImages;
@@ -656,7 +663,9 @@ function Sidebar({
   build: Build;
   onStepClick: (idx: number) => void;
 }) {
-  const totalPrice = STEPS.reduce((sum, s) => sum + (build[s.id]?.price_ch ?? 0), 0);
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
+  const totalPrice = STEPS.reduce((sum, s) => sum + ((market === "fr" ? build[s.id]?.price_fr : build[s.id]?.price_ch) ?? 0), 0);
   const cpu = build.cpu;
   const gpu = build.gpu;
   const estimatedWatts = (cpu?.tdp ?? 65) + (gpu?.tdp ?? 0) + 80;
@@ -713,7 +722,7 @@ function Sidebar({
       <div className="rounded-xl p-4" style={{ border: '1px solid #E5E5E5', background: '#FAFAFA' }}>
         <div className="flex justify-between items-center mb-1">
           <span className="text-sm text-[#666]">Total config</span>
-          <span className="text-lg font-bold" style={{ color: '#4f8ef7' }}>CHF {totalPrice.toFixed(0)}</span>
+          <span className="text-lg font-bold" style={{ color: '#4f8ef7' }}>{currency} {totalPrice.toFixed(0)}</span>
         </div>
       </div>
 
@@ -761,11 +770,13 @@ function Sidebar({
 function RecapSection({ build, onReset }: { build: Build; onReset: () => void }) {
   const { addItem } = useCart();
   const { t } = useLanguage();
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
   const router = useRouter();
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  const totalPrice = STEPS.reduce((sum, s) => sum + (build[s.id]?.price_ch ?? 0), 0);
+  const totalPrice = STEPS.reduce((sum, s) => sum + ((market === "fr" ? build[s.id]?.price_fr : build[s.id]?.price_ch) ?? 0), 0);
   const selectedCount = STEPS.filter(s => build[s.id]).length;
 
   // Precise compatibility score (100 - penalties)
@@ -871,7 +882,7 @@ function RecapSection({ build, onReset }: { build: Build; onReset: () => void })
           <p className="text-xs text-[#666] mt-1">Composants</p>
         </div>
         <div className="rounded-xl p-4 text-center" style={{ border: '1px solid #E5E5E5', background: '#FAFAFA' }}>
-          <p className="text-2xl font-bold" style={{ color: '#4f8ef7' }}>CHF {totalPrice.toFixed(0)}</p>
+          <p className="text-2xl font-bold" style={{ color: '#4f8ef7' }}>{currency} {totalPrice.toFixed(0)}</p>
           <p className="text-xs text-[#666] mt-1">Total estimé</p>
         </div>
       </div>
@@ -918,7 +929,7 @@ function RecapSection({ build, onReset }: { build: Build; onReset: () => void })
               </div>
               <CompatBadge result={compat} />
               <span className="text-sm font-bold flex-shrink-0" style={{ color: '#4f8ef7' }}>
-                CHF {comp.price_ch.toFixed(0)}
+                {currency} {(market === "fr" ? comp.price_fr : comp.price_ch).toFixed(0)}
               </span>
             </div>
           );

@@ -16,6 +16,7 @@ export interface DBComp {
   name: string;
   brand: string;
   price_ch: number;
+  price_fr: number;
   socket: string | null;
   chipset: string | null;
   form_factor: string | null;

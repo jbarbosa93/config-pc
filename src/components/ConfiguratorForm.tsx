@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useLanguage } from "@/lib/i18n";
+import { useMarket } from "@/lib/market";
+import { getCurrencyForMarket } from "@/lib/affiliates";
 import type { Usage, Resolution, Market, ConfigRequest, PCConfig, GamingProfile, Frequency, ExistingPeripherals } from "@/lib/types";
 
 function Icon({ d }: { d: string }) {
@@ -132,6 +134,8 @@ interface Props { onResult: (config: PCConfig) => void; onBack?: () => void; }
 
 export default function ConfiguratorForm({ onResult, onBack }: Props) {
   const { t } = useLanguage();
+  const displayMarket = useMarket();
+  const currency = getCurrencyForMarket(displayMarket);
   const [step, setStep] = useState(0);
   const [displayStep, setDisplayStep] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -292,7 +296,7 @@ export default function ConfiguratorForm({ onResult, onBack }: Props) {
                   <p className="text-text-secondary text-sm mb-10">{t("step1.desc")}</p>
                   <div className="text-center mb-8">
                     <motion.span key={budget} initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-6xl font-bold tracking-tight inline-block">
-                      {budget >= BUDGET_MAX ? "Sans limite" : `${budget} CHF`}
+                      {budget >= BUDGET_MAX ? "Sans limite" : `${budget} ${currency}`}
                     </motion.span>
                   </div>
                   <div className="px-1 mb-8">
@@ -325,7 +329,7 @@ export default function ConfiguratorForm({ onResult, onBack }: Props) {
                           {p.badgeKey && <span className={`absolute -top-2 right-3 text-[10px] px-2 py-0.5 rounded-full font-medium ${active ? "bg-white text-accent" : "bg-accent text-white"}`}>{t(p.badgeKey)}</span>}
                           <span className="text-base mr-1.5">{p.emoji}</span>
                           <span className="text-xs font-medium">{t(p.key)}</span>
-                          <div className={`text-sm font-bold mt-1 ${active ? "text-white" : "text-text"}`}>{p.value} CHF</div>
+                          <div className={`text-sm font-bold mt-1 ${active ? "text-white" : "text-text"}`}>{p.value} {currency}</div>
                         </motion.button>
                       );
                     })}

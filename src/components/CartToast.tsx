@@ -4,10 +4,14 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/lib/cart";
 import { useLanguage } from "@/lib/i18n";
+import { useMarket } from "@/lib/market";
+import { getCurrencyForMarket } from "@/lib/affiliates";
 
 export default function CartToast() {
   const { lastAdded } = useCart();
   const { t } = useLanguage();
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
   const [visible, setVisible] = useState(false);
   const [current, setCurrent] = useState<typeof lastAdded>(null);
 
@@ -40,7 +44,7 @@ export default function CartToast() {
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-white leading-tight truncate">{current.name}</p>
               <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                {t("cart.added")} · CHF {current.price_ch.toFixed(0)}
+                {t("cart.added")} · {currency} {(market === "fr" ? current.price_fr : current.price_ch).toFixed(0)}
               </p>
             </div>
             <a

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useCart } from "@/lib/cart";
 import { useRouter } from "next/navigation";
+import { useMarket } from "@/lib/market";
+import { getCurrencyForMarket } from "@/lib/affiliates";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
@@ -28,14 +30,17 @@ const EMPTY_FORM: FormData = {
 };
 
 export default function CommanderPage() {
-  const { items, totalCHF, clearCart } = useCart();
+  const { items, clearCart } = useCart();
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
+  const cartTotal = items.reduce((s, i) => s + (market === "fr" ? i.price_fr : i.price_ch) * i.quantity, 0);
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const total = totalCHF + (form.assembly ? 150 : 0);
+  const total = cartTotal + (form.assembly ? 150 : 0);
 
   function update<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -185,7 +190,7 @@ export default function CommanderPage() {
               <label className="flex items-start gap-3 cursor-pointer p-4 rounded-xl transition-all" style={{ border: `2px solid ${form.assembly ? "#4f8ef7" : "#E5E5E5"}`, background: form.assembly ? "#F0F7FF" : "white" }}>
                 <input type="checkbox" checked={form.assembly} onChange={(e) => update("assembly", e.target.checked)} className="mt-0.5 accent-[#4f8ef7]" />
                 <div>
-                  <p className="font-semibold text-sm">🔧 Montage professionnel du PC <span className="text-[#4f8ef7]">+150 CHF</span></p>
+                  <p className="font-semibold text-sm">🔧 Montage professionnel du PC <span className="text-[#4f8ef7]">+150 {currency}</span></p>
                   <p className="text-xs text-[#888] mt-0.5">Assemblage complet, tests et vérification de compatibilité par nos experts.</p>
                 </div>
               </label>
@@ -225,18 +230,18 @@ export default function CommanderPage() {
                       <span className="text-[10px] font-bold text-[#4f8ef7] uppercase mr-2">{item.type}</span>
                       <span className="font-medium">{item.name}</span>
                     </div>
-                    <span className="tabular-nums font-semibold">{item.price_ch} CHF</span>
+                    <span className="tabular-nums font-semibold">{market === "fr" ? item.price_fr : item.price_ch} {currency}</span>
                   </div>
                 ))}
                 {form.assembly && (
                   <div className="flex justify-between items-center px-4 py-3 text-sm border-t border-[#F0F0F0] bg-[#F8FAFF]">
                     <span className="font-medium">🔧 Montage professionnel</span>
-                    <span className="tabular-nums font-semibold">150 CHF</span>
+                    <span className="tabular-nums font-semibold">150 {currency}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center px-4 py-4 border-t border-[#E5E5E5] bg-[#F8FAFF]">
                   <span className="font-bold">Total</span>
-                  <span className="text-xl font-bold" style={{ color: "#4f8ef7" }}>{total} CHF</span>
+                  <span className="text-xl font-bold" style={{ color: "#4f8ef7" }}>{total} {currency}</span>
                 </div>
               </div>
 
@@ -275,7 +280,7 @@ export default function CommanderPage() {
                 <div className="text-4xl mb-3">🔒</div>
                 <p className="font-bold text-lg mb-1">Paiement sécurisé</p>
                 <p className="text-[#666] text-sm mb-4">Vous allez être redirigé vers Stripe pour finaliser votre paiement.</p>
-                <div className="text-3xl font-bold mb-6" style={{ color: "#4f8ef7" }}>{total} CHF</div>
+                <div className="text-3xl font-bold mb-6" style={{ color: "#4f8ef7" }}>{total} {currency}</div>
 
                 {error && (
                   <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-600 text-sm">{error}</div>

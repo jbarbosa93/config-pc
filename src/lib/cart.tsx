@@ -14,14 +14,14 @@ interface CartContextValue {
   clearCart: () => void;
   totalCHF: number;
   count: number;
-  lastAdded: { name: string; type: string; price_ch: number; ts: number } | null;
+  lastAdded: { name: string; type: string; price_ch: number; price_fr: number; ts: number } | null;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [lastAdded, setLastAdded] = useState<{ name: string; type: string; price_ch: number; ts: number } | null>(null);
+  const [lastAdded, setLastAdded] = useState<{ name: string; type: string; price_ch: number; price_fr: number; ts: number } | null>(null);
 
   useEffect(() => {
     try {
@@ -40,7 +40,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (exists) return prev;
       return [...prev, { ...component, quantity: 1 }];
     });
-    setLastAdded({ name: component.name, type: component.type, price_ch: component.price_ch, ts: Date.now() });
+    setLastAdded({ name: component.name, type: component.type, price_ch: component.price_ch, price_fr: component.price_fr ?? component.price_ch, ts: Date.now() });
   }, []);
 
   const removeItem = useCallback((name: string) => {

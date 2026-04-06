@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useCart } from "@/lib/cart";
 import { useRouter } from "next/navigation";
+import { useMarket } from "@/lib/market";
+import { getCurrencyForMarket } from "@/lib/affiliates";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { ComponentImage } from "@/components/ComponentSVG";
@@ -77,7 +79,10 @@ function getChangeUrl(type: string): string {
 }
 
 export default function PanierPage() {
-  const { items, removeItem, clearCart, totalCHF } = useCart();
+  const { items, removeItem, clearCart } = useCart();
+  const market = useMarket();
+  const currency = getCurrencyForMarket(market);
+  const totalCHF = items.reduce((s, i) => s + (market === "fr" ? i.price_fr : i.price_ch) * i.quantity, 0);
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -242,8 +247,8 @@ export default function PanierPage() {
                       {item.reason && <p className="text-xs text-[#888] mt-1 line-clamp-1">{item.reason}</p>}
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-lg font-extrabold" style={{ color: "#4f8ef7" }}>{item.price_ch}</p>
-                      <p className="text-[10px] text-[#999] font-medium">CHF</p>
+                      <p className="text-lg font-extrabold" style={{ color: "#4f8ef7" }}>{market === "fr" ? item.price_fr : item.price_ch}</p>
+                      <p className="text-[10px] text-[#999] font-medium">{currency}</p>
                     </div>
                   </div>
 
@@ -298,14 +303,14 @@ export default function PanierPage() {
             <div className="flex flex-col gap-2 mb-4 pb-4" style={{ borderBottom: "1px solid #E0ECFF" }}>
               {TYPE_ORDER.filter((t) => sorted.some((i) => i.type === t)).map((type) => {
                 const typeItems = sorted.filter((i) => i.type === type);
-                const typeTotal = typeItems.reduce((s, i) => s + i.price_ch, 0);
+                const typeTotal = typeItems.reduce((s, i) => s + (market === "fr" ? i.price_fr : i.price_ch), 0);
                 return (
                   <div key={type} className="flex justify-between text-sm">
                     <span className="text-[#666] flex items-center gap-1.5">
                       <span className="text-xs">{TYPE_ICONS[type] || "🔧"}</span>
                       {type}
                     </span>
-                    <span className="font-medium tabular-nums">{typeTotal} CHF</span>
+                    <span className="font-medium tabular-nums">{typeTotal} {currency}</span>
                   </div>
                 );
               })}
@@ -314,7 +319,7 @@ export default function PanierPage() {
             {/* Total */}
             <div className="flex justify-between items-baseline mb-4">
               <span className="font-bold text-base">Total</span>
-              <span className="text-2xl font-extrabold" style={{ color: "#4f8ef7" }}>{totalCHF} CHF</span>
+              <span className="text-2xl font-extrabold" style={{ color: "#4f8ef7" }}>{totalCHF} {currency}</span>
             </div>
 
             {/* Compatibility badge */}
