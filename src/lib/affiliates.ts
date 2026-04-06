@@ -66,6 +66,14 @@ export function buildToppreiseUrl(name: string): string {
   return `https://www.toppreise.ch/chercher?q=${enc(name)}`;
 }
 
+export function buildIdealoUrl(name: string): string {
+  return `https://www.idealo.fr/comparer/${enc(name)}.html`;
+}
+
+export function buildPriceCompareUrl(name: string, market: "ch" | "fr"): string {
+  return market === "fr" ? buildIdealoUrl(name) : buildToppreiseUrl(name);
+}
+
 /** All store ids */
 export function getAllStoreIds(): string[] {
   return STORES.map((s) => s.id);

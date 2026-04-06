@@ -7,7 +7,7 @@ import Link from "next/link";
 import { ComponentImage } from "@/components/ComponentSVG";
 import { useLanguage } from "@/lib/i18n";
 import { useMarket } from "@/lib/market";
-import { getCurrencyForMarket } from "@/lib/affiliates";
+import { getCurrencyForMarket, buildPriceCompareUrl } from "@/lib/affiliates";
 
 /* ── Types ── */
 interface ComponentImage {
@@ -327,12 +327,17 @@ function ProductDetail({ component, onClose, t }: { component: Component; onClos
               Trouver au meilleur prix
             </h3>
             <div className="grid grid-cols-2 gap-2">
-              {[
+              {(market === "fr" ? [
+                { name: "LDLC", url: `https://www.ldlc.com/recherche/${encodeURIComponent(component.name)}/` },
+                { name: "Amazon.fr", url: `https://www.amazon.fr/s?k=${encodeURIComponent(component.name)}` },
+                { name: "Materiel.net", url: `https://www.materiel.net/recherche/${encodeURIComponent(component.name)}/` },
+                { name: "Idealo", url: buildPriceCompareUrl(component.name, "fr") },
+              ] : [
                 { name: "Digitec", url: `https://www.digitec.ch/fr/search?q=${encodeURIComponent(component.name)}` },
                 { name: "Galaxus", url: `https://www.galaxus.ch/fr/search?q=${encodeURIComponent(component.name)}` },
                 { name: "Brack", url: `https://www.brack.ch/search?query=${encodeURIComponent(component.name)}` },
                 { name: "TopPreise", url: `https://www.toppreise.ch/chercher?q=${encodeURIComponent(component.name)}` },
-              ].map((store) => (
+              ]).map((store) => (
                 <a
                   key={store.name}
                   href={store.url}

@@ -294,7 +294,8 @@ export default function PanierPage() {
                   const hasGpu = !!gpu;
                   const tier = totalCHF > 2500 ? "haut de gamme" : totalCHF > 1500 ? "performant" : totalCHF > 800 ? "équilibré" : "entrée de gamme";
                   const usage = hasGpu ? "gaming et création" : "bureautique et productivité";
-                  return `PC ${tier} orienté ${usage}${cpu ? ` — propulsé par le ${cpu.name}` : ""}${gpu ? ` et la ${gpu.name}` : ""}. Configuration ${items.length} composants, optimisée pour le marché suisse.`;
+                  const marche = market === "fr" ? "France" : "Suisse";
+                  return `PC ${tier} orienté ${usage}${cpu ? ` — propulsé par le ${cpu.name}` : ""}${gpu ? ` et la ${gpu.name}` : ""}. Configuration ${items.length} composants, optimisée pour le marché ${marche}.`;
                 })()}
               </p>
             </div>

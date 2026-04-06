@@ -5,7 +5,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-mo
 import { useLanguage } from "@/lib/i18n";
 import { useMarket, type Market } from "@/lib/market";
 import type { PCConfig, Component, Alternative } from "@/lib/types";
-import { buildSearchUrl, buildToppreiseUrl, getStoresForMarket, getCurrencyForMarket } from "@/lib/affiliates";
+import { buildSearchUrl, buildPriceCompareUrl, getStoresForMarket, getCurrencyForMarket } from "@/lib/affiliates";
 import { jsPDF } from "jspdf";
 import { useCart } from "@/lib/cart";
 import { ComponentSVG as SharedComponentSVG, ComponentImage } from "@/components/ComponentSVG";
@@ -1321,10 +1321,10 @@ function ComponentCard({ component, original, index, onSwap, onRevert, onInfo }:
       {/* Merchant price table */}
       <MerchantTable component={component} />
 
-      {/* Compare on TopPreise */}
-      <a href={buildToppreiseUrl(component.name)} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 w-full text-xs py-2.5 rounded-lg bg-[#0A0A0A] text-white hover:bg-[#333] transition-all duration-150 font-medium">
-        <span className="px-1.5 py-0.5 rounded bg-[#FF6B00] text-white font-bold text-[10px] tracking-tight">TP</span>
-        {t("result.compareToppreise")}
+      {/* Compare on TopPreise / Idealo */}
+      <a href={buildPriceCompareUrl(component.name, market)} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 w-full text-xs py-2.5 rounded-lg bg-[#0A0A0A] text-white hover:bg-[#333] transition-all duration-150 font-medium">
+        <span className="px-1.5 py-0.5 rounded bg-[#FF6B00] text-white font-bold text-[10px] tracking-tight">{market === "fr" ? "ID" : "TP"}</span>
+        {market === "fr" ? t("result.compareIdealo") : t("result.compareToppreise")}
       </a>
 
       <div className="flex gap-2 mt-3">
